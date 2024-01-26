@@ -8,3 +8,7 @@ mod common;
 #[cfg(feature = "pwdx")]
 #[path = "by-util/test_pwdx.rs"]
 mod test_pwdx;
+
+#[cfg(feature = "free")]
+#[path = "by-util/test_free.rs"]
+mod test_free;

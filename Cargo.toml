@@ -26,6 +26,7 @@ default = ["feat_common_core"]
 
 feat_common_core = [
   "pwdx",
+  "free",
 ]
 
 [workspace.dependencies]
@@ -54,6 +55,7 @@ textwrap = { workspace = true }
 
 #
 pwdx = { optional = true, version = "0.0.1", package = "uu_pwdx", path = "src/uu/pwdx" }
+free = { optional = true, version = "0.0.1", package = "uu_free", path = "src/uu/free" }
 
 [dev-dependencies]
 pretty_assertions = "1"
