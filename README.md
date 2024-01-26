@@ -7,7 +7,6 @@ Ongoing:
 * `pwdx`: Shows the current working directory of a process.
 
 TODO:
-* `kill`: Sends a signal to a process, typically to terminate the process.
 * `ps`: Displays information about active processes.
 * `free`: Shows the amount of free and used memory in the system.
 * `pgrep`: Searches for processes based on name and other attributes.
@@ -17,14 +16,14 @@ TODO:
 * `slabtop`: Displays detailed kernel slab cache information in real time.
 * `tload`: Prints a graphical representation of system load average to the terminal.
 * `top`: Displays real-time information about system processes.
-* `uptime`: Shows how long the system has been running, including load average.
 * `vmstat`: Reports information about processes, memory, paging, block IO, traps, and CPU activity.
 * `w`: Shows who is logged on and what they are doing.
 * `watch`: Executes a program periodically, showing output fullscreen.
 * `pkill`: Kills processes based on name and other attributes.
 * `snice`: Changes the scheduling priority of a running process.
 
-Note:
+Elsewhere:
 
- * /bin/kill is already implemented in https://github.com/uutils/coreutils
-
+ * `kill` is already implemented in https://github.com/uutils/coreutils
+ * `uptime`: Shows how long the system has been running, including load average.
+   is already implemented in https://github.com/uutils/coreutils
