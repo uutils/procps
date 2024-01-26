@@ -1,0 +1,103 @@
+# procps (uutils)
+# * see the repository LICENSE, README, and CONTRIBUTING files for more information
+
+# spell-checker:ignore (libs) bigdecimal datetime fundu gethostid kqueue libselinux mangen memmap procfs uuhelp
+
+[package]
+name = "procps"
+version = "0.0.1"
+authors = ["uutils developers"]
+license = "MIT"
+description = "procps ~ GNU procps (updated); implemented as universal (cross-platform) utils, written in Rust"
+default-run = "procps"
+
+homepage = "https://github.com/uutils/procps"
+repository = "https://github.com/uutils/procps"
+readme = "README.md"
+keywords = ["procps", "uutils", "cross-platform", "cli", "utility"]
+categories = ["command-line-utilities"]
+rust-version = "1.70.0"
+edition = "2021"
+
+build = "build.rs"
+
+[features]
+default = ["feat_common_core"]
+
+feat_common_core = [
+  "pwdx",
+]
+
+[workspace.dependencies]
+uucore = "0.0.24"
+clap = { version = "4.4", features = ["wrap_help", "cargo"] }
+clap_complete = "4.4"
+clap_mangen = "0.2"
+regex = "1.10.2"
+sysinfo = "0.30"
+libc = "0.2.152"
+phf = "0.11.2"
+phf_codegen = "0.11.2"
+textwrap = { version = "0.16.0", features = ["terminal_size"] }
+xattr = "1.3.1"
+tempfile = "3.9.0"
+rand = { version = "0.8", features = ["small_rng"] }
+
+[dependencies]
+clap = { workspace = true }
+clap_complete = { workspace = true }
+clap_mangen = { workspace = true }
+uucore = { workspace = true }
+phf = { workspace = true }
+textwrap = { workspace = true }
+
+
+#
+pwdx = { optional = true, version = "0.0.1", package = "uu_pwdx", path = "src/uu/pwdx" }
+
+[dev-dependencies]
+pretty_assertions = "1"
+regex = { workspace = true }
+tempfile = { workspace = true }
+libc = { workspace = true }
+rand = { workspace = true }
+uucore = { workspace = true, features = ["entries", "process", "signals"] }
+
+[target.'cfg(unix)'.dev-dependencies]
+xattr = { workspace = true }
+
+[target.'cfg(any(target_os = "linux", target_os = "android"))'.dev-dependencies]
+procfs = { version = "0.16", default-features = false }
+rlimit = "0.10.1"
+
+[build-dependencies]
+phf_codegen = { workspace = true }
+
+
+[[bin]]
+name = "procps"
+path = "src/bin/procps.rs"
+
+[[bin]]
+name = "uudoc"
+path = "src/bin/uudoc.rs"
+required-features = ["uudoc"]
+
+# The default release profile. It contains all optimizations, without
+# sacrificing debug info. With this profile (like in the standard
+# release profile), the debug info and the stack traces will still be available.
+[profile.release]
+lto = true
+
+# A release-like profile that is tuned to be fast, even when being fast
+# compromises on binary size. This includes aborting on panic.
+[profile.release-fast]
+inherits = "release"
+panic = "abort"
+
+# A release-like profile that is as small as possible.
+[profile.release-small]
+inherits = "release"
+opt-level = "z"
+panic = "abort"
+strip = true
