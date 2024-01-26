@@ -17,7 +17,6 @@ const USAGE: &str = help_usage!("pwdx.md");
 
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
-
     let matches = uu_app().try_get_matches_from(args)?;
 
     let pid_str = matches.get_one::<String>("pid").unwrap();
@@ -44,9 +43,11 @@ pub fn uu_app() -> Command {
         .about(ABOUT)
         .override_usage(format_usage(USAGE))
         .infer_long_args(true)
-        .arg(Arg::new("pid")
-             .value_name("PID")
-             .help("Process ID")
-             .required(true)
-             .index(1))
+        .arg(
+            Arg::new("pid")
+                .value_name("PID")
+                .help("Process ID")
+                .required(true)
+                .index(1),
+        )
 }
