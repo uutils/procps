@@ -5,10 +5,11 @@ Provides command line and full screen utilities for browsing procfs, a "pseudo" 
 
 Ongoing:
 * `pwdx`: Shows the current working directory of a process.
+* `free`: Shows the amount of free and used memory in the system.
+
 
 TODO:
 * `ps`: Displays information about active processes.
-* `free`: Shows the amount of free and used memory in the system.
 * `pgrep`: Searches for processes based on name and other attributes.
 * `pidwait`: Waits for a specific process to terminate.
 * `pmap`: Displays the memory map of a process.
