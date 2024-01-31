@@ -28,6 +28,7 @@ feat_common_core = [
   "pwdx",
   "free",
   "w",
+  "watch",
 ]
 
 [workspace.dependencies]
@@ -59,6 +60,7 @@ textwrap = { workspace = true }
 pwdx = { optional = true, version = "0.0.1", package = "uu_pwdx", path = "src/uu/pwdx" }
 free = { optional = true, version = "0.0.1", package = "uu_free", path = "src/uu/free" }
 w = { optional = true, version = "0.0.1", package = "uu_w", path = "src/uu/w" }
+watch = { optional = true, version = "0.0.1", package = "uu_watch", path = "src/uu/watch" }
 
 [dev-dependencies]
 pretty_assertions = "1"

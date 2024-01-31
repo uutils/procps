@@ -16,3 +16,7 @@ mod test_free;
 #[cfg(feature = "w")]
 #[path = "by-util/test_w.rs"]
 mod test_w;
+
+#[cfg(feature = "watch")]
+#[path = "by-util/test_watch.rs"]
+mod test_watch;

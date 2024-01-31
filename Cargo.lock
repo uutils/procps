@@ -442,6 +442,7 @@ dependencies = [
  "uu_free",
  "uu_pwdx",
  "uu_w",
+ "uu_watch",
  "uucore",
  "xattr",
 ]
@@ -791,6 +792,14 @@ dependencies = [
  "clap",
  "sysinfo",
  "utmpx",
+ "uucore",
+]
+
+[[package]]
+name = "uu_watch"
+version = "0.0.1"
+dependencies = [
+ "clap",
  "uucore",
 ]
 
