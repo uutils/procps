@@ -3,8 +3,8 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use clap::crate_version;
 use clap::{Arg, ArgAction, Command};
-use clap::{crate_version};
 use std::process::{Command as SystemCommand, Stdio};
 use std::thread::sleep;
 use std::time::Duration;
@@ -17,7 +17,9 @@ const USAGE: &str = help_usage!("watch.md");
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
 
-    let command_to_watch = matches.get_one::<String>("command").expect("required argument");
+    let command_to_watch = matches
+        .get_one::<String>("command")
+        .expect("required argument");
     let interval = 2; // TODO matches.get_one::<u64>("interval").map_or(2, |&v| v);
 
     loop {
@@ -54,8 +56,82 @@ pub fn uu_app() -> Command {
             Arg::new("interval")
                 .short('n')
                 .long("interval")
-                .default_value("2")
                 .help("Seconds to wait between updates")
-                .action(ArgAction::Set),
+                .default_value("2")
+                .value_name("SECONDS"),
+        )
+        .arg(
+            Arg::new("beep")
+                .short('b')
+                .long("beep")
+                .help("Beep if command has a non-zero exit"),
+        )
+        .arg(
+            Arg::new("color")
+                .short('c')
+                .long("color")
+                .help("Interpret ANSI color and style sequences"),
+        )
+        .arg(
+            Arg::new("no-color")
+                .short('C')
+                .long("no-color")
+                .help("Do not interpret ANSI color and style sequences"),
+        )
+        .arg(
+            Arg::new("differences")
+                .short('d')
+                .long("differences")
+                .value_name("permanent")
+                .help("Highlight changes between updates"),
+        )
+        .arg(
+            Arg::new("errexit")
+                .short('e')
+                .long("errexit")
+                .help("Exit if command has a non-zero exit"),
+        )
+        .arg(
+            Arg::new("chgexit")
+                .short('g')
+                .long("chgexit")
+                .help("Exit when output from command changes"),
+        )
+        .arg(
+            Arg::new("equexit")
+                .short('q')
+                .long("equexit")
+                .value_name("CYCLES")
+                .help("Exit when output from command does not change"),
+        )
+        .arg(
+            Arg::new("precise")
+                .short('p')
+                .long("precise")
+                .help("Attempt to run command in precise intervals"),
+        )
+        .arg(
+            Arg::new("no-rerun")
+                .short('r')
+                .long("no-rerun")
+                .help("Do not rerun program on window resize"),
+        )
+        .arg(
+            Arg::new("no-title")
+                .short('t')
+                .long("no-title")
+                .help("Turn off header"),
+        )
+        .arg(
+            Arg::new("no-wrap")
+                .short('w')
+                .long("no-wrap")
+                .help("Turn off line wrapping"),
+        )
+        .arg(
+            Arg::new("exec")
+                .short('x')
+                .long("exec")
+                .help("Pass command to exec instead of 'sh -c'"),
         )
 }
