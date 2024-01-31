@@ -1,0 +1,19 @@
+[package]
+name = "uu_w"
+version = "0.0.1"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+uucore = { workspace = true, features = ["utmpx"] }
+clap = { workspace = true }
+utmpx = { workspace = true }
+sysinfo = { workspace = true }
+
+[lib]
+path = "src/w.rs"
+
+[[bin]]
+name = "w"
+path = "src/main.rs"

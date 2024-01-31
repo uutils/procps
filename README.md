@@ -6,7 +6,7 @@ Provides command line and full screen utilities for browsing procfs, a "pseudo" 
 Ongoing:
 * `pwdx`: Shows the current working directory of a process.
 * `free`: Shows the amount of free and used memory in the system.
-
+* `w`: Shows who is logged on and what they are doing.
 
 TODO:
 * `ps`: Displays information about active processes.
@@ -18,7 +18,6 @@ TODO:
 * `tload`: Prints a graphical representation of system load average to the terminal.
 * `top`: Displays real-time information about system processes.
 * `vmstat`: Reports information about processes, memory, paging, block IO, traps, and CPU activity.
-* `w`: Shows who is logged on and what they are doing.
 * `watch`: Executes a program periodically, showing output fullscreen.
 * `pkill`: Kills processes based on name and other attributes.
 * `snice`: Changes the scheduling priority of a running process.

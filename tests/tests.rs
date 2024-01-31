@@ -12,3 +12,7 @@ mod test_pwdx;
 #[cfg(feature = "free")]
 #[path = "by-util/test_free.rs"]
 mod test_free;
+
+#[cfg(feature = "w")]
+#[path = "by-util/test_w.rs"]
+mod test_w;
