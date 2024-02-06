@@ -20,3 +20,7 @@ mod test_w;
 #[cfg(feature = "watch")]
 #[path = "by-util/test_watch.rs"]
 mod test_watch;
+
+#[cfg(feature = "pmap")]
+#[path = "by-util/test_pmap.rs"]
+mod test_pmap;

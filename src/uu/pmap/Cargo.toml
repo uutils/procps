@@ -1,0 +1,15 @@
+[package]
+name = "uu_pmap"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+uucore = { workspace = true }
+clap = { workspace = true }
+
+[lib]
+path = "src/pmap.rs"
+
+[[bin]]
+name = "pmap"
+path = "src/main.rs"

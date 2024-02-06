@@ -29,6 +29,7 @@ feat_common_core = [
   "free",
   "w",
   "watch",
+  "pmap",
 ]
 
 [workspace.dependencies]
@@ -61,6 +62,7 @@ pwdx = { optional = true, version = "0.0.1", package = "uu_pwdx", path = "src/uu
 free = { optional = true, version = "0.0.1", package = "uu_free", path = "src/uu/free" }
 w = { optional = true, version = "0.0.1", package = "uu_w", path = "src/uu/w" }
 watch = { optional = true, version = "0.0.1", package = "uu_watch", path = "src/uu/watch" }
+pmap = { optional = true, version = "0.0.1", package = "uu_pmap", path = "src/uu/pmap" }
 
 [dev-dependencies]
 pretty_assertions = "1"

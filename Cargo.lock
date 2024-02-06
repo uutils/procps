@@ -440,6 +440,7 @@ dependencies = [
  "tempfile",
  "textwrap",
  "uu_free",
+ "uu_pmap",
  "uu_pwdx",
  "uu_w",
  "uu_watch",
@@ -771,6 +772,14 @@ dependencies = [
 
 [[package]]
 name = "uu_free"
+version = "0.0.1"
+dependencies = [
+ "clap",
+ "uucore",
+]
+
+[[package]]
+name = "uu_pmap"
 version = "0.0.1"
 dependencies = [
  "clap",
