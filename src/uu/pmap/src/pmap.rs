@@ -49,7 +49,7 @@ pub fn uu_app() -> Command {
                 .help("Process ID")
                 .required_unless_present_any(["create-rc", "create-rc-to"]) // Adjusted for -n, -N note
                 .action(ArgAction::Set)
-                .conflicts_with_all(&["create-rc", "create-rc-to"]),
+                .conflicts_with_all(["create-rc", "create-rc-to"]),
         ) // Ensure pid is not used with -n, -N
         .arg(
             Arg::new("extended")
@@ -129,14 +129,14 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         Ok(cmdline) => {
             println!("{}: {}", pid, cmdline);
         }
-        Err(e) => {
+        Err(_) => {
             process::exit(42);
         }
     }
 
     match parse_maps(pid) {
         Ok(_) => println!("Memory map displayed successfully."),
-        Err(e) => {
+        Err(_) => {
             process::exit(1);
         }
     }
