@@ -43,7 +43,8 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
 }
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
-    let matches = uu_app().try_get_matches_from(args)?;
+    // TODO: rename var when it's used
+    let _matches = uu_app().try_get_matches_from(args)?;
 
     match fetch_user_info() {
         Ok(user_info) => {

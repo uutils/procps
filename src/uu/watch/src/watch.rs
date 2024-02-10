@@ -4,7 +4,7 @@
 // file that was distributed with this source code.
 
 use clap::crate_version;
-use clap::{Arg, ArgAction, Command};
+use clap::{Arg, Command};
 use std::process::{Command as SystemCommand, Stdio};
 use std::thread::sleep;
 use std::time::Duration;
