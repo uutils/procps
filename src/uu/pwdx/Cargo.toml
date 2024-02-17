@@ -2,8 +2,14 @@
 name = "uu_pwdx"
 version = "0.0.1"
 edition = "2021"
+authors = ["uutils developers"]
+license = "MIT"
+description = "pwdx ~ (uutils) Report current working directory of a process"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+homepage = "https://github.com/uutils/procps"
+repository = "https://github.com/uutils/procps/tree/main/src/uu/pwdx"
+keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 uucore = { workspace = true }

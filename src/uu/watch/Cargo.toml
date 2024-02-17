@@ -2,8 +2,14 @@
 name = "uu_watch"
 version = "0.0.1"
 edition = "2021"
+authors = ["uutils developers"]
+license = "MIT"
+description = "watch ~ (uutils) Execute a program periodically, showing output fullscreen"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+homepage = "https://github.com/uutils/procps"
+repository = "https://github.com/uutils/procps/tree/main/src/uu/watch"
+keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 uucore = { workspace = true }

@@ -2,6 +2,15 @@
 name = "uu_pmap"
 version = "0.0.1"
 edition = "2021"
+authors = ["uutils developers"]
+license = "MIT"
+description = "pmap ~ (uutils) Report memory map of a process"
+
+homepage = "https://github.com/uutils/procps"
+repository = "https://github.com/uutils/procps/tree/main/src/uu/pmap"
+keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
+categories = ["command-line-utilities"]
+
 
 [dependencies]
 uucore = { workspace = true }
