@@ -8,18 +8,18 @@ Ongoing:
 * `pwdx`: Shows the current working directory of a process.
 * `free`: Shows the amount of free and used memory in the system.
 * `w`: Shows who is logged on and what they are doing.
+* `watch`: Executes a program periodically, showing output fullscreen.
+* `pmap`: Displays the memory map of a process.
 
 TODO:
 * `ps`: Displays information about active processes.
 * `pgrep`: Searches for processes based on name and other attributes.
 * `pidwait`: Waits for a specific process to terminate.
-* `pmap`: Displays the memory map of a process.
 * `skill`: Sends a signal to processes based on criteria like user, terminal, etc.
 * `slabtop`: Displays detailed kernel slab cache information in real time.
 * `tload`: Prints a graphical representation of system load average to the terminal.
 * `top`: Displays real-time information about system processes.
 * `vmstat`: Reports information about processes, memory, paging, block IO, traps, and CPU activity.
-* `watch`: Executes a program periodically, showing output fullscreen.
 * `pkill`: Kills processes based on name and other attributes.
 * `snice`: Changes the scheduling priority of a running process.
 
