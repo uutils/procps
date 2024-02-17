@@ -9,7 +9,6 @@ edition = "2021"
 uucore = { workspace = true, features = ["utmpx"] }
 clap = { workspace = true }
 utmpx = { workspace = true }
-sysinfo = { workspace = true }
 
 [lib]
 path = "src/w.rs"
