@@ -8,7 +8,7 @@ name = "procps"
 version = "0.0.1"
 authors = ["uutils developers"]
 license = "MIT"
-description = "procps ~ GNU procps (updated); implemented as universal (cross-platform) utils, written in Rust"
+description = "procps ~ implemented as universal (cross-platform) utils, written in Rust"
 default-run = "procps"
 
 homepage = "https://github.com/uutils/procps"
