@@ -1,4 +1,4 @@
-// This file is part of the uutils coreutils package.
+// This file is part of the uutils procps package.
 //
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
@@ -142,7 +142,7 @@ fn gen_completions<T: uucore::Args>(
     args: impl Iterator<Item = OsString>,
     util_map: &UtilityMap<T>,
 ) -> ! {
-    let all_utilities: Vec<_> = std::iter::once("coreutils")
+    let all_utilities: Vec<_> = std::iter::once("procps")
         .chain(util_map.keys().copied())
         .collect();
 
@@ -163,8 +163,8 @@ fn gen_completions<T: uucore::Args>(
     let utility = matches.get_one::<String>("utility").unwrap();
     let shell = *matches.get_one::<Shell>("shell").unwrap();
 
-    let mut command = if utility == "coreutils" {
-        gen_coreutils_app(util_map)
+    let mut command = if utility == "procps" {
+        gen_procps_app(util_map)
     } else {
         util_map.get(utility).unwrap().1()
     };
@@ -180,7 +180,7 @@ fn gen_manpage<T: uucore::Args>(
     args: impl Iterator<Item = OsString>,
     util_map: &UtilityMap<T>,
 ) -> ! {
-    let all_utilities: Vec<_> = std::iter::once("coreutils")
+    let all_utilities: Vec<_> = std::iter::once("procps")
         .chain(util_map.keys().copied())
         .collect();
 
@@ -195,8 +195,8 @@ fn gen_manpage<T: uucore::Args>(
 
     let utility = matches.get_one::<String>("utility").unwrap();
 
-    let command = if utility == "coreutils" {
-        gen_coreutils_app(util_map)
+    let command = if utility == "procps" {
+        gen_procps_app(util_map)
     } else {
         util_map.get(utility).unwrap().1()
     };
@@ -208,8 +208,8 @@ fn gen_manpage<T: uucore::Args>(
     process::exit(0);
 }
 
-fn gen_coreutils_app<T: uucore::Args>(util_map: &UtilityMap<T>) -> Command {
-    let mut command = Command::new("coreutils");
+fn gen_procps_app<T: uucore::Args>(util_map: &UtilityMap<T>) -> Command {
+    let mut command = Command::new("procps");
     for (name, (_, sub_app)) in util_map {
         // Recreate a small subcommand with only the relevant info
         // (name & short description)

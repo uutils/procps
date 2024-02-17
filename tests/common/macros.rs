@@ -1,4 +1,4 @@
-// This file is part of the uutils coreutils package.
+// This file is part of the uutils procps package.
 //
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
@@ -77,7 +77,7 @@ macro_rules! at_and_ucmd {
 }
 
 /// If `common::util::expected_result` returns an error, i.e. the `util` in `$PATH` doesn't
-/// include a coreutils version string or the version is too low,
+/// include a procps version string or the version is too low,
 /// this macro can be used to automatically skip the test and print the reason.
 #[macro_export]
 macro_rules! unwrap_or_return {
