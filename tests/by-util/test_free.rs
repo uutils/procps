@@ -4,6 +4,7 @@
 // file that was distributed with this source code.
 // spell-checker:ignore (words) symdir somefakedir
 
+use pretty_assertions::assert_eq;
 use crate::common::util::TestScenario;
 
 #[test]
@@ -22,4 +23,20 @@ fn test_free_wide() {
     let result = new_ucmd!().arg("--wide").succeeds();
     assert!(result.stdout_str().contains("Mem:"));
     assert!(!result.stdout_str().contains("buff/cache"));
+}
+
+#[test]
+fn test_free_column_format() {
+    let free_header = "               total        used        free      shared  buff/cache   available";
+    let free_result = new_ucmd!().succeeds();
+    assert_eq!(free_result.stdout_str().len(), 207);
+    assert_eq!(free_result.stdout_str().split("\n").next().unwrap(), free_header)
+}
+
+#[test]
+fn test_free_wide_column_format() {
+    let free_header = "               total        used        free      shared     buffers       cache   available";
+    let free_result = new_ucmd!().arg("--wide").succeeds();
+    assert_eq!(free_result.stdout_str().len(), 231);
+    assert_eq!(free_result.stdout_str().split("\n").next().unwrap(), free_header)
 }
