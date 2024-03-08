@@ -4,8 +4,8 @@
 // file that was distributed with this source code.
 // spell-checker:ignore (words) symdir somefakedir
 
-use pretty_assertions::assert_eq;
 use crate::common::util::TestScenario;
+use pretty_assertions::assert_eq;
 
 #[test]
 fn test_invalid_arg() {
@@ -27,10 +27,14 @@ fn test_free_wide() {
 
 #[test]
 fn test_free_column_format() {
-    let free_header = "               total        used        free      shared  buff/cache   available";
+    let free_header =
+        "               total        used        free      shared  buff/cache   available";
     let free_result = new_ucmd!().succeeds();
     assert_eq!(free_result.stdout_str().len(), 207);
-    assert_eq!(free_result.stdout_str().split("\n").next().unwrap(), free_header)
+    assert_eq!(
+        free_result.stdout_str().split("\n").next().unwrap(),
+        free_header
+    )
 }
 
 #[test]
@@ -38,5 +42,8 @@ fn test_free_wide_column_format() {
     let free_header = "               total        used        free      shared     buffers       cache   available";
     let free_result = new_ucmd!().arg("--wide").succeeds();
     assert_eq!(free_result.stdout_str().len(), 231);
-    assert_eq!(free_result.stdout_str().split("\n").next().unwrap(), free_header)
+    assert_eq!(
+        free_result.stdout_str().split("\n").next().unwrap(),
+        free_header
+    )
 }
