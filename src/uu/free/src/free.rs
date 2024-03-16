@@ -82,9 +82,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             let used = mem_info.total - mem_info.free;
 
             if wide {
-                println!("              total        used        free      shared     buffers       cache   available");
+                println!("               total        used        free      shared     buffers       cache   available");
                 println!(
-                    "Mem:   {:12} {:12} {:12} {:12} {:12} {:12} {:12}",
+                    "Mem:     {:11} {:11} {:11} {:11} {:11} {:11} {:11}",
                     mem_info.total,
                     used,
                     mem_info.free,
@@ -94,9 +94,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                     mem_info.available
                 );
             } else {
-                println!("              total        used        free      shared  buff/cache   available");
+                println!("               total        used        free      shared  buff/cache   available");
                 println!(
-                    "Mem:   {:12} {:12} {:12} {:12} {:12} {:12}",
+                    "Mem:     {:11} {:11} {:11} {:11} {:11} {:11}",
                     mem_info.total,
                     used,
                     mem_info.free,
@@ -106,7 +106,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 );
             }
             println!(
-                "Swap:  {:12} {:12} {:12}",
+                "Swap:    {:11} {:11} {:11}",
                 mem_info.swap_total, mem_info.swap_used, mem_info.swap_free
             );
         }
