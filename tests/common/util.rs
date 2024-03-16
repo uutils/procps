@@ -862,7 +862,6 @@ impl AtPath {
     pub fn append(&self, name: &str, contents: &str) {
         log_info("write(append)", self.plus_as_string(name));
         let mut f = OpenOptions::new()
-            .write(true)
             .append(true)
             .create(true)
             .open(self.plus(name))
@@ -874,7 +873,6 @@ impl AtPath {
     pub fn append_bytes(&self, name: &str, contents: &[u8]) {
         log_info("write(append)", self.plus_as_string(name));
         let mut f = OpenOptions::new()
-            .write(true)
             .append(true)
             .create(true)
             .open(self.plus(name))
