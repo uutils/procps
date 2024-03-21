@@ -97,7 +97,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                     println!("               total        used        free      shared     buffers       cache   available");
                     match human {
                         true => println!(
-                            "Mem:     {:11} {:11} {:11} {:11} {:11} {:11} {:11}",
+                            "Mem:          {:11} {:11} {:11} {:11} {:11} {:11} {:11}",
                             to_human(mem_info.total),
                             to_human(used),
                             to_human(mem_info.free),
@@ -107,7 +107,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                             to_human(mem_info.available)
                         ),
                         false => println!(
-                            "Mem:     {:11} {:11} {:11} {:11} {:11} {:11} {:11}",
+                            "Mem:          {:11} {:11} {:11} {:11} {:11} {:11} {:11}",
                             mem_info.total,
                             used,
                             mem_info.free,
@@ -131,7 +131,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                             to_human(mem_info.available)
                         ),
                         false => println!(
-                            "Mem:     {:11} {:11} {:11} {:11} {:11} {:11}",
+                            "Mem:          {:11} {:11} {:11} {:11} {:11} {:11}",
                             mem_info.total,
                             used,
                             mem_info.free,
