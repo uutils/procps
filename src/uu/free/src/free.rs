@@ -125,12 +125,26 @@ pub fn uu_app() -> Command {
         .about(ABOUT)
         .override_usage(format_usage(USAGE))
         .infer_long_args(true)
+        .disable_help_flag(true)
         .arg(
             Arg::new("wide")
                 .short('w')
                 .long("wide")
                 .help("wide output")
                 .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("human")
+                .short('h')
+                .long("human")
+                .help("show human-readable output")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("help")
+                .long("help")
+                .action(ArgAction::Help)
+                .help("display this help and exit"),
         )
 }
 
