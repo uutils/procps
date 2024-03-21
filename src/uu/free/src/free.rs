@@ -136,23 +136,18 @@ pub fn uu_app() -> Command {
         .args([
             arg!(-b --bytes "show output in bytes").action(ArgAction::SetTrue),
             arg!(   --kilo  "show output in kilobytes").action(ArgAction::SetFalse),
-            arg!(   --mega  "show output in megabytes").action(ArgAction::SetFalse),
-            arg!(   --giga  "show output in gigabytes").action(ArgAction::SetFalse),
-            arg!(   --tera  "show output in terabytes").action(ArgAction::SetFalse),
-            arg!(   --peta  "show output in petabytes").action(ArgAction::SetFalse),
-            arg!(-k --kibi  "show output in kibibytes").action(ArgAction::SetFalse),
-            arg!(-m --mebi  "show output in mebibytes").action(ArgAction::SetFalse),
-            arg!(-g --gibi  "show output in gibibytes").action(ArgAction::SetFalse),
-            arg!(   --tebi  "show output in tebibytes").action(ArgAction::SetFalse),
-            arg!(   --pebi  "show output in pebibytes").action(ArgAction::SetFalse),
+            arg!(   --mega  "show output in megabytes").action(ArgAction::SetTrue),
+            arg!(   --giga  "show output in gigabytes").action(ArgAction::SetTrue),
+            arg!(   --tera  "show output in terabytes").action(ArgAction::SetTrue),
+            arg!(   --peta  "show output in petabytes").action(ArgAction::SetTrue),
+            arg!(-k --kibi  "show output in kibibytes").action(ArgAction::SetTrue),
+            arg!(-m --mebi  "show output in mebibytes").action(ArgAction::SetTrue),
+            arg!(-g --gibi  "show output in gibibytes").action(ArgAction::SetTrue),
+            arg!(   --tebi  "show output in tebibytes").action(ArgAction::SetTrue),
+            arg!(   --pebi  "show output in pebibytes").action(ArgAction::SetTrue),
+            arg!(-h --human "show human-readable output").action(ArgAction::SetTrue),
+            // arg!(-L --line  "show output on a single line"),
         ])
-        .arg(
-            Arg::new("human")
-                .short('h')
-                .long("human")
-                .help("show human-readable output")
-                .action(ArgAction::SetFalse),
-        )
         .arg(
             Arg::new("wide")
                 .short('w')
