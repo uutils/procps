@@ -3,8 +3,10 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use clap::arg;
 use clap::Arg;
 use clap::ArgAction;
+use clap::ArgGroup;
 use clap::{crate_version, Command};
 use std::env;
 use std::fs;
@@ -126,18 +128,34 @@ pub fn uu_app() -> Command {
         .override_usage(format_usage(USAGE))
         .infer_long_args(true)
         .disable_help_flag(true)
-        .arg(
-            Arg::new("wide")
-                .short('w')
-                .long("wide")
-                .help("wide output")
-                .action(ArgAction::SetTrue),
-        )
+        .group(ArgGroup::new("unit").args([
+            "bytes", "kilo", "mega", "giga", "tera", "peta", "kibi", "mebi", "gibi", "tebi", "pebi",
+        ]))
+        .args([
+            arg!(-b --bytes "show output in bytes").action(ArgAction::SetTrue),
+            arg!(   --kilo  "show output in kilobytes").action(ArgAction::SetFalse),
+            arg!(   --mega  "show output in megabytes").action(ArgAction::SetFalse),
+            arg!(   --giga  "show output in gigabytes").action(ArgAction::SetFalse),
+            arg!(   --tera  "show output in terabytes").action(ArgAction::SetFalse),
+            arg!(   --peta  "show output in petabytes").action(ArgAction::SetFalse),
+            arg!(-k --kibi  "show output in kibibytes").action(ArgAction::SetFalse),
+            arg!(-m --mebi  "show output in mebibytes").action(ArgAction::SetFalse),
+            arg!(-g --gibi  "show output in gibibytes").action(ArgAction::SetFalse),
+            arg!(   --tebi  "show output in tebibytes").action(ArgAction::SetFalse),
+            arg!(   --pebi  "show output in pebibytes").action(ArgAction::SetFalse),
+        ])
         .arg(
             Arg::new("human")
                 .short('h')
                 .long("human")
                 .help("show human-readable output")
+                .action(ArgAction::SetFalse),
+        )
+        .arg(
+            Arg::new("wide")
+                .short('w')
+                .long("wide")
+                .help("wide output")
                 .action(ArgAction::SetTrue),
         )
         .arg(
