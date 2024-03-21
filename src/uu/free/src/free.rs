@@ -94,10 +94,11 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
             match wide {
                 true => {
-                    println!("               total        used        free      shared     buffers       cache   available");
+                    wide_header();
                     match human {
                         true => println!(
-                            "Mem:          {:11} {:11} {:11} {:11} {:11} {:11} {:11}",
+                            "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+                            "Mem:",
                             to_human(mem_info.total),
                             to_human(used),
                             to_human(mem_info.free),
@@ -107,7 +108,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                             to_human(mem_info.available)
                         ),
                         false => println!(
-                            "Mem:          {:11} {:11} {:11} {:11} {:11} {:11} {:11}",
+                            "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+                            "Mem:",
                             mem_info.total,
                             used,
                             mem_info.free,
@@ -119,10 +121,11 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                     }
                 }
                 false => {
-                    println!("               total        used        free      shared  buff/cache   available");
+                    header();
                     match human {
                         true => println!(
-                            "Mem:          {:11} {:11} {:11} {:11} {:11} {:11}",
+                            "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+                            "Mem:",
                             to_human(mem_info.total),
                             to_human(used),
                             to_human(mem_info.free),
@@ -131,7 +134,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                             to_human(mem_info.available)
                         ),
                         false => println!(
-                            "Mem:          {:11} {:11} {:11} {:11} {:11} {:11}",
+                            "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+                            "Mem:",
                             mem_info.total,
                             used,
                             mem_info.free,
@@ -143,8 +147,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 }
             }
             println!(
-                "Swap:    {:11} {:11} {:11}",
-                mem_info.swap_total, mem_info.swap_used, mem_info.swap_free
+                "{:8}{:>12}{:>12}{:>12}",
+                "Swap:", mem_info.swap_total, mem_info.swap_used, mem_info.swap_free
             );
         }
         Err(e) => {
@@ -219,4 +223,18 @@ fn parse_meminfo_value(value: &str) -> Result<u64, std::io::Error> {
 fn to_human(kb: u64) -> String {
     let unit = UnitMultiplier::detect_readable(kb * 1024);
     format!("{:.1}{}", &unit.from_byte(kb * 1024), &unit.to_string())
+}
+
+fn wide_header() {
+    println!(
+        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+        " ", "total", "used", "free", "shared", "buffers", "cache", "available",
+    );
+}
+
+fn header() {
+    println!(
+        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+        " ", "total", "used", "free", "shared", "buff/cache", "available",
+    )
 }
