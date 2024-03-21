@@ -1,7 +1,7 @@
 use clap::ArgMatches;
 use std::fmt::{self, Display, Formatter};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub(crate) enum UnitMultiplier {
     Bytes,     // BASE UNIT
     Kilobytes, // SI:10^3
@@ -36,6 +36,20 @@ impl UnitMultiplier {
             Gibibytes => 2 << 30,               // IEC:2^30
             Tebibytes => 2 << 40,               // IEC:2^40
             Pebibytes => 2 << 50,               // IEC:2^50
+        }
+    }
+
+    // Detecting unit for `-h` and `--human` flag
+    pub(crate) fn detect_readable(byte: u64) -> UnitMultiplier {
+        use crate::convention::UnitMultiplier::*;
+
+        match byte {
+            0..=1_000 => Bytes,
+            1_001..=1_000_000 => Kilobytes,
+            1_000_001..=1_000_000_000 => Megabytes,
+            1_000_000_001..=1_000_000_000_000 => Gigabytes,
+            1_000_000_000_001..=1_000_000_000_000_000 => Tebibytes,
+            _ => Petabytes,
         }
     }
 
@@ -106,6 +120,20 @@ mod tests {
 
         for ((_, from), (to_unit, to)) in input {
             assert_eq!(UnitMultiplier::from_bytes_to(from, to_unit), to as f64)
+        }
+    }
+
+    #[test]
+    fn test_detect_readable() {
+        // Value comes from my computer's `free` outputs.
+        let input = [
+            (007_605_510_144, UnitMultiplier::Gigabytes),
+            (000_148_516_864, UnitMultiplier::Megabytes),
+            (016_923_955_200, UnitMultiplier::Gigabytes),
+        ];
+
+        for (byte, unit) in input {
+            assert_eq!(UnitMultiplier::detect_readable(byte), unit)
         }
     }
 }
