@@ -75,13 +75,15 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     match parse_meminfo() {
         Ok(mem_info) => {
-            let buff_cache = if wide {
-                mem_info.buffers
-            } else {
-                mem_info.buffers + mem_info.cached
+            let buff_cache = match wide {
+                true => mem_info.buffers,
+                false => mem_info.buffers + mem_info.cached,
             };
-            let cache = if wide { mem_info.cached } else { 0 };
-            let used = mem_info.total - mem_info.free;
+            let cache = match wide {
+                true => mem_info.cached,
+                false => 0,
+            };
+            let used = mem_info.total - mem_info.available;
 
             if wide {
                 println!("               total        used        free      shared     buffers       cache   available");
