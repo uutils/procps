@@ -41,14 +41,25 @@ impl UnitMultiplier {
     }
 }
 
-const fn pow(base: u64, exponent: u32) -> u64 {
-    if exponent == 0 {
-        1
-    } else if exponent % 2 == 0 {
-        let half_pow = pow(base, exponent / 2);
-        half_pow * half_pow
-    } else {
-        base * pow(base, exponent - 1)
+impl Display for UnitMultiplier {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        use crate::convention::UnitMultiplier::*;
+        match self {
+            Bytes => write!(f, "B"),
+            Kilobytes => write!(f, "Ki"),
+            Megabytes => write!(f, "Mi"),
+            Gigabytes => write!(f, "Gi"),
+            Terabytes => write!(f, "Ti"),
+            Petabytes => write!(f, "Pi"),
+            Kibibytes => write!(f, "KB"),
+            Mebibytes => write!(f, "MB"),
+            Gibibytes => write!(f, "GB"),
+            Tebibytes => write!(f, "TB"),
+            Pebibytes => write!(f, "PB"),
+        }
+    }
+}
+
     }
 }
 
