@@ -1,4 +1,4 @@
-use clap::{ArgMatches};
+use clap::ArgMatches;
 use std::fmt::{self, Display, Formatter};
 
 #[derive(Debug)]
@@ -67,7 +67,6 @@ impl From<ArgMatches> for UnitMultiplier {
     fn from(item: ArgMatches) -> Self {
         use crate::convention::UnitMultiplier::*;
         match item {
-            _ if item.get_flag("bytes") => Bytes,
             _ if item.get_flag("kilo") => Kilobytes,
             _ if item.get_flag("mega") => Megabytes,
             _ if item.get_flag("giga") => Gigabytes,
@@ -77,7 +76,8 @@ impl From<ArgMatches> for UnitMultiplier {
             _ if item.get_flag("mebi") => Mebibytes,
             _ if item.get_flag("gibi") => Gibibytes,
             _ if item.get_flag("tebi") => Tebibytes,
-            _ => Pebibytes,
+            _ if item.get_flag("pebi") => Pebibytes,
+            _ => Bytes,
         }
     }
 }
