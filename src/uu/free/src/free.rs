@@ -3,6 +3,8 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+mod units;
+
 use clap::arg;
 use clap::Arg;
 use clap::ArgAction;
@@ -14,9 +16,12 @@ use std::io::Error;
 use std::process;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
 
+use crate::units::UnitMultiplier;
+
 const ABOUT: &str = help_about!("free.md");
 const USAGE: &str = help_usage!("free.md");
 
+/// The unit of number is [UnitMultiplier::Bytes]
 struct MemInfo {
     total: u64,
     free: u64,
@@ -73,6 +78,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
     let wide = matches.get_flag("wide");
 
+    let human = matches.get_flag("human");
+
     match parse_meminfo() {
         Ok(mem_info) => {
             let buff_cache = match wide {
@@ -85,29 +92,55 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             };
             let used = mem_info.total - mem_info.available;
 
-            if wide {
-                println!("               total        used        free      shared     buffers       cache   available");
-                println!(
-                    "Mem:     {:11} {:11} {:11} {:11} {:11} {:11} {:11}",
-                    mem_info.total,
-                    used,
-                    mem_info.free,
-                    mem_info.shared,
-                    buff_cache,
-                    cache + mem_info.reclaimable,
-                    mem_info.available
-                );
-            } else {
-                println!("               total        used        free      shared  buff/cache   available");
-                println!(
-                    "Mem:     {:11} {:11} {:11} {:11} {:11} {:11}",
-                    mem_info.total,
-                    used,
-                    mem_info.free,
-                    mem_info.shared,
-                    buff_cache + mem_info.reclaimable,
-                    mem_info.available
-                );
+            match wide {
+                true => {
+                    println!("               total        used        free      shared     buffers       cache   available");
+                    match human {
+                        true => println!(
+                            "Mem:     {:11} {:11} {:11} {:11} {:11} {:11} {:11}",
+                            to_human(mem_info.total),
+                            to_human(used),
+                            to_human(mem_info.free),
+                            to_human(mem_info.shared),
+                            to_human(buff_cache),
+                            to_human(cache + mem_info.reclaimable),
+                            to_human(mem_info.available)
+                        ),
+                        false => println!(
+                            "Mem:     {:11} {:11} {:11} {:11} {:11} {:11} {:11}",
+                            mem_info.total,
+                            used,
+                            mem_info.free,
+                            mem_info.shared,
+                            buff_cache,
+                            cache + mem_info.reclaimable,
+                            mem_info.available
+                        ),
+                    }
+                }
+                false => {
+                    println!("               total        used        free      shared  buff/cache   available");
+                    match human {
+                        true => println!(
+                            "Mem:          {:11} {:11} {:11} {:11} {:11} {:11}",
+                            to_human(mem_info.total),
+                            to_human(used),
+                            to_human(mem_info.free),
+                            to_human(mem_info.shared),
+                            to_human(buff_cache + mem_info.reclaimable),
+                            to_human(mem_info.available)
+                        ),
+                        false => println!(
+                            "Mem:     {:11} {:11} {:11} {:11} {:11} {:11}",
+                            mem_info.total,
+                            used,
+                            mem_info.free,
+                            mem_info.shared,
+                            buff_cache + mem_info.reclaimable,
+                            mem_info.available
+                        ),
+                    }
+                }
             }
             println!(
                 "Swap:    {:11} {:11} {:11}",
@@ -181,4 +214,9 @@ fn parse_meminfo_value(value: &str) -> Result<u64, std::io::Error> {
                 )
             })
         })
+}
+
+fn to_human(kb: u64) -> String {
+    let unit = UnitMultiplier::detect_readable(kb * 1024);
+    format!("{:.1}{}", &unit.from_byte(kb * 1024), &unit.to_string())
 }
