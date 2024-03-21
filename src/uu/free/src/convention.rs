@@ -1,3 +1,6 @@
+use clap::{ArgMatches};
+use std::fmt::{self, Display, Formatter};
+
 #[derive(Debug)]
 pub(crate) enum UnitMultiplier {
     Bytes,     // BASE UNIT
@@ -60,6 +63,22 @@ impl Display for UnitMultiplier {
     }
 }
 
+impl From<ArgMatches> for UnitMultiplier {
+    fn from(item: ArgMatches) -> Self {
+        use crate::convention::UnitMultiplier::*;
+        match item {
+            _ if item.get_flag("bytes") => Bytes,
+            _ if item.get_flag("kilo") => Kilobytes,
+            _ if item.get_flag("mega") => Megabytes,
+            _ if item.get_flag("giga") => Gigabytes,
+            _ if item.get_flag("tera") => Terabytes,
+            _ if item.get_flag("peta") => Petabytes,
+            _ if item.get_flag("kibi") => Kibibytes,
+            _ if item.get_flag("mebi") => Mebibytes,
+            _ if item.get_flag("gibi") => Gibibytes,
+            _ if item.get_flag("tebi") => Tebibytes,
+            _ => Pebibytes,
+        }
     }
 }
 
