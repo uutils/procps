@@ -87,6 +87,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     let human = matches.get_flag("human");
 
+    let si = matches.get_flag("si");
+
     let convert = detect_unit(&matches);
 
     match parse_meminfo() {
@@ -105,13 +107,13 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                     println!(
                         "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
                         "Mem:",
-                        humanized(mem_info.total),
-                        humanized(used),
-                        humanized(mem_info.free),
-                        humanized(mem_info.shared),
-                        humanized(buff_cache),
-                        humanized(cache + mem_info.reclaimable),
-                        humanized(mem_info.available),
+                        humanized(mem_info.total, si),
+                        humanized(used, si),
+                        humanized(mem_info.free, si),
+                        humanized(mem_info.shared, si),
+                        humanized(buff_cache, si),
+                        humanized(cache + mem_info.reclaimable, si),
+                        humanized(mem_info.available, si),
                     )
                 } else {
                     println!(
@@ -132,12 +134,12 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                     println!(
                         "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
                         "Mem:",
-                        humanized(mem_info.total),
-                        humanized(used),
-                        humanized(mem_info.free),
-                        humanized(mem_info.shared),
-                        humanized(buff_cache + mem_info.reclaimable),
-                        humanized(mem_info.available),
+                        humanized(mem_info.total, si),
+                        humanized(used, si),
+                        humanized(mem_info.free, si),
+                        humanized(mem_info.shared, si),
+                        humanized(buff_cache + mem_info.reclaimable, si),
+                        humanized(mem_info.available, si),
                     )
                 } else {
                     println!(
@@ -189,6 +191,7 @@ pub fn uu_app() -> Command {
             arg!(   --tebi  "show output in tebibytes").action(ArgAction::SetTrue),
             arg!(   --pebi  "show output in pebibytes").action(ArgAction::SetTrue),
             arg!(-h --human "show human-readable output").action(ArgAction::SetTrue),
+            arg!(   --si    "use powers of 1000 not 1024").action(ArgAction::SetFalse),
             // arg!(-L --line  "show output on a single line"),
         ])
         .arg(
@@ -227,8 +230,19 @@ fn parse_meminfo_value(value: &str) -> Result<u64, std::io::Error> {
 }
 
 // Here's the `-h` `--human` flag processing logic
-fn humanized(kib: u64) -> String {
-    ByteSize::kib(kib).to_string_as(true)
+fn humanized(kib: u64, si: bool) -> String {
+    let binding = ByteSize::kib(kib).to_string_as(si);
+    let split: Vec<&str> = binding.split(' ').collect();
+
+    // TODO: finish the logic of automatic scale.
+    let num_string = String::from(split[0]);
+
+    let unit_string = {
+        let mut tmp = String::from(split[1]);
+        tmp.pop();
+        tmp
+    };
+    format!("{}{}", num_string, unit_string)
 }
 
 fn detect_unit(arg: &ArgMatches) -> fn(u64) -> u64 {
