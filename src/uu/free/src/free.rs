@@ -3,20 +3,27 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-mod units;
-
+use bytesize::ByteSize;
+use bytesize::GB;
+use bytesize::GIB;
+use bytesize::KIB;
+use bytesize::MB;
+use bytesize::MIB;
+use bytesize::PB;
+use bytesize::PIB;
+use bytesize::TB;
+use bytesize::TIB;
 use clap::arg;
 use clap::Arg;
 use clap::ArgAction;
 use clap::ArgGroup;
+use clap::ArgMatches;
 use clap::{crate_version, Command};
 use std::env;
 use std::fs;
 use std::io::Error;
 use std::process;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
-
-use crate::units::UnitMultiplier;
 
 const ABOUT: &str = help_about!("free.md");
 const USAGE: &str = help_usage!("free.md");
@@ -80,6 +87,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     let human = matches.get_flag("human");
 
+    let convert = detect_unit(&matches);
+
     match parse_meminfo() {
         Ok(mem_info) => {
             let buff_cache = if wide {
@@ -96,25 +105,25 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                     println!(
                         "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
                         "Mem:",
-                        to_human(mem_info.total),
-                        to_human(used),
-                        to_human(mem_info.free),
-                        to_human(mem_info.shared),
-                        to_human(buff_cache),
-                        to_human(cache + mem_info.reclaimable),
-                        to_human(mem_info.available)
+                        humanized(mem_info.total),
+                        humanized(used),
+                        humanized(mem_info.free),
+                        humanized(mem_info.shared),
+                        humanized(buff_cache),
+                        humanized(cache + mem_info.reclaimable),
+                        humanized(mem_info.available),
                     )
                 } else {
                     println!(
                         "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
                         "Mem:",
-                        mem_info.total,
-                        used,
-                        mem_info.free,
-                        mem_info.shared,
-                        buff_cache,
-                        cache + mem_info.reclaimable,
-                        mem_info.available
+                        convert(mem_info.total),
+                        convert(used),
+                        convert(mem_info.free),
+                        convert(mem_info.shared),
+                        convert(buff_cache),
+                        convert(cache + mem_info.reclaimable),
+                        convert(mem_info.available),
                     )
                 }
             } else {
@@ -123,23 +132,23 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                     println!(
                         "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
                         "Mem:",
-                        to_human(mem_info.total),
-                        to_human(used),
-                        to_human(mem_info.free),
-                        to_human(mem_info.shared),
-                        to_human(buff_cache + mem_info.reclaimable),
-                        to_human(mem_info.available)
+                        humanized(mem_info.total),
+                        humanized(used),
+                        humanized(mem_info.free),
+                        humanized(mem_info.shared),
+                        humanized(buff_cache + mem_info.reclaimable),
+                        humanized(mem_info.available),
                     )
                 } else {
                     println!(
                         "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
                         "Mem:",
-                        mem_info.total,
-                        used,
-                        mem_info.free,
-                        mem_info.shared,
-                        buff_cache + mem_info.reclaimable,
-                        mem_info.available
+                        convert(mem_info.total),
+                        convert(used),
+                        convert(mem_info.free),
+                        convert(mem_info.shared),
+                        convert(buff_cache + mem_info.reclaimable),
+                        convert(mem_info.available),
                     )
                 }
             }
@@ -217,9 +226,25 @@ fn parse_meminfo_value(value: &str) -> Result<u64, std::io::Error> {
         })
 }
 
-fn to_human(kb: u64) -> String {
-    let unit = UnitMultiplier::detect_readable(kb * 1024);
-    format!("{:.1}{}", &unit.from_byte(kb * 1024), &unit.to_string())
+// Here's the `-h` `--human` flag processing logic
+fn humanized(kib: u64) -> String {
+    ByteSize::kib(kib).to_string_as(true)
+}
+
+fn detect_unit(arg: &ArgMatches) -> fn(u64) -> u64 {
+    match arg {
+        _ if arg.get_flag("bytes") => |kib: u64| ByteSize::kib(kib).0,
+        _ if arg.get_flag("mega") => |kib: u64| ByteSize::kib(kib).0 / MB,
+        _ if arg.get_flag("giga") => |kib: u64| ByteSize::kib(kib).0 / GB,
+        _ if arg.get_flag("tera") => |kib: u64| ByteSize::kib(kib).0 / TB,
+        _ if arg.get_flag("peta") => |kib: u64| ByteSize::kib(kib).0 / PB,
+        _ if arg.get_flag("kibi") => |kib: u64| ByteSize::kib(kib).0 / KIB,
+        _ if arg.get_flag("mebi") => |kib: u64| ByteSize::kib(kib).0 / MIB,
+        _ if arg.get_flag("gibi") => |kib: u64| ByteSize::kib(kib).0 / GIB,
+        _ if arg.get_flag("tebi") => |kib: u64| ByteSize::kib(kib).0 / TIB,
+        _ if arg.get_flag("pebi") => |kib: u64| ByteSize::kib(kib).0 / PIB,
+        _ => |kib: u64| kib,
+    }
 }
 
 fn wide_header() {
