@@ -3,8 +3,21 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use bytesize::ByteSize;
+use bytesize::GB;
+use bytesize::GIB;
+use bytesize::KIB;
+use bytesize::MB;
+use bytesize::MIB;
+use bytesize::PB;
+use bytesize::PIB;
+use bytesize::TB;
+use bytesize::TIB;
+use clap::arg;
 use clap::Arg;
 use clap::ArgAction;
+use clap::ArgGroup;
+use clap::ArgMatches;
 use clap::{crate_version, Command};
 use std::env;
 use std::fs;
@@ -15,6 +28,7 @@ use uucore::{error::UResult, format_usage, help_about, help_usage};
 const ABOUT: &str = help_about!("free.md");
 const USAGE: &str = help_usage!("free.md");
 
+/// The unit of number is [UnitMultiplier::Bytes]
 struct MemInfo {
     total: u64,
     free: u64,
@@ -71,6 +85,12 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
     let wide = matches.get_flag("wide");
 
+    let human = matches.get_flag("human");
+
+    let si = matches.get_flag("si");
+
+    let convert = detect_unit(&matches);
+
     match parse_meminfo() {
         Ok(mem_info) => {
             let buff_cache = if wide {
@@ -79,35 +99,64 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 mem_info.buffers + mem_info.cached
             };
             let cache = if wide { mem_info.cached } else { 0 };
-            let used = mem_info.total - mem_info.free;
+            let used = mem_info.total - mem_info.available;
 
             if wide {
-                println!("               total        used        free      shared     buffers       cache   available");
-                println!(
-                    "Mem:     {:11} {:11} {:11} {:11} {:11} {:11} {:11}",
-                    mem_info.total,
-                    used,
-                    mem_info.free,
-                    mem_info.shared,
-                    buff_cache,
-                    cache + mem_info.reclaimable,
-                    mem_info.available
-                );
+                wide_header();
+                if human {
+                    println!(
+                        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+                        "Mem:",
+                        humanized(mem_info.total, si),
+                        humanized(used, si),
+                        humanized(mem_info.free, si),
+                        humanized(mem_info.shared, si),
+                        humanized(buff_cache, si),
+                        humanized(cache + mem_info.reclaimable, si),
+                        humanized(mem_info.available, si),
+                    )
+                } else {
+                    println!(
+                        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+                        "Mem:",
+                        convert(mem_info.total),
+                        convert(used),
+                        convert(mem_info.free),
+                        convert(mem_info.shared),
+                        convert(buff_cache),
+                        convert(cache + mem_info.reclaimable),
+                        convert(mem_info.available),
+                    )
+                }
             } else {
-                println!("               total        used        free      shared  buff/cache   available");
-                println!(
-                    "Mem:     {:11} {:11} {:11} {:11} {:11} {:11}",
-                    mem_info.total,
-                    used,
-                    mem_info.free,
-                    mem_info.shared,
-                    buff_cache + mem_info.reclaimable,
-                    mem_info.available
-                );
+                header();
+                if human {
+                    println!(
+                        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+                        "Mem:",
+                        humanized(mem_info.total, si),
+                        humanized(used, si),
+                        humanized(mem_info.free, si),
+                        humanized(mem_info.shared, si),
+                        humanized(buff_cache + mem_info.reclaimable, si),
+                        humanized(mem_info.available, si),
+                    )
+                } else {
+                    println!(
+                        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+                        "Mem:",
+                        convert(mem_info.total),
+                        convert(used),
+                        convert(mem_info.free),
+                        convert(mem_info.shared),
+                        convert(buff_cache + mem_info.reclaimable),
+                        convert(mem_info.available),
+                    )
+                }
             }
             println!(
-                "Swap:    {:11} {:11} {:11}",
-                mem_info.swap_total, mem_info.swap_used, mem_info.swap_free
+                "{:8}{:>12}{:>12}{:>12}",
+                "Swap:", mem_info.swap_total, mem_info.swap_used, mem_info.swap_free
             );
         }
         Err(e) => {
@@ -125,12 +174,38 @@ pub fn uu_app() -> Command {
         .about(ABOUT)
         .override_usage(format_usage(USAGE))
         .infer_long_args(true)
+        .disable_help_flag(true)
+        .group(ArgGroup::new("unit").args([
+            "bytes", "kilo", "mega", "giga", "tera", "peta", "kibi", "mebi", "gibi", "tebi", "pebi",
+        ]))
+        .args([
+            arg!(-b --bytes "show output in bytes").action(ArgAction::SetTrue),
+            arg!(   --kilo  "show output in kilobytes").action(ArgAction::SetFalse),
+            arg!(   --mega  "show output in megabytes").action(ArgAction::SetTrue),
+            arg!(   --giga  "show output in gigabytes").action(ArgAction::SetTrue),
+            arg!(   --tera  "show output in terabytes").action(ArgAction::SetTrue),
+            arg!(   --peta  "show output in petabytes").action(ArgAction::SetTrue),
+            arg!(-k --kibi  "show output in kibibytes").action(ArgAction::SetTrue),
+            arg!(-m --mebi  "show output in mebibytes").action(ArgAction::SetTrue),
+            arg!(-g --gibi  "show output in gibibytes").action(ArgAction::SetTrue),
+            arg!(   --tebi  "show output in tebibytes").action(ArgAction::SetTrue),
+            arg!(   --pebi  "show output in pebibytes").action(ArgAction::SetTrue),
+            arg!(-h --human "show human-readable output").action(ArgAction::SetTrue),
+            arg!(   --si    "use powers of 1000 not 1024").action(ArgAction::SetFalse),
+            // arg!(-L --line  "show output on a single line"),
+        ])
         .arg(
             Arg::new("wide")
                 .short('w')
                 .long("wide")
                 .help("wide output")
                 .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("help")
+                .long("help")
+                .action(ArgAction::Help)
+                .help("display this help and exit"),
         )
 }
 
@@ -152,4 +227,50 @@ fn parse_meminfo_value(value: &str) -> Result<u64, std::io::Error> {
                 )
             })
         })
+}
+
+// Here's the `-h` `--human` flag processing logic
+fn humanized(kib: u64, si: bool) -> String {
+    let binding = ByteSize::kib(kib).to_string_as(si);
+    let split: Vec<&str> = binding.split(' ').collect();
+
+    // TODO: finish the logic of automatic scale.
+    let num_string = String::from(split[0]);
+
+    let unit_string = {
+        let mut tmp = String::from(split[1]);
+        tmp.pop();
+        tmp
+    };
+    format!("{}{}", num_string, unit_string)
+}
+
+fn detect_unit(arg: &ArgMatches) -> fn(u64) -> u64 {
+    match arg {
+        _ if arg.get_flag("bytes") => |kib: u64| ByteSize::kib(kib).0,
+        _ if arg.get_flag("mega") => |kib: u64| ByteSize::kib(kib).0 / MB,
+        _ if arg.get_flag("giga") => |kib: u64| ByteSize::kib(kib).0 / GB,
+        _ if arg.get_flag("tera") => |kib: u64| ByteSize::kib(kib).0 / TB,
+        _ if arg.get_flag("peta") => |kib: u64| ByteSize::kib(kib).0 / PB,
+        _ if arg.get_flag("kibi") => |kib: u64| ByteSize::kib(kib).0 / KIB,
+        _ if arg.get_flag("mebi") => |kib: u64| ByteSize::kib(kib).0 / MIB,
+        _ if arg.get_flag("gibi") => |kib: u64| ByteSize::kib(kib).0 / GIB,
+        _ if arg.get_flag("tebi") => |kib: u64| ByteSize::kib(kib).0 / TIB,
+        _ if arg.get_flag("pebi") => |kib: u64| ByteSize::kib(kib).0 / PIB,
+        _ => |kib: u64| kib,
+    }
+}
+
+fn wide_header() {
+    println!(
+        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+        " ", "total", "used", "free", "shared", "buffers", "cache", "available",
+    );
+}
+
+fn header() {
+    println!(
+        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+        " ", "total", "used", "free", "shared", "buff/cache", "available",
+    )
 }

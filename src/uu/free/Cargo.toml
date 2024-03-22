@@ -15,6 +15,7 @@ categories = ["command-line-utilities"]
 [dependencies]
 uucore = { workspace = true }
 clap = { workspace = true }
+bytesize = { workspace = true }
 
 [lib]
 path = "src/free.rs"
