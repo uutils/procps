@@ -82,68 +82,65 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     match parse_meminfo() {
         Ok(mem_info) => {
-            let buff_cache = match wide {
-                true => mem_info.buffers,
-                false => mem_info.buffers + mem_info.cached,
+            let buff_cache = if wide {
+                mem_info.buffers
+            } else {
+                mem_info.buffers + mem_info.cached
             };
-            let cache = match wide {
-                true => mem_info.cached,
-                false => 0,
-            };
+            let cache = if wide { mem_info.cached } else { 0 };
             let used = mem_info.total - mem_info.available;
 
-            match wide {
-                true => {
-                    wide_header();
-                    match human {
-                        true => println!(
-                            "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
-                            "Mem:",
-                            to_human(mem_info.total),
-                            to_human(used),
-                            to_human(mem_info.free),
-                            to_human(mem_info.shared),
-                            to_human(buff_cache),
-                            to_human(cache + mem_info.reclaimable),
-                            to_human(mem_info.available)
-                        ),
-                        false => println!(
-                            "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
-                            "Mem:",
-                            mem_info.total,
-                            used,
-                            mem_info.free,
-                            mem_info.shared,
-                            buff_cache,
-                            cache + mem_info.reclaimable,
-                            mem_info.available
-                        ),
-                    }
+            if wide {
+                wide_header();
+                if human {
+                    println!(
+                        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+                        "Mem:",
+                        to_human(mem_info.total),
+                        to_human(used),
+                        to_human(mem_info.free),
+                        to_human(mem_info.shared),
+                        to_human(buff_cache),
+                        to_human(cache + mem_info.reclaimable),
+                        to_human(mem_info.available)
+                    )
+                } else {
+                    println!(
+                        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+                        "Mem:",
+                        mem_info.total,
+                        used,
+                        mem_info.free,
+                        mem_info.shared,
+                        buff_cache,
+                        cache + mem_info.reclaimable,
+                        mem_info.available
+                    )
                 }
-                false => {
-                    header();
-                    match human {
-                        true => println!(
-                            "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
-                            "Mem:",
-                            to_human(mem_info.total),
-                            to_human(used),
-                            to_human(mem_info.free),
-                            to_human(mem_info.shared),
-                            to_human(buff_cache + mem_info.reclaimable),
-                            to_human(mem_info.available)
-                        ),
-                        false => println!(
-                            "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
-                            "Mem:",
-                            mem_info.total,
-                            used,
-                            mem_info.free,
-                            mem_info.shared,
-                            buff_cache + mem_info.reclaimable,
-                            mem_info.available
-                        ),
-                    }
+            } else {
+                header();
+                if human {
+                    println!(
+                        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+                        "Mem:",
+                        to_human(mem_info.total),
+                        to_human(used),
+                        to_human(mem_info.free),
+                        to_human(mem_info.shared),
+                        to_human(buff_cache + mem_info.reclaimable),
+                        to_human(mem_info.available)
+                    )
+                } else {
+                    println!(
+                        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+                        "Mem:",
+                        mem_info.total,
+                        used,
+                        mem_info.free,
+                        mem_info.shared,
+                        buff_cache + mem_info.reclaimable,
+                        mem_info.available
+                    )
                 }
             }
             println!(
