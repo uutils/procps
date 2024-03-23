@@ -687,15 +687,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "711b9620af191e0cdc7468a8d14e709c3dcdb115b36f838e601583af800a370a"
 
 [[package]]
-name = "utmpx"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41adce4fa88980ec51d3fb705065deebb7ad27106d58772bdde6c34d74dc582b"
-dependencies = [
- "libc",
-]
-
-[[package]]
 name = "uu_free"
 version = "0.0.1"
 dependencies = [
@@ -725,7 +716,6 @@ name = "uu_w"
 version = "0.0.1"
 dependencies = [
  "clap",
- "utmpx",
  "uucore",
 ]
 
