@@ -43,12 +43,15 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
 }
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
-    // TODO: rename var when it's used
-    let _matches = uu_app().try_get_matches_from(args)?;
+    let matches = uu_app().try_get_matches_from(args)?;
+
+    let no_header = matches.get_flag("no-header");
 
     match fetch_user_info() {
         Ok(user_info) => {
-            println!("USER\tTTY\t\tLOGIN@\t\tIDLE\tJCPU\tPCPU\tWHAT");
+            if !no_header {
+                println!("USER\tTTY\t\tLOGIN@\t\tIDLE\tJCPU\tPCPU\tWHAT");
+            }
             for user in user_info {
                 println!(
                     "{}\t{}\t{}\t{}\t{}\t{}\t{}",
