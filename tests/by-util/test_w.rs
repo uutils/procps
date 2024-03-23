@@ -10,3 +10,12 @@ use crate::common::util::TestScenario;
 fn test_invalid_arg() {
     new_ucmd!().arg("--definitely-invalid").fails().code_is(1);
 }
+
+#[test]
+fn test_no_header() {
+    let cmd = new_ucmd!().arg("--no-header").succeeds();
+
+    let result = cmd.stdout_str();
+
+    assert!(!result.contains("USER\tTTY\t\tLOGIN@\t\tIDLE\tJCPU\tPCPU\tWHAT"));
+}
