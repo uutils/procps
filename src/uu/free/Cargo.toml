@@ -17,6 +17,8 @@ uucore = { workspace = true }
 clap = { workspace = true }
 bytesize = { workspace = true }
 
+sysinfo = { workspace = true }
+
 [lib]
 path = "src/free.rs"
 

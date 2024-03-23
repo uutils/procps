@@ -58,6 +58,7 @@ clap_mangen = { workspace = true }
 uucore = { workspace = true }
 phf = { workspace = true }
 textwrap = { workspace = true }
+sysinfo = { workspace = true }
 
 
 #
