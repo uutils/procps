@@ -33,10 +33,11 @@ fn test_free_column_format() {
     let re_mem_str = r"^Mem:( +\d+){6}$";
     let re_swap_str = r"^Swap: ( +\d+){3}$";
 
-    let mut re_list = vec![];
-    re_list.push(Regex::new(re_head_str).unwrap());
-    re_list.push(Regex::new(re_mem_str).unwrap());
-    re_list.push(Regex::new(re_swap_str).unwrap());
+    let re_list = vec![
+        Regex::new(re_head_str).unwrap(),
+        Regex::new(re_mem_str).unwrap(),
+        Regex::new(re_swap_str).unwrap(),
+    ];
 
     let binding = new_ucmd!().succeeds();
     let free_result = binding.stdout_str();
@@ -55,10 +56,11 @@ fn test_free_wide_column_format() {
     let re_mem_str = r"^Mem:( +\d+){7}$";
     let re_swap_str = r"^Swap: ( +\d+){3}$";
 
-    let mut re_list = vec![];
-    re_list.push(Regex::new(re_head_str).unwrap());
-    re_list.push(Regex::new(re_mem_str).unwrap());
-    re_list.push(Regex::new(re_swap_str).unwrap());
+    let re_list = vec![
+        Regex::new(re_head_str).unwrap(),
+        Regex::new(re_mem_str).unwrap(),
+        Regex::new(re_swap_str).unwrap(),
+    ];
 
     let binding = new_ucmd!().arg("--wide").succeeds();
     let free_result = binding.stdout_str();
