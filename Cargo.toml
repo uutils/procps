@@ -79,7 +79,6 @@ uucore = { workspace = true, features = ["entries", "process", "signals"] }
 xattr = { workspace = true }
 
 [target.'cfg(any(target_os = "linux", target_os = "android"))'.dev-dependencies]
-procfs = { version = "0.16", default-features = false }
 rlimit = "0.10.1"
 
 [build-dependencies]
