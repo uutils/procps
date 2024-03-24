@@ -20,9 +20,13 @@ use clap::ArgGroup;
 use clap::ArgMatches;
 use clap::{crate_version, Command};
 use std::env;
+#[cfg(target_os = "linux")]
 use std::fs;
+#[cfg(target_os = "linux")]
 use std::io::Error;
 use std::process;
+#[cfg(target_os = "macos")]
+use sysinfo;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
 
 const ABOUT: &str = help_about!("free.md");
@@ -42,6 +46,7 @@ struct MemInfo {
     reclaimable: u64,
 }
 
+#[cfg(target_os = "linux")]
 fn parse_meminfo() -> Result<MemInfo, Error> {
     let contents = fs::read_to_string("/proc/meminfo")?;
     let mut mem_info = MemInfo {
@@ -76,6 +81,28 @@ fn parse_meminfo() -> Result<MemInfo, Error> {
     }
 
     mem_info.swap_used = mem_info.swap_total - mem_info.swap_free;
+
+    Ok(mem_info)
+}
+
+#[cfg(target_os = "macos")]
+fn parse_meminfo() -> Result<MemInfo, Box<dyn std::error::Error>> {
+    let mut sys = sysinfo::System::new_all();
+    sys.refresh_memory();
+
+    let mem_info = MemInfo {
+        total: sys.total_memory(),
+        free: sys.free_memory(),
+        // `available` memory is not directly provided by sysinfo, so you might use `free` or calculate an approximation.
+        available: sys.free_memory(),
+        shared: 0,
+        buffers: 0,
+        cached: sys.used_memory() - sys.free_memory(),
+        swap_total: sys.total_swap(),
+        swap_free: sys.free_swap(),
+        swap_used: sys.total_swap() - sys.free_swap(),
+        reclaimable: 0,
+    };
 
     Ok(mem_info)
 }
@@ -209,6 +236,7 @@ pub fn uu_app() -> Command {
         )
 }
 
+#[cfg(target_os = "linux")]
 fn parse_meminfo_value(value: &str) -> Result<u64, std::io::Error> {
     value
         .split_whitespace()
