@@ -142,3 +142,27 @@ pub fn uu_app() -> Command {
                 .action(ArgAction::SetTrue),
         )
 }
+
+#[cfg(test)]
+mod tests {
+    use time::OffsetDateTime;
+    use crate::format_time;
+    use crate::fetch_cmdline;
+    use std::{fs::read_to_string, path::Path, process};
+
+
+    #[test]
+    fn test_format_time() {
+        let unix_epoc = OffsetDateTime::UNIX_EPOCH;
+        assert_eq!(format_time(unix_epoc).unwrap(), "00:00");
+    }
+
+    #[test]
+    // Get PID of current process and use that for cmdline testing
+    fn test_fetch_cmdline() {
+        // uucore's utmpx returns an i32, so we cast to that to mimic it.
+        let pid = process::id() as i32;
+        let path = Path::new("/proc").join(pid.to_string()).join("cmdline");
+        assert_eq!(read_to_string(path).unwrap(), fetch_cmdline(pid).unwrap())
+    }
+}
