@@ -4,9 +4,8 @@
 // file that was distributed with this source code.
 // spell-checker:ignore (words) symdir somefakedir
 
-use std::{fs, path::Path, process};
-
 use crate::common::util::TestScenario;
+use std::path::Path;
 
 #[test]
 fn test_invalid_arg() {
@@ -19,20 +18,27 @@ fn test_no_header() {
 
     let result = cmd.stdout_str();
 
-    assert!(!result.contains("USER\tTTY\t\tLOGIN@\t\tIDLE\tJCPU\tPCPU\tWHAT"));
+    assert!(!result.contains("USER\tTTY\tLOGIN@\tIDLE\tJCPU\tPCPU\tWHAT"));
 }
 
 #[test]
-fn test_format_time() {
-    let unix_epoc = time::OffsetDateTime::UNIX_EPOCH;
-    assert_eq!(w::format_time(unix_epoc).unwrap(), "00:00");
-}
-
-#[test]
-// Get PID of current process and use that for cmdline testing
-fn test_fetch_cmdline() {
-    // uucore's utmpx returns an i32, so we cast to that to mimic it.
-    let pid = process::id() as i32;
-    let path = Path::new("/proc").join(pid.to_string()).join("cmdline");
-    assert_eq!(fs::read_to_string(path).unwrap(), w::fetch_cmdline(pid).unwrap())
+fn test_output_format() {
+    // Use no header to simplify testing
+    let cmd = new_ucmd!().arg("--no-header").succeeds();
+    let output_lines = cmd.stdout_str().lines();
+    // There is no guarantee that there will be a cmdline entry, but for testing purposes, we will assume so,
+    // since there will be one present in most cases.
+    for line in output_lines {
+        // We need to get rid of extra 0 terminators on strings, such as the cmdline, so we don't have characters at the end.
+        let line_vec: Vec<String> = line
+            .split_whitespace()
+            .map(|s| String::from(s.trim_end_matches('\0')))
+            .collect();
+        // Check the time formatting, this should be the third entry in list
+        // For now, we are just going to check that that length of time is 5 and it has a colon
+        assert!(line_vec[2].contains(":") && line_vec[2].chars().count() == 5);
+        // Check to make sure that cmdline is a path that exists.
+        // For now, cmdline will be in index 3, until the output is complete.
+        assert!(Path::new(line_vec.last().unwrap().as_str()).exists())
+    }
 }
