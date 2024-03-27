@@ -5,7 +5,8 @@
 
 use clap::crate_version;
 use clap::{Arg, ArgAction, Command};
-use std::process;
+use std::{fs, path::Path, process};
+use time;
 use uucore::utmpx::Utmpx;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
 
@@ -22,6 +23,16 @@ struct UserInfo {
     command: String,
 }
 
+fn format_time(time: time::OffsetDateTime) -> Result<String, time::error::Format> {
+    let time_format = time::format_description::parse("[hour]:[minute]").unwrap();
+    time.format(&time_format)
+}
+
+fn fetch_cmdline(pid: i32) -> Result<String, std::io::Error> {
+    let cmdline_path = Path::new("/proc").join(pid.to_string()).join("cmdline");
+    fs::read_to_string(cmdline_path)
+}
+
 fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
     let mut user_info_list = Vec::new();
     for entry in Utmpx::iter_all_records() {
@@ -29,11 +40,11 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
             let user_info = UserInfo {
                 user: entry.user(),
                 terminal: entry.tty_device(),
-                login_time: format!("{}", entry.login_time()), // Needs formatting
+                login_time: format_time(entry.login_time()).unwrap_or_default(),
                 idle_time: String::new(), // Placeholder, needs actual implementation
                 jcpu: String::new(),      // Placeholder, needs actual implementation
                 pcpu: String::new(),      // Placeholder, needs actual implementation
-                command: String::new(),   // Placeholder, needs actual implementation
+                command: fetch_cmdline(entry.pid()).unwrap_or_default(),
             };
             user_info_list.push(user_info);
         }
@@ -50,7 +61,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     match fetch_user_info() {
         Ok(user_info) => {
             if !no_header {
-                println!("USER\tTTY\t\tLOGIN@\t\tIDLE\tJCPU\tPCPU\tWHAT");
+                println!("USER\tTTY\tLOGIN@\tIDLE\tJCPU\tPCPU\tWHAT");
             }
             for user in user_info {
                 println!(
@@ -130,4 +141,29 @@ pub fn uu_app() -> Command {
                 .help("show the PID(s) of processes in WHAT")
                 .action(ArgAction::SetTrue),
         )
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{fetch_cmdline, format_time};
+    use std::{fs, path::Path, process};
+    use time::OffsetDateTime;
+
+    #[test]
+    fn test_format_time() {
+        let unix_epoc = OffsetDateTime::UNIX_EPOCH;
+        assert_eq!(format_time(unix_epoc).unwrap(), "00:00");
+    }
+
+    #[test]
+    // Get PID of current process and use that for cmdline testing
+    fn test_fetch_cmdline() {
+        // uucore's utmpx returns an i32, so we cast to that to mimic it.
+        let pid = process::id() as i32;
+        let path = Path::new("/proc").join(pid.to_string()).join("cmdline");
+        assert_eq!(
+            fs::read_to_string(path).unwrap(),
+            fetch_cmdline(pid).unwrap()
+        )
+    }
 }
