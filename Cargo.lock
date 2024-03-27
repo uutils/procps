@@ -410,6 +410,7 @@ dependencies = [
  "sysinfo",
  "tempfile",
  "textwrap",
+ "time",
  "uu_free",
  "uu_pmap",
  "uu_pwdx",
@@ -763,6 +764,7 @@ name = "uu_w"
 version = "0.0.1"
 dependencies = [
  "clap",
+ "time",
  "uucore",
 ]
 

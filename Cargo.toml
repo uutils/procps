@@ -47,6 +47,7 @@ xattr = "1.3.1"
 tempfile = "3.9.0"
 rand = { version = "0.8", features = ["small_rng"] }
 bytesize = "1.3.0"
+time = { version = "0.3", features = ["formatting"] }
 
 [workspace.'cfg(any(target_os = "linux", target_os = "android"))'.dependencies]
 utmpx = "0.1"
@@ -75,6 +76,7 @@ tempfile = { workspace = true }
 libc = { workspace = true }
 rand = { workspace = true }
 uucore = { workspace = true, features = ["entries", "process", "signals"] }
+time = { workspace = true, features = ["formatting"] }
 
 [target.'cfg(unix)'.dev-dependencies]
 xattr = { workspace = true }
