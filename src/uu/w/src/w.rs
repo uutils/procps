@@ -23,12 +23,12 @@ struct UserInfo {
     command: String,
 }
 
-fn format_time(time: time::OffsetDateTime) -> Result<String, time::error::Format> {
+pub fn format_time(time: time::OffsetDateTime) -> Result<String, time::error::Format> {
     let time_format = time::format_description::parse("[hour]:[minute]").unwrap();
     time.format(&time_format)
 }
 
-fn fetch_cmdline(pid: i32) -> Result<String, std::io::Error> {
+pub fn fetch_cmdline(pid: i32) -> Result<String, std::io::Error> {
     let cmdline_path = Path::new("/proc").join(pid.to_string()).join("cmdline");
     fs::read_to_string(cmdline_path)
 }
@@ -141,28 +141,4 @@ pub fn uu_app() -> Command {
                 .help("show the PID(s) of processes in WHAT")
                 .action(ArgAction::SetTrue),
         )
-}
-
-#[cfg(test)]
-mod tests {
-    use time::OffsetDateTime;
-    use crate::format_time;
-    use crate::fetch_cmdline;
-    use std::{fs::read_to_string, path::Path, process};
-
-
-    #[test]
-    fn test_format_time() {
-        let unix_epoc = OffsetDateTime::UNIX_EPOCH;
-        assert_eq!(format_time(unix_epoc).unwrap(), "00:00");
-    }
-
-    #[test]
-    // Get PID of current process and use that for cmdline testing
-    fn test_fetch_cmdline() {
-        // uucore's utmpx returns an i32, so we cast to that to mimic it.
-        let pid = process::id() as i32;
-        let path = Path::new("/proc").join(pid.to_string()).join("cmdline");
-        assert_eq!(read_to_string(path).unwrap(), fetch_cmdline(pid).unwrap())
-    }
 }
