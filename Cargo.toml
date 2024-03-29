@@ -25,13 +25,7 @@ build = "build.rs"
 default = ["feat_common_core"]
 uudoc = []
 
-feat_common_core = [
-  "pwdx",
-  "free",
-  "w",
-  "watch",
-  "pmap",
-]
+feat_common_core = ["pwdx", "free", "w", "watch", "pmap"]
 
 [workspace.dependencies]
 uucore = "0.0.25"
@@ -68,6 +62,7 @@ free = { optional = true, version = "0.0.1", package = "uu_free", path = "src/uu
 w = { optional = true, version = "0.0.1", package = "uu_w", path = "src/uu/w" }
 watch = { optional = true, version = "0.0.1", package = "uu_watch", path = "src/uu/watch" }
 pmap = { optional = true, version = "0.0.1", package = "uu_pmap", path = "src/uu/pmap" }
+slabtop = { optional = true, version = "0.0.1", package = "uu_slabtop", path = "src/uu/slabtop" }
 
 [dev-dependencies]
 pretty_assertions = "1"
