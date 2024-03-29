@@ -25,7 +25,7 @@ build = "build.rs"
 default = ["feat_common_core"]
 uudoc = []
 
-feat_common_core = ["pwdx", "free", "w", "watch", "pmap", "slabtop"]
+feat_common_core = ["pwdx", "free", "w", "watch", "pmap"]
 
 [workspace.dependencies]
 uucore = "0.0.25"
