@@ -25,8 +25,6 @@ use std::fs;
 #[cfg(target_os = "linux")]
 use std::io::Error;
 use std::process;
-#[cfg(target_os = "macos")]
-use sysinfo;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
 
 const ABOUT: &str = help_about!("free.md");
