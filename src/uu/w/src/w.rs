@@ -6,6 +6,7 @@
 use clap::crate_version;
 use clap::{Arg, ArgAction, Command};
 use std::process;
+#[cfg(not(windows))]
 use uucore::utmpx::Utmpx;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
 
@@ -22,6 +23,7 @@ struct UserInfo {
     command: String,
 }
 
+#[cfg(not(windows))]
 fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
     let mut user_info_list = Vec::new();
     for entry in Utmpx::iter_all_records() {
@@ -41,6 +43,12 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
 
     Ok(user_info_list)
 }
+
+#[cfg(windows)]
+fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
+    Ok(Vec::new())
+}
+
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
