@@ -5,16 +5,16 @@
 // spell-checker:ignore (words) symdir somefakedir
 
 use std::{
-    collections::HashMap,
+    cmp::Ordering,
     fs,
     io::{Error, ErrorKind},
 };
 
 #[derive(Debug, Default)]
 pub struct SlabInfo {
-    version: String,
-    meta: Vec<String>,
-    data: HashMap<String, Vec<u64>>,
+    pub(crate) version: String,
+    pub(crate) meta: Vec<String>,
+    pub(crate) data: Vec<(String, Vec<u64>)>,
 }
 
 impl SlabInfo {
@@ -31,15 +31,7 @@ impl SlabInfo {
 
         let version = parse_version(lines.remove(0))?;
         let meta = parse_meta(lines.remove(0));
-        let data: HashMap<String, Vec<u64>> = lines.into_iter().filter_map(parse_data).collect();
-
-        // Check parse result
-        let len = data.values().last()?.len();
-        for ele in data.values() {
-            if ele.len() != len {
-                return None;
-            }
-        }
+        let data: Vec<(String, Vec<u64>)> = lines.into_iter().filter_map(parse_data).collect();
 
         Some(SlabInfo {
             version,
@@ -49,16 +41,83 @@ impl SlabInfo {
     }
 
     pub fn fetch(&self, name: &str, meta: &str) -> Option<u64> {
-        let offset = self.meta.iter().position(|it| it.eq(meta))?;
-        self.data.get(name)?.get(offset).copied()
+        // fetch meta's offset
+        let offset = self.offset(meta)?;
+
+        let (_, item) = self.data.iter().find(|(key, _)| key.eq(name))?;
+
+        item.get(offset).copied()
     }
 
     pub fn names(&self) -> Vec<&String> {
-        self.data.keys().collect()
+        self.data.iter().map(|(k, _)| k).collect()
     }
 
     pub fn meta(&self) -> Vec<&String> {
         self.meta.iter().collect()
+    }
+
+    pub fn version(&self) -> &String {
+        &self.version
+    }
+
+    pub fn sort(mut self, by: char, ascending_order: bool) -> Self {
+        let mut sort = |by_meta: &str| {
+            if let Some(offset) = self.offset(by_meta) {
+                self.data.sort_by(|(_, data1), (_, data2)| {
+                    match (data1.get(offset), data2.get(offset)) {
+                        (Some(v1), Some(v2)) => {
+                            if ascending_order {
+                                v1.cmp(v2)
+                            } else {
+                                v2.cmp(v1)
+                            }
+                        }
+                        _ => Ordering::Equal,
+                    }
+                });
+            }
+        };
+
+        match by {
+            // <active_objs>
+            'a' => sort("active_objs"),
+            // <objperslab>
+            'b' => sort("objperslab"),
+            // <objsize> Maybe cache size I guess?
+            // TODO: Check is <objsize>
+            'c' => sort("objsize"),
+            // <num_slabs>
+            'l' => sort("num_slabs"),
+            // <active_slabs>
+            'v' => sort("active_slabs"),
+            // name, sort by lexicographical order
+            'n' => self.data.sort_by(|(name1, _), (name2, _)| {
+                if ascending_order {
+                    name1.cmp(name2)
+                } else {
+                    name2.cmp(name1)
+                }
+            }),
+            // <pagesperslab>
+            'p' => sort("pagesperslab"),
+            // <objsize>
+            's' => sort("objsize"),
+            // TODO: sort by cache utilization
+            'u' => {
+                todo!()
+            }
+
+            // <num_objs>
+            // Default branch : `o`
+            _ => sort("num_objs"),
+        }
+
+        self
+    }
+
+    fn offset(&self, meta: &str) -> Option<usize> {
+        self.meta.iter().position(|it| it.eq(meta))
     }
 }
 
