@@ -239,5 +239,3 @@ pub fn uu_app() -> Command {
                 .help("Pass command to exec instead of 'sh -c'"),
         )
 }
-
-
