@@ -85,10 +85,10 @@ fn parse_meminfo() -> Result<MemInfo, Box<dyn std::error::Error>> {
         available: sys.free_memory(),
         shared: 0,
         buffers: 0,
-        cached: sys.used_memory() - sys.free_memory(),
+        cached: sys.used_memory().saturating_sub(sys.free_memory()),
         swap_total: sys.total_swap(),
         swap_free: sys.free_swap(),
-        swap_used: sys.total_swap() - sys.free_swap(),
+        swap_used: sys.total_swap().saturating_sub(sys.free_swap()),
         reclaimable: 0,
     };
 
