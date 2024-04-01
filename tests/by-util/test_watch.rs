@@ -14,7 +14,10 @@ fn test_invalid_arg() {
 #[test]
 fn test_invalid_interval() {
     let args = vec!["-n", "definitely-not-valid", "true"];
-    new_ucmd!().args(&args).fails();
+    new_ucmd!()
+        .args(&args)
+        .fails()
+        .stderr_contains("Invalid argument");
 }
 
 #[test]
