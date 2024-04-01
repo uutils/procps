@@ -3,10 +3,10 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use chrono::{self, Datelike};
 use clap::crate_version;
 use clap::{Arg, ArgAction, Command};
 use std::{fs, path::Path, process};
-use time;
 use uucore::utmpx::Utmpx;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
 
@@ -23,9 +23,21 @@ struct UserInfo {
     command: String,
 }
 
-fn format_time(time: time::OffsetDateTime) -> Result<String, time::error::Format> {
-    let time_format = time::format_description::parse("[hour]:[minute]").unwrap();
-    time.format(&time_format)
+fn format_time(time: String) -> Result<String, chrono::format::ParseError> {
+    let mut t: String = time;
+    // Trim the seconds off of timezone offset, as chrono can't parse the time with it present
+    if let Some(time_offset) = t.rfind(':') {
+        t = t.drain(..time_offset).collect();
+    }
+    // If login time day is not current day, format like Sat16, or Fri06
+    let current_dt = chrono::Local::now().fixed_offset();
+    let dt = chrono::DateTime::parse_from_str(&t, "%Y-%m-%d %H:%M:%S%.f %:z")?;
+
+    if current_dt.day() != dt.day() {
+        Ok(dt.format("%a%d").to_string())
+    } else {
+        Ok(dt.format("%H:%M").to_string())
+    }
 }
 
 fn fetch_cmdline(pid: i32) -> Result<String, std::io::Error> {
@@ -40,7 +52,7 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
             let user_info = UserInfo {
                 user: entry.user(),
                 terminal: entry.tty_device(),
-                login_time: format_time(entry.login_time()).unwrap_or_default(),
+                login_time: format_time(entry.login_time().to_string()).unwrap_or_default(),
                 idle_time: String::new(), // Placeholder, needs actual implementation
                 jcpu: String::new(),      // Placeholder, needs actual implementation
                 pcpu: String::new(),      // Placeholder, needs actual implementation
@@ -146,13 +158,26 @@ pub fn uu_app() -> Command {
 #[cfg(test)]
 mod tests {
     use crate::{fetch_cmdline, format_time};
+    use chrono;
     use std::{fs, path::Path, process};
-    use time::OffsetDateTime;
 
     #[test]
     fn test_format_time() {
-        let unix_epoc = OffsetDateTime::UNIX_EPOCH;
-        assert_eq!(format_time(unix_epoc).unwrap(), "00:00");
+        let unix_epoc = chrono::Local::now()
+            .format("%Y-%m-%d %H:%M:%S%.6f %::z")
+            .to_string();
+        let unix_formatted = format_time(unix_epoc).unwrap();
+        assert!(unix_formatted.contains(':') && unix_formatted.chars().count() == 5);
+        // Test a date that is 5 days ago
+        let td = chrono::Local::now().fixed_offset()
+            - chrono::TimeDelta::new(60 * 60 * 24 * 5, 0).unwrap();
+        // Pre-format time, so it's similar to how utmpx returns it
+        let pre_formatted = format!("{}", td.format("%Y-%m-%d %H:%M:%S%.6f %::z"));
+
+        assert_eq!(
+            format_time(pre_formatted).unwrap(),
+            td.format("%a%d").to_string()
+        )
     }
 
     #[test]

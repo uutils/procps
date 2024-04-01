@@ -14,7 +14,7 @@ categories = ["command-line-utilities"]
 [dependencies]
 uucore = { workspace = true, features = ["utmpx"] }
 clap = { workspace = true }
-time = { workspace = true, features = ["formatting"] }
+chrono = { workspace = true }
 
 ['cfg(any(target_os = "linux", target_os = "android"))'.dependencies]
 utmpx = { workspace = true }
