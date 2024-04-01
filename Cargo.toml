@@ -48,6 +48,9 @@ xattr = "1.3.1"
 tempfile = "3.9.0"
 rand = { version = "0.8", features = ["small_rng"] }
 bytesize = "1.3.0"
+chrono = { version = "0.4.37", default-features = false, features = [
+  "clock",
+] }
 
 [dependencies]
 clap = { workspace = true }
@@ -73,6 +76,7 @@ tempfile = { workspace = true }
 libc = { workspace = true }
 rand = { workspace = true }
 uucore = { workspace = true, features = ["entries", "process", "signals"] }
+chrono = { workspace = true }
 
 [target.'cfg(unix)'.dev-dependencies]
 xattr = { workspace = true }
