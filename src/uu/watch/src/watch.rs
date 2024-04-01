@@ -3,15 +3,53 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use std::io::{Error, ErrorKind};
 use clap::crate_version;
 use clap::{Arg, Command};
 use std::process::{Command as SystemCommand, Stdio};
 use std::thread::sleep;
 use std::time::Duration;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
+use std::num::{ParseIntError};
 
 const ABOUT: &str = help_about!("watch.md");
 const USAGE: &str = help_usage!("watch.md");
+
+fn parse_interval(input: &str) -> Result<Duration, ParseIntError> {
+    // Find index where to split string into seconds and nanos
+    let index = match input.find(|c: char| c == ',' || c == '.') {
+        Some(index) => index,
+        None => {
+            let seconds: u64 = input.parse()?;
+            return Ok(Duration::new(seconds, 0));
+        }
+    };
+
+    // If the seconds string is empty, set seconds to 0
+    let seconds: u64 = if index > 0 { input[..index].parse()? } else { 0 };
+
+    let nanos_string = &input[index + 1..];
+    let nanos: u32 = match nanos_string.len() {
+        // If nanos string is empty, set nanos to 0
+        0 => 0,
+        1..=9 => {
+            let nanos: u32 = nanos_string.parse()?;
+            nanos * 10u32.pow((9 - nanos_string.len()) as u32)
+        }
+        _ => {
+            // This parse is used to validate if the rest of the string is indeed numeric
+            if nanos_string.find(|c: char| !c.is_numeric()).is_some() {
+                "a".parse::<u8>()?;
+            }
+            // We can have only 9 digits of accuracy, trim the rest
+            nanos_string[..9].parse()?
+        }
+    };
+
+    let duration = Duration::new(seconds, nanos);
+    // Minimum duration of sleep to 0.1 s
+    Ok(std::cmp::max(duration, Duration::from_millis(100)))
+}
 
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
@@ -20,7 +58,18 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let command_to_watch = matches
         .get_one::<String>("command")
         .expect("required argument");
-    let interval = 2; // TODO matches.get_one::<u64>("interval").map_or(2, |&v| v);
+    let interval = match matches.get_one::<String>("interval") {
+        None => Duration::from_secs(2),
+        Some(input) => match parse_interval(input) {
+            Ok(interval) => interval,
+            Err(_) => {
+                return Err(Box::from(Error::new(
+                    ErrorKind::InvalidInput,
+                    format!("watch: failed to parse argument: '{input}': Invalid argument"),
+                )));
+            }
+        }
+    };
 
     loop {
         let output = SystemCommand::new("sh")
@@ -35,7 +84,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             break;
         }
 
-        sleep(Duration::from_secs(interval));
+        sleep(interval);
     }
 
     Ok(())
