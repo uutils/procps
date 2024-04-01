@@ -25,14 +25,13 @@ use std::fs;
 #[cfg(target_os = "linux")]
 use std::io::Error;
 use std::process;
-#[cfg(target_os = "macos")]
-use sysinfo;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
 
 const ABOUT: &str = help_about!("free.md");
 const USAGE: &str = help_usage!("free.md");
 
 /// The unit of number is [UnitMultiplier::Bytes]
+#[derive(Default)]
 struct MemInfo {
     total: u64,
     free: u64,
@@ -49,18 +48,7 @@ struct MemInfo {
 #[cfg(target_os = "linux")]
 fn parse_meminfo() -> Result<MemInfo, Error> {
     let contents = fs::read_to_string("/proc/meminfo")?;
-    let mut mem_info = MemInfo {
-        total: 0,
-        free: 0,
-        available: 0,
-        shared: 0,
-        buffers: 0,
-        cached: 0,
-        swap_total: 0,
-        swap_free: 0,
-        swap_used: 0,
-        reclaimable: 0,
-    };
+    let mut mem_info = MemInfo::default();
 
     for line in contents.lines() {
         if let Some((key, value)) = line.split_once(':') {
@@ -105,6 +93,12 @@ fn parse_meminfo() -> Result<MemInfo, Box<dyn std::error::Error>> {
     };
 
     Ok(mem_info)
+}
+
+// TODO: implement function
+#[cfg(target_os = "windows")]
+fn parse_meminfo() -> Result<MemInfo, Box<dyn std::error::Error>> {
+    Ok(MemInfo::default())
 }
 
 #[uucore::main]
