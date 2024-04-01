@@ -14,6 +14,9 @@ categories = ["command-line-utilities"]
 [dependencies]
 uucore = { workspace = true, features = ["utmpx"] }
 clap = { workspace = true }
+chrono = { workspace = true, default-features = false, features = [
+  "clock",
+] }
 
 [lib]
 path = "src/w.rs"
