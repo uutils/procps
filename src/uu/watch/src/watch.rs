@@ -3,14 +3,14 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use std::io::{Error, ErrorKind};
 use clap::crate_version;
 use clap::{Arg, Command};
+use std::io::{Error, ErrorKind};
+use std::num::ParseIntError;
 use std::process::{Command as SystemCommand, Stdio};
 use std::thread::sleep;
 use std::time::Duration;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
-use std::num::{ParseIntError};
 
 const ABOUT: &str = help_about!("watch.md");
 const USAGE: &str = help_usage!("watch.md");
@@ -26,7 +26,11 @@ fn parse_interval(input: &str) -> Result<Duration, ParseIntError> {
     };
 
     // If the seconds string is empty, set seconds to 0
-    let seconds: u64 = if index > 0 { input[..index].parse()? } else { 0 };
+    let seconds: u64 = if index > 0 {
+        input[..index].parse()?
+    } else {
+        0
+    };
 
     let nanos_string = &input[index + 1..];
     let nanos: u32 = match nanos_string.len() {
@@ -68,7 +72,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                     format!("watch: failed to parse argument: '{input}': Invalid argument"),
                 )));
             }
-        }
+        },
     };
 
     loop {

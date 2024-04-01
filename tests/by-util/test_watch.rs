@@ -19,9 +19,7 @@ fn test_invalid_interval() {
 
 #[test]
 fn test_no_interval() {
-    let mut p = new_ucmd!()
-        .arg("true")
-        .run_no_wait();
+    let mut p = new_ucmd!().arg("true").run_no_wait();
     p.make_assertion_with_delay(500).is_alive();
     p.kill()
         .make_assertion()
@@ -33,9 +31,7 @@ fn test_no_interval() {
 #[test]
 fn test_valid_interval() {
     let args = vec!["-n", "1.5", "true"];
-    let mut p = new_ucmd!()
-        .args(&args)
-        .run_no_wait();
+    let mut p = new_ucmd!().args(&args).run_no_wait();
     p.make_assertion_with_delay(500).is_alive();
     p.kill()
         .make_assertion()
@@ -47,9 +43,7 @@ fn test_valid_interval() {
 #[test]
 fn test_valid_interval_comma() {
     let args = vec!["-n", "1,5", "true"];
-    let mut p = new_ucmd!()
-        .args(&args)
-        .run_no_wait();
+    let mut p = new_ucmd!().args(&args).run_no_wait();
     p.make_assertion_with_delay(1000).is_alive();
     p.kill()
         .make_assertion()
