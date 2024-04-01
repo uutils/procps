@@ -15,9 +15,6 @@ categories = ["command-line-utilities"]
 uucore = { workspace = true, features = ["utmpx"] }
 clap = { workspace = true }
 
-['cfg(any(target_os = "linux", target_os = "android"))'.dependencies]
-utmpx = { workspace = true }
-
 [lib]
 path = "src/w.rs"
 

@@ -49,9 +49,6 @@ tempfile = "3.9.0"
 rand = { version = "0.8", features = ["small_rng"] }
 bytesize = "1.3.0"
 
-[workspace.'cfg(any(target_os = "linux", target_os = "android"))'.dependencies]
-utmpx = "0.1"
-
 [dependencies]
 clap = { workspace = true }
 clap_complete = { workspace = true }
