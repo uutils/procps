@@ -94,61 +94,6 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     Ok(())
 }
 
-#[cfg(test)]
-mod parse_interval_tests {
-    use super::*;
-
-    #[test]
-    fn test_comma_parse() {
-        let interval = parse_interval("1,5");
-        assert_eq!(Ok(Duration::from_millis(1500)), interval);
-    }
-
-    #[test]
-    fn test_different_nanos_length() {
-        let interval = parse_interval("1.12345");
-        assert_eq!(Ok(Duration::new(1, 123450000)), interval);
-        let interval = parse_interval("1.1234");
-        assert_eq!(Ok(Duration::new(1, 123400000)), interval);
-    }
-
-    #[test]
-    fn test_period_parse() {
-        let interval = parse_interval("1.5");
-        assert_eq!(Ok(Duration::from_millis(1500)), interval);
-    }
-
-    #[test]
-    fn test_empty_seconds_interval() {
-        let interval = parse_interval(".5");
-        assert_eq!(Ok(Duration::from_millis(500)), interval);
-    }
-
-    #[test]
-    fn test_seconds_only() {
-        let interval = parse_interval("7");
-        assert_eq!(Ok(Duration::from_secs(7)), interval);
-    }
-
-    #[test]
-    fn test_empty_nanoseconds_interval() {
-        let interval = parse_interval("1.");
-        assert_eq!(Ok(Duration::from_millis(1000)), interval);
-    }
-
-    #[test]
-    fn test_too_many_nanos() {
-        let interval = parse_interval("1.00000000009");
-        assert_eq!(Ok(Duration::from_secs(1)), interval);
-    }
-
-    #[test]
-    fn test_invalid_nano() {
-        let interval = parse_interval("1.00000000000a");
-        assert!(interval.is_err())
-    }
-}
-
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
@@ -242,4 +187,59 @@ pub fn uu_app() -> Command {
                 .long("exec")
                 .help("Pass command to exec instead of 'sh -c'"),
         )
+}
+
+#[cfg(test)]
+mod parse_interval_tests {
+    use super::*;
+
+    #[test]
+    fn test_comma_parse() {
+        let interval = parse_interval("1,5");
+        assert_eq!(Ok(Duration::from_millis(1500)), interval);
+    }
+
+    #[test]
+    fn test_different_nanos_length() {
+        let interval = parse_interval("1.12345");
+        assert_eq!(Ok(Duration::new(1, 123450000)), interval);
+        let interval = parse_interval("1.1234");
+        assert_eq!(Ok(Duration::new(1, 123400000)), interval);
+    }
+
+    #[test]
+    fn test_period_parse() {
+        let interval = parse_interval("1.5");
+        assert_eq!(Ok(Duration::from_millis(1500)), interval);
+    }
+
+    #[test]
+    fn test_empty_seconds_interval() {
+        let interval = parse_interval(".5");
+        assert_eq!(Ok(Duration::from_millis(500)), interval);
+    }
+
+    #[test]
+    fn test_seconds_only() {
+        let interval = parse_interval("7");
+        assert_eq!(Ok(Duration::from_secs(7)), interval);
+    }
+
+    #[test]
+    fn test_empty_nanoseconds_interval() {
+        let interval = parse_interval("1.");
+        assert_eq!(Ok(Duration::from_millis(1000)), interval);
+    }
+
+    #[test]
+    fn test_too_many_nanos() {
+        let interval = parse_interval("1.00000000009");
+        assert_eq!(Ok(Duration::from_secs(1)), interval);
+    }
+
+    #[test]
+    fn test_invalid_nano() {
+        let interval = parse_interval("1.00000000000a");
+        assert!(interval.is_err())
+    }
 }
