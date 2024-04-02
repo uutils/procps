@@ -3,10 +3,13 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+#[cfg(not(windows))]
 use chrono::{self, Datelike};
 use clap::crate_version;
 use clap::{Arg, ArgAction, Command};
-use std::{fs, path::Path, process};
+use std::process;
+#[cfg(not(windows))]
+use std::{fs, path::Path};
 #[cfg(not(windows))]
 use uucore::utmpx::Utmpx;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
@@ -24,6 +27,7 @@ struct UserInfo {
     command: String,
 }
 
+#[cfg(not(windows))]
 fn format_time(time: String) -> Result<String, chrono::format::ParseError> {
     let mut t: String = time;
     // Trim the seconds off of timezone offset, as chrono can't parse the time with it present
@@ -41,6 +45,7 @@ fn format_time(time: String) -> Result<String, chrono::format::ParseError> {
     }
 }
 
+#[cfg(not(windows))]
 fn fetch_cmdline(pid: i32) -> Result<String, std::io::Error> {
     let cmdline_path = Path::new("/proc").join(pid.to_string()).join("cmdline");
     fs::read_to_string(cmdline_path)
