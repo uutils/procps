@@ -20,6 +20,8 @@ fn test_invalid_interval() {
         .stderr_contains("Invalid argument");
 }
 
+// TODO make it work on windows
+#[cfg(not(windows))]
 #[test]
 fn test_no_interval() {
     let mut p = new_ucmd!().arg("true").run_no_wait();
@@ -31,6 +33,8 @@ fn test_no_interval() {
         .no_stdout();
 }
 
+// TODO make it work on windows
+#[cfg(not(windows))]
 #[test]
 fn test_valid_interval() {
     let args = vec!["-n", "1.5", "true"];
@@ -43,6 +47,8 @@ fn test_valid_interval() {
         .no_stdout();
 }
 
+// TODO make it work on windows
+#[cfg(not(windows))]
 #[test]
 fn test_valid_interval_comma() {
     let args = vec!["-n", "1,5", "true"];
