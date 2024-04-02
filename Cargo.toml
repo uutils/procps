@@ -38,7 +38,7 @@ uucore = "0.0.25"
 clap = { version = "4.4", features = ["wrap_help", "cargo"] }
 clap_complete = "4.5"
 clap_mangen = "0.2"
-regex = "1.10.3"
+regex = "1.10.4"
 sysinfo = "0.30"
 libc = "0.2.153"
 phf = "0.11.2"
