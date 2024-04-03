@@ -103,9 +103,42 @@ impl SlabInfo {
             'p' => sort("pagesperslab"),
             // <objsize>
             's' => sort("objsize"),
-            // TODO: sort by cache utilization
+            // sort by cache utilization
             'u' => {
-                todo!()
+                let offset_active_objs = self.offset("active_objs");
+                let offset_num_objs = self.offset("num_objs");
+
+                if let (Some(offset_active_objs), Some(offset_num_objs)) =
+                    (offset_active_objs, offset_num_objs)
+                {
+                    self.data.sort_by(|(_, data1), (_, data2)| {
+                        let cu = |active_jobs: Option<&u64>, num_jobs: Option<&u64>| match (
+                            active_jobs,
+                            num_jobs,
+                        ) {
+                            (Some(active_jobs), Some(num_jobs)) => {
+                                Some((*active_jobs as f64) / (*num_jobs as f64))
+                            }
+                            _ => None,
+                        };
+                        let cu1 = cu(data1.get(offset_active_objs), data1.get(offset_num_objs));
+                        let cu2 = cu(data2.get(offset_active_objs), data2.get(offset_num_objs));
+
+                        if let (Some(cu1), Some(cu2)) = (cu1, cu2) {
+                            let result = if ascending_order {
+                                cu1.partial_cmp(&cu2)
+                            } else {
+                                cu2.partial_cmp(&cu1)
+                            };
+                            match result {
+                                Some(ord) => ord,
+                                None => Ordering::Equal,
+                            }
+                        } else {
+                            Ordering::Equal
+                        }
+                    })
+                }
             }
 
             // <num_objs>
