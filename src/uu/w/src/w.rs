@@ -7,9 +7,11 @@
 use chrono::{self, Datelike};
 use clap::crate_version;
 use clap::{Arg, ArgAction, Command};
+#[cfg(not(windows))]
+use libc::{sysconf, _SC_CLK_TCK};
 use std::process;
 #[cfg(not(windows))]
-use std::{fs, path::Path};
+use std::{collections::HashMap, fs, path::Path};
 #[cfg(not(windows))]
 use uucore::utmpx::Utmpx;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
@@ -25,6 +27,68 @@ struct UserInfo {
     jcpu: String,
     pcpu: String,
     command: String,
+}
+
+#[cfg(not(windows))]
+fn fetch_terminal_jcpu() -> Result<HashMap<u64, f64>, std::io::Error> {
+    // Hashmap of terminal numbers and their respective CPU usages
+    let mut pid_hashmap = HashMap::new();
+    // Iterate over all pid folders in /proc and build a hashmap with their terminals and cpu usage.
+    for entry in fs::read_dir("/proc")? {
+        let entry = entry?;
+        if entry.path().is_dir() {
+            if let Some(pid_dir) = entry.path().file_name() {
+                if let Ok(pid_dir_str) = pid_dir.to_os_string().into_string() {
+                    // Check to see if directory is an integer (pid)
+                    if let Ok(pid) = pid_dir_str.parse::<i32>() {
+                        // Fetch the terminal number for each pid
+                        let terminal_number = fetch_terminal_number(pid)?;
+                        // Update HashMap with found terminal numbers and add pcpu time for each pid
+
+                        // Get current total CPU for terminal
+                        if let Some(jcpu) = pid_hashmap.get(&terminal_number) {
+                            // Update total CPU for terminal
+                            pid_hashmap.insert(terminal_number, jcpu + fetch_pcpu_time(pid)?);
+                        } else {
+                            // Else add entry for terminal number
+                            pid_hashmap.insert(terminal_number, fetch_pcpu_time(pid)?);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(pid_hashmap)
+}
+
+#[cfg(not(windows))]
+fn fetch_terminal_number(pid: i32) -> Result<u64, std::io::Error> {
+    let stat_path = Path::new("/proc").join(pid.to_string()).join("stat");
+    // Seperate stat and get terminal number, which is at position 6
+    let f = fs::read_to_string(stat_path)?;
+    let stat: Vec<&str> = f.split_whitespace().collect();
+    let terminal_number: u64 = stat[6].parse().unwrap_or_default();
+    Ok(terminal_number)
+}
+
+#[cfg(not(windows))]
+fn get_clock_tick() -> i64 {
+    unsafe { sysconf(_SC_CLK_TCK) }
+}
+
+#[cfg(not(windows))]
+fn fetch_pcpu_time(pid: i32) -> Result<f64, std::io::Error> {
+    let stat_path = Path::new("/proc").join(pid.to_string()).join("stat");
+    // Seperate stat file by whitespace and get utime and stime, which are at
+    // positions 13 and 14 (0-based), respectively.
+    let f = fs::read_to_string(stat_path)?;
+    let stat: Vec<&str> = f.split_whitespace().collect();
+    // Parse utime and stime to f64
+    let utime: f64 = stat[13].parse().unwrap_or_default();
+    let stime: f64 = stat[14].parse().unwrap_or_default();
+    // Divide by clock tick to get actual time
+    Ok((utime + stime) / get_clock_tick() as f64)
 }
 
 #[cfg(not(windows))]
@@ -53,16 +117,27 @@ fn fetch_cmdline(pid: i32) -> Result<String, std::io::Error> {
 
 #[cfg(not(windows))]
 fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
+    let terminal_jcpu_hm = fetch_terminal_jcpu()?;
+
     let mut user_info_list = Vec::new();
     for entry in Utmpx::iter_all_records() {
         if entry.is_user_process() {
+            let mut jcpu: f64 = 0.0;
+
+            if let Ok(terminal_number) = fetch_terminal_number(entry.pid()) {
+                jcpu = terminal_jcpu_hm
+                    .get(&terminal_number)
+                    .cloned()
+                    .unwrap_or_default();
+            }
+
             let user_info = UserInfo {
                 user: entry.user(),
                 terminal: entry.tty_device(),
                 login_time: format_time(entry.login_time().to_string()).unwrap_or_default(),
                 idle_time: String::new(), // Placeholder, needs actual implementation
-                jcpu: String::new(),      // Placeholder, needs actual implementation
-                pcpu: String::new(),      // Placeholder, needs actual implementation
+                jcpu: format!("{:.2}", jcpu),
+                pcpu: fetch_pcpu_time(entry.pid()).unwrap_or_default().to_string(),
                 command: fetch_cmdline(entry.pid()).unwrap_or_default(),
             };
             user_info_list.push(user_info);
@@ -90,7 +165,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             }
             for user in user_info {
                 println!(
-                    "{}\t{}\t{}\t{}\t{}\t{}\t{}",
+                    "{}\t{}\t{}\t{}\t{}s\t{}s\t{}",
                     user.user,
                     user.terminal,
                     user.login_time,
@@ -170,7 +245,9 @@ pub fn uu_app() -> Command {
 
 #[cfg(test)]
 mod tests {
-    use crate::{fetch_cmdline, format_time};
+    use crate::{
+        fetch_cmdline, fetch_pcpu_time, fetch_terminal_number, format_time, get_clock_tick,
+    };
     use chrono;
     use std::{fs, path::Path, process};
 
@@ -202,6 +279,30 @@ mod tests {
         assert_eq!(
             fs::read_to_string(path).unwrap(),
             fetch_cmdline(pid).unwrap()
+        )
+    }
+
+    #[test]
+    fn test_fetch_terminal_number() {
+        let pid = process::id() as i32;
+        let path = Path::new("/proc").join(pid.to_string()).join("stat");
+        let f = fs::read_to_string(path).unwrap();
+        let stat: Vec<&str> = f.split_whitespace().collect();
+        let term_num = stat[6];
+        assert_eq!(fetch_terminal_number(pid).unwrap().to_string(), term_num)
+    }
+
+    #[test]
+    fn test_fetch_pcpu_time() {
+        let pid = process::id() as i32;
+        let path = Path::new("/proc").join(pid.to_string()).join("stat");
+        let f = fs::read_to_string(path).unwrap();
+        let stat: Vec<&str> = f.split_whitespace().collect();
+        let utime: f64 = stat[13].parse().unwrap();
+        let stime: f64 = stat[14].parse().unwrap();
+        assert_eq!(
+            fetch_pcpu_time(pid).unwrap(),
+            (utime + stime) / get_clock_tick() as f64
         )
     }
 }

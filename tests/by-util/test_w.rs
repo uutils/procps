@@ -38,5 +38,8 @@ fn test_output_format() {
                     && line_vec[2].ends_with(char::is_numeric)
                     && line_vec[2].chars().count() == 5)
         );
+        // Assert that there is something in the JCPU and PCPU slots,
+        // this will need to be changed when IDLE is implemented
+        assert!(!line_vec[3].is_empty() && !line_vec[4].is_empty())
     }
 }
