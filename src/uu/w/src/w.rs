@@ -3,16 +3,16 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
 use chrono::{self, Datelike};
 use clap::crate_version;
 use clap::{Arg, ArgAction, Command};
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
 use libc::{sysconf, _SC_CLK_TCK};
 use std::process;
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
 use std::{collections::HashMap, fs, path::Path};
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
 use uucore::utmpx::Utmpx;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
 
