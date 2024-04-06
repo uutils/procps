@@ -21,6 +21,8 @@ fn test_no_header() {
 }
 
 #[test]
+// As of now, output is only implemented for Linux
+#[cfg(target_os = "linux")]
 fn test_output_format() {
     // Use no header to simplify testing
     let cmd = new_ucmd!().arg("--no-header").succeeds();

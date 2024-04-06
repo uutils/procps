@@ -29,7 +29,7 @@ struct UserInfo {
     command: String,
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
 fn fetch_terminal_jcpu() -> Result<HashMap<u64, f64>, std::io::Error> {
     // Hashmap of terminal numbers and their respective CPU usages
     let mut pid_hashmap = HashMap::new();
@@ -62,7 +62,7 @@ fn fetch_terminal_jcpu() -> Result<HashMap<u64, f64>, std::io::Error> {
     Ok(pid_hashmap)
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
 fn fetch_terminal_number(pid: i32) -> Result<u64, std::io::Error> {
     let stat_path = Path::new("/proc").join(pid.to_string()).join("stat");
     // Seperate stat and get terminal number, which is at position 6
@@ -72,12 +72,12 @@ fn fetch_terminal_number(pid: i32) -> Result<u64, std::io::Error> {
     Ok(terminal_number)
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
 fn get_clock_tick() -> i64 {
     unsafe { sysconf(_SC_CLK_TCK) }
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
 fn fetch_pcpu_time(pid: i32) -> Result<f64, std::io::Error> {
     let stat_path = Path::new("/proc").join(pid.to_string()).join("stat");
     // Seperate stat file by whitespace and get utime and stime, which are at
@@ -91,7 +91,7 @@ fn fetch_pcpu_time(pid: i32) -> Result<f64, std::io::Error> {
     Ok((utime + stime) / get_clock_tick() as f64)
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
 fn format_time(time: String) -> Result<String, chrono::format::ParseError> {
     let mut t: String = time;
     // Trim the seconds off of timezone offset, as chrono can't parse the time with it present
@@ -109,13 +109,13 @@ fn format_time(time: String) -> Result<String, chrono::format::ParseError> {
     }
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
 fn fetch_cmdline(pid: i32) -> Result<String, std::io::Error> {
     let cmdline_path = Path::new("/proc").join(pid.to_string()).join("cmdline");
     fs::read_to_string(cmdline_path)
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
 fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
     let terminal_jcpu_hm = fetch_terminal_jcpu()?;
 
@@ -147,7 +147,7 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
     Ok(user_info_list)
 }
 
-#[cfg(windows)]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
     Ok(Vec::new())
 }
@@ -252,6 +252,7 @@ mod tests {
     use std::{fs, path::Path, process};
 
     #[test]
+    #[cfg(target_os = "linux")]
     fn test_format_time() {
         let unix_epoc = chrono::Local::now()
             .format("%Y-%m-%d %H:%M:%S%.6f %::z")
@@ -271,6 +272,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_os = "linux")]
     // Get PID of current process and use that for cmdline testing
     fn test_fetch_cmdline() {
         // uucore's utmpx returns an i32, so we cast to that to mimic it.
@@ -283,6 +285,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_os = "linux")]
     fn test_fetch_terminal_number() {
         let pid = process::id() as i32;
         let path = Path::new("/proc").join(pid.to_string()).join("stat");
@@ -293,6 +296,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_os = "linux")]
     fn test_fetch_pcpu_time() {
         let pid = process::id() as i32;
         let path = Path::new("/proc").join(pid.to_string()).join("stat");
