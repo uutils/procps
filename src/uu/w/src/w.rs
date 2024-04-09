@@ -4,7 +4,7 @@
 // file that was distributed with this source code.
 
 #[cfg(not(windows))]
-use chrono::{self, Datelike};
+use chrono::Datelike;
 use clap::crate_version;
 use clap::{Arg, ArgAction, Command};
 use std::process;
