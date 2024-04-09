@@ -31,45 +31,32 @@ struct UserInfo {
 
 #[cfg(target_os = "linux")]
 fn fetch_terminal_jcpu() -> Result<HashMap<u64, f64>, std::io::Error> {
-    // Hashmap of terminal numbers and their respective CPU usages
+    let pid_dirs = fs::read_dir("/proc")?
+        .filter_map(Result::ok)
+        .filter(|entry| entry.path().is_dir())
+        .filter_map(|entry| {
+            entry
+                .path()
+                .file_name()
+                .and_then(|s| s.to_os_string().into_string().ok())
+        })
+        .filter_map(|pid_dir_str| pid_dir_str.parse::<i32>().ok());
     let mut pid_hashmap = HashMap::new();
-    // Iterate over all pid folders in /proc and build a hashmap with their terminals and cpu usage.
-    for entry in fs::read_dir("/proc")? {
-        let entry = entry?;
-        if entry.path().is_dir() {
-            if let Some(pid_dir) = entry.path().file_name() {
-                if let Ok(pid_dir_str) = pid_dir.to_os_string().into_string() {
-                    // Check to see if directory is an integer (pid)
-                    if let Ok(pid) = pid_dir_str.parse::<i32>() {
-                        // Fetch the terminal number for each pid
-                        let terminal_number = fetch_terminal_number(pid)?;
-                        // Update HashMap with found terminal numbers and add pcpu time for each pid
-
-                        // Get current total CPU for terminal
-                        if let Some(jcpu) = pid_hashmap.get(&terminal_number) {
-                            // Update total CPU for terminal
-                            pid_hashmap.insert(terminal_number, jcpu + fetch_pcpu_time(pid)?);
-                        } else {
-                            // Else add entry for terminal number
-                            pid_hashmap.insert(terminal_number, fetch_pcpu_time(pid)?);
-                        }
-                    }
-                }
-            }
-        }
+    for pid in pid_dirs {
+        let terminal_number = fetch_terminal_number(pid)?;
+        let pcpu_time = fetch_pcpu_time(pid)?;
+        *pid_hashmap.entry(terminal_number).or_insert(0.0) += pcpu_time;
     }
-
     Ok(pid_hashmap)
 }
 
 #[cfg(target_os = "linux")]
 fn fetch_terminal_number(pid: i32) -> Result<u64, std::io::Error> {
     let stat_path = Path::new("/proc").join(pid.to_string()).join("stat");
-    // Seperate stat and get terminal number, which is at position 6
+    // Separate stat and get terminal number, which is at position 6
     let f = fs::read_to_string(stat_path)?;
     let stat: Vec<&str> = f.split_whitespace().collect();
-    let terminal_number: u64 = stat[6].parse().unwrap_or_default();
-    Ok(terminal_number)
+    Ok(stat[6].parse().unwrap_or_default())
 }
 
 #[cfg(target_os = "linux")]
