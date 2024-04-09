@@ -66,9 +66,9 @@ fn read_scenario_fixture<S: AsRef<OsStr>>(tmpd: &Option<Rc<TempDir>>, file_rel_p
 /// within a struct which has convenience assertion functions about those outputs
 #[derive(Debug, Clone)]
 pub struct CmdResult {
-    /// bin_path provided by `TestScenario` or `UCommand`
+    /// `bin_path` provided by `TestScenario` or `UCommand`
     bin_path: PathBuf,
-    /// util_name provided by `TestScenario` or `UCommand`
+    /// `util_name` provided by `TestScenario` or `UCommand`
     util_name: Option<String>,
     //tmpd is used for convenience functions for asserts against fixtures
     tmpd: Option<Rc<TempDir>>,
@@ -1563,7 +1563,7 @@ impl UCommand {
 
     /// Spawns the command, feeds the stdin if any, waits for the result
     /// and returns a command result.
-    /// It is recommended that you instead use succeeds() or fails()
+    /// It is recommended that you instead use `succeeds()` or `fails()`
     pub fn run(&mut self) -> CmdResult {
         self.run_no_wait().wait().unwrap()
     }
@@ -1571,7 +1571,7 @@ impl UCommand {
     /// Spawns the command, feeding the passed in stdin, waits for the result
     /// and returns a command result.
     /// It is recommended that, instead of this, you use a combination of `pipe_in()`
-    /// with succeeds() or fails()
+    /// with `succeeds()` or `fails()`
     pub fn run_piped_stdin<T: Into<Vec<u8>>>(&mut self, input: T) -> CmdResult {
         self.pipe_in(input).run()
     }

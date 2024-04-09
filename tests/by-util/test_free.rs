@@ -17,7 +17,7 @@ fn test_invalid_arg() {
 #[test]
 fn test_free() {
     let result = new_ucmd!().succeeds();
-    assert!(result.stdout_str().contains("Mem:"))
+    assert!(result.stdout_str().contains("Mem:"));
 }
 
 #[test]
@@ -44,7 +44,7 @@ fn test_free_column_format() {
     assert_eq!(free_result.len(), 207);
 
     // Check the format for each line output
-    let mut free_lines = free_result.split("\n");
+    let mut free_lines = free_result.split('\n');
     for re in re_list {
         assert!(re.is_match(free_lines.next().unwrap()));
     }
@@ -69,7 +69,7 @@ fn test_free_wide_column_format() {
     assert_eq!(free_result.len(), 231);
 
     // Check the format for each line output
-    let mut free_lines = free_result.split("\n");
+    let mut free_lines = free_result.split('\n');
     for re in re_list {
         assert!(re.is_match(free_lines.next().unwrap()));
     }
