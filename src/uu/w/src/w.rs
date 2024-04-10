@@ -31,6 +31,7 @@ struct UserInfo {
 
 #[cfg(target_os = "linux")]
 fn fetch_terminal_jcpu() -> Result<HashMap<u64, f64>, std::io::Error> {
+    // Iterate over all pid folders in /proc and build a HashMap with their terminals and cpu usage.
     let pid_dirs = fs::read_dir("/proc")?
         .filter_map(Result::ok)
         .filter(|entry| entry.path().is_dir())
@@ -40,11 +41,15 @@ fn fetch_terminal_jcpu() -> Result<HashMap<u64, f64>, std::io::Error> {
                 .file_name()
                 .and_then(|s| s.to_os_string().into_string().ok())
         })
+        // Check to see if directory is an integer (pid)
         .filter_map(|pid_dir_str| pid_dir_str.parse::<i32>().ok());
     let mut pid_hashmap = HashMap::new();
     for pid in pid_dirs {
+        // Fetch terminal number for current pid
         let terminal_number = fetch_terminal_number(pid)?;
+        // Get current total CPU time for current pid
         let pcpu_time = fetch_pcpu_time(pid)?;
+        // Update HashMap with found terminal number and add pcpu time for current pid
         *pid_hashmap.entry(terminal_number).or_insert(0.0) += pcpu_time;
     }
     Ok(pid_hashmap)
