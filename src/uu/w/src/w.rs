@@ -4,7 +4,7 @@
 // file that was distributed with this source code.
 
 #[cfg(target_os = "linux")]
-use chrono::{self, Datelike};
+use chrono::Datelike;
 use clap::crate_version;
 use clap::{Arg, ArgAction, Command};
 #[cfg(target_os = "linux")]
