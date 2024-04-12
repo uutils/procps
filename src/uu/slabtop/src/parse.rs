@@ -54,16 +54,6 @@ impl SlabInfo {
         self.data.iter().map(|(k, _)| k).collect()
     }
 
-    #[allow(unused)] // for slabinfo checking
-    pub fn meta(&self) -> Vec<&String> {
-        self.meta.iter().collect()
-    }
-
-    #[allow(unused)] // for slabinfo checking
-    pub fn version(&self) -> &String {
-        &self.version
-    }
-
     pub fn sort(mut self, by: char, ascending_order: bool) -> Self {
         let mut sort = |by_meta: &str| {
             if let Some(offset) = self.offset(by_meta) {
@@ -276,14 +266,14 @@ impl SlabInfo {
     }
 }
 
-fn parse_version(line: &str) -> Option<String> {
+pub(crate) fn parse_version(line: &str) -> Option<String> {
     line.replace(':', " ")
         .split_whitespace()
         .last()
         .map(String::from)
 }
 
-fn parse_meta(line: &str) -> Vec<String> {
+pub(crate) fn parse_meta(line: &str) -> Vec<String> {
     line.replace(['#', ':'], " ")
         .split_whitespace()
         .filter(|it| it.starts_with('<') && it.ends_with('>'))
@@ -291,7 +281,7 @@ fn parse_meta(line: &str) -> Vec<String> {
         .collect()
 }
 
-fn parse_data(line: &str) -> Option<(String, Vec<u64>)> {
+pub(crate) fn parse_data(line: &str) -> Option<(String, Vec<u64>)> {
     let split: Vec<String> = line
         .replace(':', " ")
         .split_whitespace()
@@ -308,69 +298,4 @@ fn parse_data(line: &str) -> Option<(String, Vec<u64>)> {
                 .collect(),
         )
     })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse_version() {
-        let test = "slabinfo - version: 2.1";
-        assert_eq!("2.1", parse_version(test).unwrap())
-    }
-
-    #[test]
-    fn test_parse_meta() {
-        let test="# name            <active_objs> <num_objs> <objsize> <objperslab> <pagesperslab> : tunables <limit> <batchcount> <sharedfactor> : slabdata <active_slabs> <num_slabs> <sharedavail>";
-
-        let result = parse_meta(test);
-
-        assert_eq!(
-            result,
-            [
-                "active_objs",
-                "num_objs",
-                "objsize",
-                "objperslab",
-                "pagesperslab",
-                "limit",
-                "batchcount",
-                "sharedfactor",
-                "active_slabs",
-                "num_slabs",
-                "sharedavail"
-            ]
-        )
-    }
-
-    #[test]
-    fn test_parse_data() {
-        // Success case
-
-        let test = "nf_conntrack_expect      0      0    208   39    2 : tunables    0    0    0 : slabdata      0      0      0";
-        let (name, value) = parse_data(test).unwrap();
-
-        assert_eq!(name, "nf_conntrack_expect");
-        assert_eq!(value, [0, 0, 208, 39, 2, 0, 0, 0, 0, 0, 0]);
-
-        // Fail case
-        let test =
-            "0      0    208   39    2 : tunables    0    0    0 : slabdata      0      0      0";
-        let (name, _value) = parse_data(test).unwrap();
-
-        assert_ne!(name, "nf_conntrack_expect");
-    }
-
-    #[test]
-    fn test_parse() {
-        let test = include_str!("./data/test_data.txt");
-        let result = SlabInfo::parse(test.into()).unwrap();
-
-        assert_eq!(result.fetch("nf_conntrack_expect", "objsize").unwrap(), 208);
-        assert_eq!(
-            result.fetch("dmaengine-unmap-2", "active_slabs").unwrap(),
-            16389
-        );
-    }
 }
