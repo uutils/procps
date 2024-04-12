@@ -39,8 +39,8 @@ pub fn uu_app() -> Command {
         .infer_long_args(true)
         .disable_help_flag(true)
         .args([
-            arg!(-d --delay <secs>  "delay updates"),
-            arg!(-o --once          "only display once, then exit"),
+            // arg!(-d --delay <secs>  "delay updates"),
+            // arg!(-o --once          "only display once, then exit"),
             arg!(-s --sort  <char>  "specify sort criteria by character (see below)"),
             arg!(-h --help          "display this help and exit").action(ArgAction::Help),
         ])
