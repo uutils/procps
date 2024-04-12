@@ -55,11 +55,9 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
                 user: entry.user(),
                 terminal: entry.tty_device(),
                 login_time: format_time(entry.login_time().to_string()).unwrap_or_default(),
-                login_time: format_time(entry.login_time().to_string()).unwrap_or_default(),
                 idle_time: String::new(), // Placeholder, needs actual implementation
                 jcpu: String::new(),      // Placeholder, needs actual implementation
                 pcpu: String::new(),      // Placeholder, needs actual implementation
-                command: fetch_cmdline(entry.pid()).unwrap_or_default(),
                 command: fetch_cmdline(entry.pid()).unwrap_or_default(),
             };
             user_info_list.push(user_info);
@@ -169,45 +167,6 @@ pub fn uu_app() -> Command {
 #[cfg(test)]
 mod tests {
     use crate::{fetch_cmdline, format_time};
-    use chrono;
-    use std::{fs, path::Path, process};
-
-    #[test]
-    fn test_format_time() {
-        let unix_epoc = chrono::Local::now()
-            .format("%Y-%m-%d %H:%M:%S%.6f %::z")
-            .to_string();
-        let unix_formatted = format_time(unix_epoc).unwrap();
-        assert!(unix_formatted.contains(':') && unix_formatted.chars().count() == 5);
-        // Test a date that is 5 days ago
-        let td = chrono::Local::now().fixed_offset()
-            - chrono::TimeDelta::new(60 * 60 * 24 * 5, 0).unwrap();
-        // Pre-format time, so it's similar to how utmpx returns it
-        let pre_formatted = format!("{}", td.format("%Y-%m-%d %H:%M:%S%.6f %::z"));
-
-        assert_eq!(
-            format_time(pre_formatted).unwrap(),
-            td.format("%a%d").to_string()
-        )
-    }
-
-    #[test]
-    // Get PID of current process and use that for cmdline testing
-    fn test_fetch_cmdline() {
-        // uucore's utmpx returns an i32, so we cast to that to mimic it.
-        let pid = process::id() as i32;
-        let path = Path::new("/proc").join(pid.to_string()).join("cmdline");
-        assert_eq!(
-            fs::read_to_string(path).unwrap(),
-            fetch_cmdline(pid).unwrap()
-        )
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::{fetch_cmdline, format_time};
-    use chrono;
     use std::{fs, path::Path, process};
 
     #[test]
