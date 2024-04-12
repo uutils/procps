@@ -153,7 +153,21 @@ impl SlabInfo {
         self.meta.iter().position(|it| it.eq(meta))
     }
 
-    pub fn object_minimum(&self) -> u64 {
+    /////////////////////////////////// helpers ///////////////////////////////////
+
+    #[inline]
+    fn total(&self, meta: &str) -> u64 {
+        let Some(offset) = self.offset(meta) else {
+            return 0;
+        };
+
+        self.data
+            .iter()
+            .filter_map(|(_, data)| data.get(offset))
+            .sum::<u64>()
+    }
+
+    pub(crate) fn object_minimum(&self) -> u64 {
         let Some(offset) = self.offset("objsize") else {
             return 0;
         };
@@ -169,7 +183,7 @@ impl SlabInfo {
         }
     }
 
-    pub fn object_maximum(&self) -> u64 {
+    pub(crate) fn object_maximum(&self) -> u64 {
         let Some(offset) = self.offset("objsize") else {
             return 0;
         };
@@ -185,7 +199,7 @@ impl SlabInfo {
         }
     }
 
-    pub fn object_avg(&self) -> u64 {
+    pub(crate) fn object_avg(&self) -> u64 {
         let Some(offset) = self.offset("objsize") else {
             return 0;
         };
@@ -200,6 +214,62 @@ impl SlabInfo {
         } else {
             (sum) / (count as u64)
         }
+    }
+
+    pub(crate) fn total_active_objs(&self) -> u64 {
+        self.total("active_objs")
+    }
+
+    pub(crate) fn total_objs(&self) -> u64 {
+        self.total("num_objs")
+    }
+
+    pub(crate) fn total_active_slabs(&self) -> u64 {
+        self.total("active_slabs")
+    }
+
+    pub(crate) fn total_slabs(&self) -> u64 {
+        self.total("num_slabs")
+    }
+
+    pub(crate) fn total_active_size(&self) -> u64 {
+        self.names()
+            .iter()
+            .map(|name| {
+                self.fetch(name, "active_objs").unwrap_or_default()
+                    * self.fetch(name, "objsize").unwrap_or_default()
+            })
+            .sum::<u64>()
+    }
+
+    pub(crate) fn total_size(&self) -> u64 {
+        self.names()
+            .iter()
+            .map(|name| {
+                self.fetch(name, "num_objs").unwrap_or_default()
+                    * self.fetch(name, "objsize").unwrap_or_default()
+            })
+            .sum::<u64>()
+    }
+
+    pub(crate) fn total_active_cache(&self) -> u64 {
+        self.names()
+            .iter()
+            .map(|name| {
+                self.fetch(name, "objsize").unwrap_or_default()
+                    * self.fetch(name, "active_objs").unwrap_or_default()
+            })
+            .sum::<u64>()
+    }
+
+    pub(crate) fn total_cache(&self) -> u64 {
+        self.names()
+            .iter()
+            .map(|name| {
+                self.fetch(name, "objsize").unwrap_or_default()
+                    * self.fetch(name, "num_objs").unwrap_or_default()
+            })
+            .sum::<u64>()
     }
 }
 
