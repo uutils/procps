@@ -24,3 +24,7 @@ mod test_watch;
 #[cfg(feature = "pmap")]
 #[path = "by-util/test_pmap.rs"]
 mod test_pmap;
+
+#[cfg(feature = "slabtop")]
+#[path = "by-util/test_slabtop.rs"]
+mod test_slabtop;
