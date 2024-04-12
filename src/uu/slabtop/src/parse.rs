@@ -12,6 +12,7 @@ use std::{
 
 #[derive(Debug, Default)]
 pub struct SlabInfo {
+    #[allow(unused)] // for slabinfo checking
     pub(crate) version: String,
     pub(crate) meta: Vec<String>,
     pub(crate) data: Vec<(String, Vec<u64>)>,
@@ -53,10 +54,12 @@ impl SlabInfo {
         self.data.iter().map(|(k, _)| k).collect()
     }
 
+    #[allow(unused)] // for slabinfo checking
     pub fn meta(&self) -> Vec<&String> {
         self.meta.iter().collect()
     }
 
+    #[allow(unused)] // for slabinfo checking
     pub fn version(&self) -> &String {
         &self.version
     }
