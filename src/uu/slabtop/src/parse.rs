@@ -26,7 +26,7 @@ impl SlabInfo {
         Self::parse(content).ok_or(ErrorKind::Unsupported.into())
     }
 
-    fn parse(content: String) -> Option<SlabInfo> {
+    pub(crate) fn parse(content: String) -> Option<SlabInfo> {
         let mut lines: Vec<&str> = content.lines().collect();
 
         let version = parse_version(lines.remove(0))?;
@@ -151,6 +151,55 @@ impl SlabInfo {
 
     fn offset(&self, meta: &str) -> Option<usize> {
         self.meta.iter().position(|it| it.eq(meta))
+    }
+
+    pub fn object_minimum(&self) -> u64 {
+        let Some(offset) = self.offset("objsize") else {
+            return 0;
+        };
+
+        match self
+            .data
+            .iter()
+            .filter_map(|(_, data)| data.get(offset))
+            .min()
+        {
+            Some(min) => *min,
+            None => 0,
+        }
+    }
+
+    pub fn object_maximum(&self) -> u64 {
+        let Some(offset) = self.offset("objsize") else {
+            return 0;
+        };
+
+        match self
+            .data
+            .iter()
+            .filter_map(|(_, data)| data.get(offset))
+            .max()
+        {
+            Some(max) => *max,
+            None => 0,
+        }
+    }
+
+    pub fn object_avg(&self) -> u64 {
+        let Some(offset) = self.offset("objsize") else {
+            return 0;
+        };
+
+        let iter = self.data.iter().filter_map(|(_, data)| data.get(offset));
+
+        let count = iter.clone().count();
+        let sum = iter.sum::<u64>();
+
+        if count == 0 {
+            0
+        } else {
+            (sum) / (count as u64)
+        }
     }
 }
 
