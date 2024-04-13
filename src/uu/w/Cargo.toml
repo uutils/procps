@@ -17,6 +17,7 @@ clap = { workspace = true }
 chrono = { workspace = true, default-features = false, features = [
   "clock",
 ] }
+libc = { workspace = true }
 
 [lib]
 path = "src/w.rs"
