@@ -11,7 +11,7 @@ use std::{
 };
 
 #[derive(Debug, Default)]
-pub struct SlabInfo {
+pub(crate) struct SlabInfo {
     pub(crate) meta: Vec<String>,
     pub(crate) data: Vec<(String, Vec<u64>)>,
 }
@@ -25,7 +25,7 @@ impl SlabInfo {
         Self::parse(content).ok_or(ErrorKind::Unsupported.into())
     }
 
-    pub(crate) fn parse(content: String) -> Option<SlabInfo> {
+    pub fn parse(content: String) -> Option<SlabInfo> {
         let mut lines: Vec<&str> = content.lines().collect();
 
         let _ = parse_version(lines.remove(0))?;
@@ -154,7 +154,7 @@ impl SlabInfo {
             .sum::<u64>()
     }
 
-    pub(crate) fn object_minimum(&self) -> u64 {
+    pub fn object_minimum(&self) -> u64 {
         let Some(offset) = self.offset("objsize") else {
             return 0;
         };
@@ -170,7 +170,7 @@ impl SlabInfo {
         }
     }
 
-    pub(crate) fn object_maximum(&self) -> u64 {
+    pub fn object_maximum(&self) -> u64 {
         let Some(offset) = self.offset("objsize") else {
             return 0;
         };
@@ -186,7 +186,7 @@ impl SlabInfo {
         }
     }
 
-    pub(crate) fn object_avg(&self) -> u64 {
+    pub fn object_avg(&self) -> u64 {
         let Some(offset) = self.offset("objsize") else {
             return 0;
         };
@@ -203,23 +203,23 @@ impl SlabInfo {
         }
     }
 
-    pub(crate) fn total_active_objs(&self) -> u64 {
+    pub fn total_active_objs(&self) -> u64 {
         self.total("active_objs")
     }
 
-    pub(crate) fn total_objs(&self) -> u64 {
+    pub fn total_objs(&self) -> u64 {
         self.total("num_objs")
     }
 
-    pub(crate) fn total_active_slabs(&self) -> u64 {
+    pub fn total_active_slabs(&self) -> u64 {
         self.total("active_slabs")
     }
 
-    pub(crate) fn total_slabs(&self) -> u64 {
+    pub fn total_slabs(&self) -> u64 {
         self.total("num_slabs")
     }
 
-    pub(crate) fn total_active_size(&self) -> u64 {
+    pub fn total_active_size(&self) -> u64 {
         self.names()
             .iter()
             .map(|name| {
@@ -229,7 +229,7 @@ impl SlabInfo {
             .sum::<u64>()
     }
 
-    pub(crate) fn total_size(&self) -> u64 {
+    pub fn total_size(&self) -> u64 {
         self.names()
             .iter()
             .map(|name| {
@@ -239,7 +239,7 @@ impl SlabInfo {
             .sum::<u64>()
     }
 
-    pub(crate) fn total_active_cache(&self) -> u64 {
+    pub fn total_active_cache(&self) -> u64 {
         self.names()
             .iter()
             .map(|name| {
@@ -249,7 +249,7 @@ impl SlabInfo {
             .sum::<u64>()
     }
 
-    pub(crate) fn total_cache(&self) -> u64 {
+    pub fn total_cache(&self) -> u64 {
         self.names()
             .iter()
             .map(|name| {
