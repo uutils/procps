@@ -12,8 +12,6 @@ use std::{
 
 #[derive(Debug, Default)]
 pub struct SlabInfo {
-    #[allow(unused)] // for slabinfo checking
-    pub(crate) version: String,
     pub(crate) meta: Vec<String>,
     pub(crate) data: Vec<(String, Vec<u64>)>,
 }
@@ -30,15 +28,11 @@ impl SlabInfo {
     pub(crate) fn parse(content: String) -> Option<SlabInfo> {
         let mut lines: Vec<&str> = content.lines().collect();
 
-        let version = parse_version(lines.remove(0))?;
+        let _ = parse_version(lines.remove(0))?;
         let meta = parse_meta(lines.remove(0));
         let data: Vec<(String, Vec<u64>)> = lines.into_iter().filter_map(parse_data).collect();
 
-        Some(SlabInfo {
-            version,
-            meta,
-            data,
-        })
+        Some(SlabInfo { meta, data })
     }
 
     pub fn fetch(&self, name: &str, meta: &str) -> Option<u64> {
