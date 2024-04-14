@@ -3,11 +3,16 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use chrono::{self, Datelike};
+#[cfg(target_os = "linux")]
+use chrono::Datelike;
 use clap::crate_version;
 use clap::{Arg, ArgAction, Command};
-use std::{fs, path::Path, process};
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
+use libc::{sysconf, _SC_CLK_TCK};
+use std::process;
+#[cfg(target_os = "linux")]
+use std::{collections::HashMap, fs, path::Path};
+#[cfg(target_os = "linux")]
 use uucore::utmpx::Utmpx;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
 
@@ -24,6 +29,61 @@ struct UserInfo {
     command: String,
 }
 
+#[cfg(target_os = "linux")]
+fn fetch_terminal_jcpu() -> Result<HashMap<u64, f64>, std::io::Error> {
+    // Iterate over all pid folders in /proc and build a HashMap with their terminals and cpu usage.
+    let pid_dirs = fs::read_dir("/proc")?
+        .filter_map(Result::ok)
+        .filter(|entry| entry.path().is_dir())
+        .filter_map(|entry| {
+            entry
+                .path()
+                .file_name()
+                .and_then(|s| s.to_os_string().into_string().ok())
+        })
+        // Check to see if directory is an integer (pid)
+        .filter_map(|pid_dir_str| pid_dir_str.parse::<i32>().ok());
+    let mut pid_hashmap = HashMap::new();
+    for pid in pid_dirs {
+        // Fetch terminal number for current pid
+        let terminal_number = fetch_terminal_number(pid)?;
+        // Get current total CPU time for current pid
+        let pcpu_time = fetch_pcpu_time(pid)?;
+        // Update HashMap with found terminal number and add pcpu time for current pid
+        *pid_hashmap.entry(terminal_number).or_insert(0.0) += pcpu_time;
+    }
+    Ok(pid_hashmap)
+}
+
+#[cfg(target_os = "linux")]
+fn fetch_terminal_number(pid: i32) -> Result<u64, std::io::Error> {
+    let stat_path = Path::new("/proc").join(pid.to_string()).join("stat");
+    // Separate stat and get terminal number, which is at position 6
+    let f = fs::read_to_string(stat_path)?;
+    let stat: Vec<&str> = f.split_whitespace().collect();
+    Ok(stat[6].parse().unwrap_or_default())
+}
+
+#[cfg(target_os = "linux")]
+fn get_clock_tick() -> i64 {
+    unsafe { sysconf(_SC_CLK_TCK) }
+}
+
+#[cfg(target_os = "linux")]
+fn fetch_pcpu_time(pid: i32) -> Result<f64, std::io::Error> {
+    let stat_path = Path::new("/proc").join(pid.to_string()).join("stat");
+    // Seperate stat file by whitespace and get utime and stime, which are at
+    // positions 13 and 14 (0-based), respectively.
+    let f = fs::read_to_string(stat_path)?;
+    let stat: Vec<&str> = f.split_whitespace().collect();
+    // Parse utime and stime to f64
+    let utime: f64 = stat[13].parse().unwrap_or_default();
+    let stime: f64 = stat[14].parse().unwrap_or_default();
+    // Divide by clock tick to get actual time
+    Ok((utime + stime) / get_clock_tick() as f64)
+}
+
+#[cfg(target_os = "linux")]
 fn format_time(time: String) -> Result<String, chrono::format::ParseError> {
     let mut t: String = time;
     // Trim the seconds off of timezone offset, as chrono can't parse the time with it present
@@ -41,6 +101,7 @@ fn format_time(time: String) -> Result<String, chrono::format::ParseError> {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn fetch_cmdline(pid: i32) -> Result<String, std::io::Error> {
     let cmdline_path = Path::new("/proc").join(pid.to_string()).join("cmdline");
     fs::read_to_string(cmdline_path)
@@ -92,7 +153,6 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     match fetch_user_info() {
         Ok(user_info) => {
             if !no_header {
-                println!("USER\tTTY\tLOGIN@\tIDLE\tJCPU\tPCPU\tWHAT");
                 println!("USER\tTTY\tLOGIN@\tIDLE\tJCPU\tPCPU\tWHAT");
             }
             for user in user_info {
@@ -177,7 +237,10 @@ pub fn uu_app() -> Command {
 
 #[cfg(test)]
 mod tests {
-    use crate::{fetch_cmdline, format_time};
+    use crate::{
+        fetch_cmdline, fetch_pcpu_time, fetch_terminal_number, format_time, get_clock_tick,
+    };
+    use chrono;
     use std::{fs, path::Path, process};
 
     #[test]
