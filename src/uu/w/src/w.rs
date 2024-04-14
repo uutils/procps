@@ -46,18 +46,29 @@ fn fetch_cmdline(pid: i32) -> Result<String, std::io::Error> {
     fs::read_to_string(cmdline_path)
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
 fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
+    let terminal_jcpu_hm = fetch_terminal_jcpu()?;
+
     let mut user_info_list = Vec::new();
     for entry in Utmpx::iter_all_records() {
         if entry.is_user_process() {
+            let mut jcpu: f64 = 0.0;
+
+            if let Ok(terminal_number) = fetch_terminal_number(entry.pid()) {
+                jcpu = terminal_jcpu_hm
+                    .get(&terminal_number)
+                    .cloned()
+                    .unwrap_or_default();
+            }
+
             let user_info = UserInfo {
                 user: entry.user(),
                 terminal: entry.tty_device(),
                 login_time: format_time(entry.login_time().to_string()).unwrap_or_default(),
                 idle_time: String::new(), // Placeholder, needs actual implementation
-                jcpu: String::new(),      // Placeholder, needs actual implementation
-                pcpu: String::new(),      // Placeholder, needs actual implementation
+                jcpu: format!("{:.2}", jcpu),
+                pcpu: fetch_pcpu_time(entry.pid()).unwrap_or_default().to_string(),
                 command: fetch_cmdline(entry.pid()).unwrap_or_default(),
             };
             user_info_list.push(user_info);
@@ -67,7 +78,7 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
     Ok(user_info_list)
 }
 
-#[cfg(windows)]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
     Ok(Vec::new())
 }
@@ -86,7 +97,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             }
             for user in user_info {
                 println!(
-                    "{}\t{}\t{}\t{}\t{}\t{}\t{}",
+                    "{}\t{}\t{}\t{}\t{}s\t{}s\t{}",
                     user.user,
                     user.terminal,
                     user.login_time,
@@ -170,6 +181,7 @@ mod tests {
     use std::{fs, path::Path, process};
 
     #[test]
+    #[cfg(target_os = "linux")]
     fn test_format_time() {
         let unix_epoc = chrono::Local::now()
             .format("%Y-%m-%d %H:%M:%S%.6f %::z")
@@ -189,6 +201,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_os = "linux")]
     // Get PID of current process and use that for cmdline testing
     fn test_fetch_cmdline() {
         // uucore's utmpx returns an i32, so we cast to that to mimic it.
@@ -197,6 +210,32 @@ mod tests {
         assert_eq!(
             fs::read_to_string(path).unwrap(),
             fetch_cmdline(pid).unwrap()
+        )
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn test_fetch_terminal_number() {
+        let pid = process::id() as i32;
+        let path = Path::new("/proc").join(pid.to_string()).join("stat");
+        let f = fs::read_to_string(path).unwrap();
+        let stat: Vec<&str> = f.split_whitespace().collect();
+        let term_num = stat[6];
+        assert_eq!(fetch_terminal_number(pid).unwrap().to_string(), term_num)
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn test_fetch_pcpu_time() {
+        let pid = process::id() as i32;
+        let path = Path::new("/proc").join(pid.to_string()).join("stat");
+        let f = fs::read_to_string(path).unwrap();
+        let stat: Vec<&str> = f.split_whitespace().collect();
+        let utime: f64 = stat[13].parse().unwrap();
+        let stime: f64 = stat[14].parse().unwrap();
+        assert_eq!(
+            fetch_pcpu_time(pid).unwrap(),
+            (utime + stime) / get_clock_tick() as f64
         )
     }
 }
