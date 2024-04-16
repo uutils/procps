@@ -15,8 +15,6 @@ categories = ["command-line-utilities"]
 [dependencies]
 uucore = { workspace = true }
 clap = { workspace = true }
-ratatui = { workspace = true }
-crossterm = { workspace = true }
 
 [lib]
 path = "src/slabtop.rs"
