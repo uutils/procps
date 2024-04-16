@@ -45,8 +45,6 @@ bytesize = "1.3.0"
 chrono = { version = "0.4.38", default-features = false, features = [
   "clock",
 ] }
-ratatui = "0.26.2"
-crossterm = "0.27.0"
 
 [dependencies]
 clap = { workspace = true }
@@ -56,8 +54,6 @@ uucore = { workspace = true }
 phf = { workspace = true }
 textwrap = { workspace = true }
 sysinfo = { workspace = true }
-ratatui = { workspace = true }
-crossterm = { workspace = true }
 
 #
 pwdx = { optional = true, version = "0.0.1", package = "uu_pwdx", path = "src/uu/pwdx" }
