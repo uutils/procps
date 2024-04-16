@@ -59,6 +59,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         to_kb(slabinfo.object_maximum())
     );
 
+    // separate header info and slab list
+    println!();
+
     // TODO: TUI Implementation
     let title = format!(
         "{:>6} {:>6} {:>4} {:>8} {:>6} {:>8} {:>10} {:<}",
