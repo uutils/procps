@@ -89,8 +89,7 @@ fn percentage(numerator: u64, denominator: u64) -> f64 {
 fn output(info: &SlabInfo) {
     for name in info.names() {
         let objs = info.fetch(name, "num_objs").unwrap_or_default();
-        let active = info.fetch(name, "num_objs").unwrap_or_default();
-        // FIXME: There ware sometime NaN.
+        let active = info.fetch(name, "active_objs").unwrap_or_default();
         let used = format!("{:.0}%", percentage(active, objs));
         let objsize = {
             let size = info.fetch(name, "objsize").unwrap_or_default(); // Byte to KB :1024
