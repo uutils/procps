@@ -1,0 +1,26 @@
+[package]
+name = "uu_slabtop"
+version = "0.0.1"
+edition = "2021"
+authors = ["uutils developers"]
+license = "MIT"
+description = "slabtop ~ (uutils) Display kernel slab cache information in real time"
+
+homepage = "https://github.com/uutils/procps"
+repository = "https://github.com/uutils/procps/tree/main/src/uu/slabtop"
+keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
+categories = ["command-line-utilities"]
+
+
+[dependencies]
+uucore = { workspace = true }
+clap = { workspace = true }
+ratatui = { workspace = true }
+crossterm = { workspace = true }
+
+[lib]
+path = "src/slabtop.rs"
+
+[[bin]]
+name = "slabtop"
+path = "src/main.rs"

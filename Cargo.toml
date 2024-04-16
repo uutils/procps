@@ -25,13 +25,7 @@ build = "build.rs"
 default = ["feat_common_core"]
 uudoc = []
 
-feat_common_core = [
-  "pwdx",
-  "free",
-  "w",
-  "watch",
-  "pmap",
-]
+feat_common_core = ["pwdx", "free", "w", "watch", "pmap", "slabtop"]
 
 [workspace.dependencies]
 uucore = "0.0.25"
@@ -51,6 +45,8 @@ bytesize = "1.3.0"
 chrono = { version = "0.4.38", default-features = false, features = [
   "clock",
 ] }
+ratatui = "0.26.1"
+crossterm = "0.27.0"
 
 [dependencies]
 clap = { workspace = true }
@@ -60,7 +56,8 @@ uucore = { workspace = true }
 phf = { workspace = true }
 textwrap = { workspace = true }
 sysinfo = { workspace = true }
-
+ratatui = { workspace = true }
+crossterm = { workspace = true }
 
 #
 pwdx = { optional = true, version = "0.0.1", package = "uu_pwdx", path = "src/uu/pwdx" }
@@ -68,6 +65,7 @@ free = { optional = true, version = "0.0.1", package = "uu_free", path = "src/uu
 w = { optional = true, version = "0.0.1", package = "uu_w", path = "src/uu/w" }
 watch = { optional = true, version = "0.0.1", package = "uu_watch", path = "src/uu/watch" }
 pmap = { optional = true, version = "0.0.1", package = "uu_pmap", path = "src/uu/pmap" }
+slabtop = { optional = true, version = "0.0.1", package = "uu_slabtop", path = "src/uu/slabtop" }
 
 [dev-dependencies]
 pretty_assertions = "1"
