@@ -149,23 +149,38 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
 
     let no_header = matches.get_flag("no-header");
+    let short = matches.get_flag("short");
 
     match fetch_user_info() {
         Ok(user_info) => {
             if !no_header {
-                println!("USER\tTTY\tLOGIN@\tIDLE\tJCPU\tPCPU\tWHAT");
+                if !short {
+                    println!("USER\tTTY\tLOGIN@\tIDLE\tJCPU\tPCPU\tWHAT");
+                } else {
+                    println!("USER\tTTY\tIDLE\tWHAT");
+                }
             }
             for user in user_info {
-                println!(
-                    "{}\t{}\t{}\t{}\t{}s\t{}s\t{}",
-                    user.user,
-                    user.terminal,
-                    user.login_time,
-                    user.idle_time,
-                    user.jcpu,
-                    user.pcpu,
-                    user.command
-                );
+                if !short {
+                    println!(
+                        "{}\t{}\t{}\t{}\t{}s\t{}s\t{}",
+                        user.user,
+                        user.terminal,
+                        user.login_time,
+                        user.idle_time,
+                        user.jcpu,
+                        user.pcpu,
+                        user.command
+                    );
+                } else {
+                    println!(
+                        "{}\t{}\t{}\t{}",
+                        user.user,
+                        user.terminal,
+                        user.idle_time,
+                        user.command
+                    );
+                }
             }
         }
         Err(e) => {
