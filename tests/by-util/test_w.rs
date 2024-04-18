@@ -12,12 +12,23 @@ fn test_invalid_arg() {
 }
 
 #[test]
+fn test_help() {
+    new_ucmd!()
+        .arg("--help")
+        .succeeds()
+        .stdout_contains("Usage")
+        .stdout_contains("Options");
+}
+
+#[test]
 fn test_no_header() {
-    let cmd = new_ucmd!().arg("--no-header").succeeds();
+    for arg in ["-h", "--no-header"] {
+        let cmd = new_ucmd!().arg(arg).succeeds();
 
-    let result = cmd.stdout_str();
+        let result = cmd.stdout_str();
 
-    assert!(!result.contains("USER\tTTY\tLOGIN@\tIDLE\tJCPU\tPCPU\tWHAT"));
+        assert!(!result.contains("USER\tTTY\tLOGIN@\tIDLE\tJCPU\tPCPU\tWHAT"));
+    }
 }
 
 #[test]
