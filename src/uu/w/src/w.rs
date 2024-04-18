@@ -185,6 +185,12 @@ pub fn uu_app() -> Command {
         .infer_long_args(true)
         .disable_help_flag(true)
         .arg(
+            Arg::new("help")
+                .long("help")
+                .help("Print help information")
+                .action(ArgAction::Help),
+        )
+        .arg(
             Arg::new("no-header")
                 .short('h')
                 .long("no-header")

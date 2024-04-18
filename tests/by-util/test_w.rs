@@ -12,6 +12,15 @@ fn test_invalid_arg() {
 }
 
 #[test]
+fn test_help() {
+    new_ucmd!()
+        .arg("--help")
+        .succeeds()
+        .stdout_contains("Usage")
+        .stdout_contains("Options");
+}
+
+#[test]
 fn test_no_header() {
     for arg in ["-h", "--no-header"] {
         let cmd = new_ucmd!().arg(arg).succeeds();
