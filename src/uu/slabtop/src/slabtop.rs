@@ -4,7 +4,7 @@
 // file that was distributed with this source code.
 
 use crate::parse::SlabInfo;
-use clap::{arg, crate_version, ArgAction, Command};
+use clap::{arg, crate_version, Command};
 use uucore::{error::UResult, format_usage, help_about, help_usage};
 
 const ABOUT: &str = help_about!("slabtop.md");
@@ -119,12 +119,10 @@ pub fn uu_app() -> Command {
         .about(ABOUT)
         .override_usage(format_usage(USAGE))
         .infer_long_args(true)
-        .disable_help_flag(true)
         .args([
             // arg!(-d --delay <secs>  "delay updates"),
             // arg!(-o --once          "only display once, then exit"),
             arg!(-s --sort  <char>  "specify sort criteria by character (see below)"),
-            arg!(-h --help          "display this help and exit").action(ArgAction::Help),
         ])
         .after_help(
             r"The following are valid sort criteria:
