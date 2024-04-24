@@ -24,7 +24,11 @@ use std::env;
 use std::fs;
 #[cfg(target_os = "linux")]
 use std::io::Error;
+use std::ops::Mul;
 use std::process;
+use std::thread::sleep;
+use std::time::Duration;
+use std::u64;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
 
 const ABOUT: &str = help_about!("free.md");
@@ -104,85 +108,96 @@ fn parse_meminfo() -> Result<MemInfo, Box<dyn std::error::Error>> {
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
+
     let wide = matches.get_flag("wide");
-
     let human = matches.get_flag("human");
-
     let si = matches.get_flag("si");
+    let mut count: u64 = matches.get_one("count").unwrap_or(&(1 as u64)).to_owned();
+    let seconds: f64 = matches
+        .get_one("seconds")
+        .unwrap_or(&(1.0 as f64))
+        .to_owned();
 
+    let dur = Duration::from_nanos(seconds.mul(1_000_000_000.0).round() as u64);
     let convert = detect_unit(&matches);
 
-    match parse_meminfo() {
-        Ok(mem_info) => {
-            let buff_cache = if wide {
-                mem_info.buffers
-            } else {
-                mem_info.buffers + mem_info.cached
-            };
-            let cache = if wide { mem_info.cached } else { 0 };
-            let used = mem_info.total - mem_info.available;
+    while count > 1 {
+        count -= 1;
+        match parse_meminfo() {
+            Ok(mem_info) => {
+                let buff_cache = if wide {
+                    mem_info.buffers
+                } else {
+                    mem_info.buffers + mem_info.cached
+                };
+                let cache = if wide { mem_info.cached } else { 0 };
+                let used = mem_info.total - mem_info.available;
 
-            if wide {
-                wide_header();
-                if human {
-                    println!(
-                        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
-                        "Mem:",
-                        humanized(mem_info.total, si),
-                        humanized(used, si),
-                        humanized(mem_info.free, si),
-                        humanized(mem_info.shared, si),
-                        humanized(buff_cache, si),
-                        humanized(cache + mem_info.reclaimable, si),
-                        humanized(mem_info.available, si),
-                    )
+                if wide {
+                    wide_header();
+                    if human {
+                        println!(
+                            "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+                            "Mem:",
+                            humanized(mem_info.total, si),
+                            humanized(used, si),
+                            humanized(mem_info.free, si),
+                            humanized(mem_info.shared, si),
+                            humanized(buff_cache, si),
+                            humanized(cache + mem_info.reclaimable, si),
+                            humanized(mem_info.available, si),
+                        )
+                    } else {
+                        println!(
+                            "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+                            "Mem:",
+                            convert(mem_info.total),
+                            convert(used),
+                            convert(mem_info.free),
+                            convert(mem_info.shared),
+                            convert(buff_cache),
+                            convert(cache + mem_info.reclaimable),
+                            convert(mem_info.available),
+                        )
+                    }
                 } else {
-                    println!(
-                        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
-                        "Mem:",
-                        convert(mem_info.total),
-                        convert(used),
-                        convert(mem_info.free),
-                        convert(mem_info.shared),
-                        convert(buff_cache),
-                        convert(cache + mem_info.reclaimable),
-                        convert(mem_info.available),
-                    )
+                    header();
+                    if human {
+                        println!(
+                            "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+                            "Mem:",
+                            humanized(mem_info.total, si),
+                            humanized(used, si),
+                            humanized(mem_info.free, si),
+                            humanized(mem_info.shared, si),
+                            humanized(buff_cache + mem_info.reclaimable, si),
+                            humanized(mem_info.available, si),
+                        )
+                    } else {
+                        println!(
+                            "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+                            "Mem:",
+                            convert(mem_info.total),
+                            convert(used),
+                            convert(mem_info.free),
+                            convert(mem_info.shared),
+                            convert(buff_cache + mem_info.reclaimable),
+                            convert(mem_info.available),
+                        )
+                    }
                 }
-            } else {
-                header();
-                if human {
-                    println!(
-                        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
-                        "Mem:",
-                        humanized(mem_info.total, si),
-                        humanized(used, si),
-                        humanized(mem_info.free, si),
-                        humanized(mem_info.shared, si),
-                        humanized(buff_cache + mem_info.reclaimable, si),
-                        humanized(mem_info.available, si),
-                    )
-                } else {
-                    println!(
-                        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
-                        "Mem:",
-                        convert(mem_info.total),
-                        convert(used),
-                        convert(mem_info.free),
-                        convert(mem_info.shared),
-                        convert(buff_cache + mem_info.reclaimable),
-                        convert(mem_info.available),
-                    )
-                }
+                println!(
+                    "{:8}{:>12}{:>12}{:>12}",
+                    "Swap:", mem_info.swap_total, mem_info.swap_used, mem_info.swap_free
+                );
             }
-            println!(
-                "{:8}{:>12}{:>12}{:>12}",
-                "Swap:", mem_info.swap_total, mem_info.swap_used, mem_info.swap_free
-            );
+            Err(e) => {
+                eprintln!("free: failed to read memory info: {}", e);
+                process::exit(1);
+            }
         }
-        Err(e) => {
-            eprintln!("free: failed to read memory info: {}", e);
-            process::exit(1);
+        if count > 1 {
+            sleep(dur);
         }
     }
 
@@ -213,7 +228,20 @@ pub fn uu_app() -> Command {
             arg!(   --pebi  "show output in pebibytes").action(ArgAction::SetTrue),
             arg!(-h --human "show human-readable output").action(ArgAction::SetTrue),
             arg!(   --si    "use powers of 1000 not 1024").action(ArgAction::SetFalse),
-            // arg!(-L --line  "show output on a single line"),
+            // TODO: implement those
+            // arg!(-l --lohi "show detailed low and high memory statistics").action(),
+            // arg!(-L --line "show output on a single line").action(),
+            // arg!(-t --total "show total for RAM + swap").action(),
+            // arg!(-v --committed "show committed memory and commit limit").action(),
+            // accept 1 as well as 0.5, 0.55, ...
+            arg!(-s --seconds "repeat printing every N seconds")
+                .action(ArgAction::Set)
+                .value_parser(clap::value_parser!(f64)),
+            // big int because predecesor accepts them as well (some scripts might have huge values as some sort of infinite)
+            arg!(-c --count "repeat printing N times, then exit")
+                .action(ArgAction::Set)
+                .value_parser(clap::value_parser!(u64)),
+            // arg!(-L --line "show output on a single line").action(),
         ])
         .arg(
             Arg::new("wide")
