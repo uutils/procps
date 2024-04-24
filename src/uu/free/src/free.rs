@@ -121,7 +121,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let dur = Duration::from_nanos(seconds.mul(1_000_000_000.0).round() as u64);
     let convert = detect_unit(&matches);
 
-    while count > 1 {
+    while count > 0 {
         count -= 1;
         match parse_meminfo() {
             Ok(mem_info) => {
