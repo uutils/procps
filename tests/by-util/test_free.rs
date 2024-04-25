@@ -4,10 +4,14 @@
 // file that was distributed with this source code.
 // spell-checker:ignore (words) symdir somefakedir
 
+use core::str;
+
 use pretty_assertions::assert_eq;
 use regex::Regex;
 
 use crate::common::util::TestScenario;
+
+// TODO: make tests combineable (e.g. test --total --human)
 
 #[test]
 fn test_invalid_arg() {
@@ -25,6 +29,19 @@ fn test_free_wide() {
     let result = new_ucmd!().arg("--wide").succeeds();
     assert!(result.stdout_str().contains("Mem:"));
     assert!(!result.stdout_str().contains("buff/cache"));
+}
+
+#[test]
+fn test_free_total() {
+    let result = new_ucmd!().arg("-t").succeeds();
+    assert_eq!(result.stdout_str().lines().count(), 4);
+    assert!(result.stdout_str().lines().collect::<Vec<&str>>()[3].starts_with("Total:"))
+}
+
+#[test]
+fn test_free_count() {
+    let result = new_ucmd!().args(&["-c", "2", "-s", "0"]).succeeds();
+    assert_eq!(result.stdout_str().lines().count(), 7);
 }
 
 #[test]
