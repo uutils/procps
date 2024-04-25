@@ -112,11 +112,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let wide = matches.get_flag("wide");
     let human = matches.get_flag("human");
     let si = matches.get_flag("si");
-    let mut count: u64 = matches.get_one("count").unwrap_or(&(1 as u64)).to_owned();
-    let seconds: f64 = matches
-        .get_one("seconds")
-        .unwrap_or(&(1.0 as f64))
-        .to_owned();
+    let total = matches.get_flag("total");
+    let mut count: u64 = matches.get_one("count").unwrap_or(&1_u64).to_owned();
+    let seconds: f64 = matches.get_one("seconds").unwrap_or(&1.0_f64).to_owned();
 
     let dur = Duration::from_nanos(seconds.mul(1_000_000_000.0).round() as u64);
     let convert = detect_unit(&matches);
@@ -190,6 +188,15 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                     "{:8}{:>12}{:>12}{:>12}",
                     "Swap:", mem_info.swap_total, mem_info.swap_used, mem_info.swap_free
                 );
+                if total {
+                    println!(
+                        "{:8}{:>12}{:>12}{:>12}",
+                        "Total:",
+                        mem_info.total + mem_info.swap_total,
+                        used + mem_info.swap_used,
+                        mem_info.free + mem_info.swap_free
+                    );
+                }
             }
             Err(e) => {
                 eprintln!("free: failed to read memory info: {}", e);
@@ -231,7 +238,7 @@ pub fn uu_app() -> Command {
             // TODO: implement those
             // arg!(-l --lohi "show detailed low and high memory statistics").action(),
             // arg!(-L --line "show output on a single line").action(),
-            // arg!(-t --total "show total for RAM + swap").action(),
+            arg!(-t --total "show total for RAM + swap").action(ArgAction::SetTrue),
             // arg!(-v --committed "show committed memory and commit limit").action(),
             // accept 1 as well as 0.5, 0.55, ...
             arg!(-s --seconds "repeat printing every N seconds")
