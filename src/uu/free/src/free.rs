@@ -184,18 +184,41 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                         )
                     }
                 }
-                println!(
-                    "{:8}{:>12}{:>12}{:>12}",
-                    "Swap:", mem_info.swap_total, mem_info.swap_used, mem_info.swap_free
-                );
-                if total {
+                if human {
                     println!(
                         "{:8}{:>12}{:>12}{:>12}",
-                        "Total:",
-                        mem_info.total + mem_info.swap_total,
-                        used + mem_info.swap_used,
-                        mem_info.free + mem_info.swap_free
+                        "Swap:",
+                        humanized(mem_info.swap_total, si),
+                        humanized(mem_info.swap_used, si),
+                        humanized(mem_info.swap_free, si)
                     );
+                } else {
+                    println!(
+                        "{:8}{:>12}{:>12}{:>12}",
+                        "Swap:",
+                        convert(mem_info.swap_total),
+                        convert(mem_info.swap_used),
+                        convert(mem_info.swap_free)
+                    );
+                }
+                if total {
+                    if human {
+                        println!(
+                            "{:8}{:>12}{:>12}{:>12}",
+                            "Total:",
+                            humanized(mem_info.total + mem_info.swap_total, si),
+                            humanized(used + mem_info.swap_used, si),
+                            humanized(mem_info.free + mem_info.swap_free, si)
+                        );
+                    } else {
+                        println!(
+                            "{:8}{:>12}{:>12}{:>12}",
+                            "Total:",
+                            convert(mem_info.total + mem_info.swap_total),
+                            convert(used + mem_info.swap_used),
+                            convert(mem_info.free + mem_info.swap_free)
+                        );
+                    }
                 }
             }
             Err(e) => {
@@ -203,7 +226,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 process::exit(1);
             }
         }
-        if count > 1 {
+        if count > 0 {
+            // the original free prints a newline everytime before waiting for the next round
+            println!();
             sleep(dur);
         }
     }
