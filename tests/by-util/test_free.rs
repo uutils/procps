@@ -45,6 +45,15 @@ fn test_free_count() {
 }
 
 #[test]
+fn test_free_lohi() {
+    let result = new_ucmd!().arg("--lohi").succeeds();
+    assert_eq!(result.stdout_str().lines().count(), 5);
+    let lines = result.stdout_str().lines().collect::<Vec<&str>>();
+    assert!(lines[2].starts_with("Low:"));
+    assert!(lines[3].starts_with("High:"));
+}
+
+#[test]
 fn test_free_column_format() {
     let re_head_str = r"^ {15}total {8}used {8}free {6}shared {2}buff/cache {3}available$";
     let re_mem_str = r"^Mem:( +\d+){6}$";
