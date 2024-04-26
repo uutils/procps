@@ -19,6 +19,7 @@ use clap::ArgAction;
 use clap::ArgGroup;
 use clap::ArgMatches;
 use clap::{crate_version, Command};
+use std::borrow::BorrowMut;
 use std::env;
 #[cfg(target_os = "linux")]
 use std::fs;
@@ -35,7 +36,7 @@ const ABOUT: &str = help_about!("free.md");
 const USAGE: &str = help_usage!("free.md");
 
 /// The unit of number is [UnitMultiplier::Bytes]
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct MemInfo {
     total: u64,
     free: u64,
@@ -47,6 +48,41 @@ struct MemInfo {
     swap_free: u64,
     swap_used: u64,
     reclaimable: u64,
+}
+
+impl MemInfo {
+    fn make_new(&self, o: &MemInfo, min: bool) -> MemInfo {
+        // to use min
+        let clos = |a: u64, b: u64| -> u64 {
+            if (a < b && min) || (a > b && !min) {
+                a
+            } else {
+                b
+            }
+        };
+
+        // looping over structs only exists in serde
+        MemInfo {
+            total: clos(self.total, o.total),
+            free: clos(self.free, o.free),
+            available: clos(self.available, o.available),
+            shared: clos(self.shared, o.shared),
+            buffers: clos(self.buffers, o.buffers),
+            cached: clos(self.cached, o.cached),
+            swap_total: clos(self.swap_total, o.swap_total),
+            swap_free: clos(self.swap_free, o.swap_free),
+            swap_used: clos(self.swap_used, o.swap_used),
+            reclaimable: clos(self.reclaimable, o.reclaimable),
+        }
+    }
+
+    fn max(&self, o: &MemInfo) -> MemInfo {
+        self.make_new(o, false)
+    }
+
+    fn min(&self, o: &MemInfo) -> MemInfo {
+        self.make_new(o, true)
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -105,6 +141,35 @@ fn parse_meminfo() -> Result<MemInfo, Box<dyn std::error::Error>> {
     Ok(MemInfo::default())
 }
 
+// print total - used - free combo that is used for everything except memory for now
+fn tuf_combo(
+    name: &str,
+    total: u64,
+    used: u64,
+    free: u64,
+    human: bool,
+    convert: fn(u64) -> u64,
+    si: bool,
+) {
+    if human {
+        println!(
+            "{:8}{:>12}{:>12}{:>12}",
+            name,
+            humanized(total, si),
+            humanized(used, si),
+            humanized(free, si)
+        );
+    } else {
+        println!(
+            "{:8}{:>12}{:>12}{:>12}",
+            name,
+            convert(total),
+            convert(used),
+            convert(free)
+        );
+    }
+}
+
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
@@ -113,16 +178,37 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let human = matches.get_flag("human");
     let si = matches.get_flag("si");
     let total = matches.get_flag("total");
+    let lohi = matches.get_flag("lohi");
     let mut count: u64 = matches.get_one("count").unwrap_or(&1_u64).to_owned();
     let seconds: f64 = matches.get_one("seconds").unwrap_or(&1.0_f64).to_owned();
 
     let dur = Duration::from_nanos(seconds.mul(1_000_000_000.0).round() as u64);
     let convert = detect_unit(&matches);
 
+    // lohi stuff
+    let mut low: Option<MemInfo> = None;
+    let mut high: Option<MemInfo> = None;
+
     while count > 0 {
         count -= 1;
         match parse_meminfo() {
             Ok(mem_info) => {
+                // dont calculate stuff we dont need in non-lohi situations
+                if lohi {
+                    // temp variable to prevent borrow + mut borrow
+                    let l = match &low {
+                        None => mem_info.clone(),
+                        Some(x) => x.min(&mem_info),
+                    };
+                    low.borrow_mut().replace(l);
+
+                    let h = match &high {
+                        None => mem_info.clone(),
+                        Some(x) => x.max(&mem_info),
+                    };
+                    high.borrow_mut().replace(h);
+                }
+
                 let buff_cache = if wide {
                     mem_info.buffers
                 } else {
@@ -184,41 +270,50 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                         )
                     }
                 }
-                if human {
-                    println!(
-                        "{:8}{:>12}{:>12}{:>12}",
-                        "Swap:",
-                        humanized(mem_info.swap_total, si),
-                        humanized(mem_info.swap_used, si),
-                        humanized(mem_info.swap_free, si)
+
+                if lohi {
+                    let l = low.as_ref().unwrap();
+                    tuf_combo(
+                        "Low:",
+                        l.total,
+                        l.total - l.available,
+                        l.free,
+                        human,
+                        convert,
+                        si,
                     );
-                } else {
-                    println!(
-                        "{:8}{:>12}{:>12}{:>12}",
-                        "Swap:",
-                        convert(mem_info.swap_total),
-                        convert(mem_info.swap_used),
-                        convert(mem_info.swap_free)
+
+                    let h = high.as_ref().unwrap();
+                    tuf_combo(
+                        "High:",
+                        h.total,
+                        h.total - h.available,
+                        h.free,
+                        human,
+                        convert,
+                        si,
                     );
                 }
+
+                tuf_combo(
+                    "Swap:",
+                    mem_info.swap_total,
+                    mem_info.swap_used,
+                    mem_info.swap_free,
+                    human,
+                    convert,
+                    si,
+                );
                 if total {
-                    if human {
-                        println!(
-                            "{:8}{:>12}{:>12}{:>12}",
-                            "Total:",
-                            humanized(mem_info.total + mem_info.swap_total, si),
-                            humanized(used + mem_info.swap_used, si),
-                            humanized(mem_info.free + mem_info.swap_free, si)
-                        );
-                    } else {
-                        println!(
-                            "{:8}{:>12}{:>12}{:>12}",
-                            "Total:",
-                            convert(mem_info.total + mem_info.swap_total),
-                            convert(used + mem_info.swap_used),
-                            convert(mem_info.free + mem_info.swap_free)
-                        );
-                    }
+                    tuf_combo(
+                        "Total:",
+                        mem_info.total + mem_info.swap_total,
+                        used + mem_info.swap_used,
+                        mem_info.free + mem_info.swap_free,
+                        human,
+                        convert,
+                        si,
+                    );
                 }
             }
             Err(e) => {
@@ -261,7 +356,8 @@ pub fn uu_app() -> Command {
             arg!(-h --human "show human-readable output").action(ArgAction::SetTrue),
             arg!(   --si    "use powers of 1000 not 1024").action(ArgAction::SetFalse),
             // TODO: implement those
-            // arg!(-l --lohi "show detailed low and high memory statistics").action(),
+            arg!(-l --lohi "show detailed low and high memory statistics")
+                .action(ArgAction::SetTrue),
             // arg!(-L --line "show output on a single line").action(),
             arg!(-t --total "show total for RAM + swap").action(ArgAction::SetTrue),
             // arg!(-v --committed "show committed memory and commit limit").action(),
