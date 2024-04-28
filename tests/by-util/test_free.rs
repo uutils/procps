@@ -4,8 +4,6 @@
 // file that was distributed with this source code.
 // spell-checker:ignore (words) symdir somefakedir
 
-use core::str;
-
 use pretty_assertions::assert_eq;
 use regex::Regex;
 
