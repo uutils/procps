@@ -35,7 +35,12 @@ fn test_free_wide() {
 fn test_free_total() {
     let result = new_ucmd!().arg("-t").succeeds();
     assert_eq!(result.stdout_str().lines().count(), 4);
-    assert!(result.stdout_str().lines().collect::<Vec<&str>>()[3].starts_with("Total:"))
+    assert!(result
+        .stdout_str()
+        .lines()
+        .last()
+        .unwrap()
+        .starts_with("Total:"))
 }
 
 #[test]
