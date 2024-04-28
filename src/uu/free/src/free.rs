@@ -48,6 +48,12 @@ struct MemInfo {
     swap_free: u64,
     swap_used: u64,
     reclaimable: u64,
+    low_total: u64,
+    low_used: u64,
+    low_free: u64,
+    high_total: u64,
+    high_used: u64,
+    high_free: u64,
 }
 
 impl MemInfo {
@@ -73,6 +79,12 @@ impl MemInfo {
             swap_free: clos(self.swap_free, o.swap_free),
             swap_used: clos(self.swap_used, o.swap_used),
             reclaimable: clos(self.reclaimable, o.reclaimable),
+            low_total: clos(self.low_total, o.low_total),
+            low_used: clos(self.low_used, o.low_used),
+            low_free: clos(self.low_free, o.low_free),
+            high_total: clos(self.high_total, o.high_total),
+            high_used: clos(self.high_used, o.high_used),
+            high_free: clos(self.high_free, o.high_free),
         }
     }
 
@@ -87,6 +99,7 @@ impl MemInfo {
 
 #[cfg(target_os = "linux")]
 fn parse_meminfo() -> Result<MemInfo, Error> {
+    // kernel docs: https://www.kernel.org/doc/html/latest/filesystems/proc.html
     let contents = fs::read_to_string("/proc/meminfo")?;
     let mut mem_info = MemInfo::default();
 
@@ -103,6 +116,12 @@ fn parse_meminfo() -> Result<MemInfo, Error> {
                 "SwapTotal" => mem_info.swap_total = parsed_value,
                 "SwapFree" => mem_info.swap_free = parsed_value,
                 "SReclaimable" => mem_info.reclaimable = parsed_value,
+                "LowTotal" => mem_info.low_total = parsed_value,
+                "LowUsed" => mem_info.low_used = parsed_value,
+                "LowFree" => mem_info.low_free = parsed_value,
+                "HighTotal" => mem_info.high_total = parsed_value,
+                "HighUsed" => mem_info.high_used = parsed_value,
+                "HighFree" => mem_info.high_free = parsed_value,
                 _ => {}
             }
         }
@@ -130,6 +149,13 @@ fn parse_meminfo() -> Result<MemInfo, Box<dyn std::error::Error>> {
         swap_free: sys.free_swap(),
         swap_used: sys.total_swap().saturating_sub(sys.free_swap()),
         reclaimable: 0,
+        // i dont know how to get that kind of info, you probably have to either pay money to get the info or pay some money for some developer docs
+        low_total: 0,
+        low_used: 0,
+        low_free: 0,
+        high_total: 0,
+        high_used: 0,
+        high_free: 0,
     };
 
     Ok(mem_info)
@@ -178,6 +204,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let human = matches.get_flag("human");
     let si = matches.get_flag("si");
     let total = matches.get_flag("total");
+    let minmax = matches.get_flag("minmax");
     let lohi = matches.get_flag("lohi");
     let mut count: u64 = matches.get_one("count").unwrap_or(&1_u64).to_owned();
     let seconds: f64 = matches.get_one("seconds").unwrap_or(&1.0_f64).to_owned();
@@ -185,28 +212,28 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let dur = Duration::from_nanos(seconds.mul(1_000_000_000.0).round() as u64);
     let convert = detect_unit(&matches);
 
-    // lohi stuff
-    let mut low: Option<MemInfo> = None;
-    let mut high: Option<MemInfo> = None;
+    // minmax stuff
+    let mut min: Option<MemInfo> = None;
+    let mut max: Option<MemInfo> = None;
 
     while count > 0 {
         count -= 1;
         match parse_meminfo() {
             Ok(mem_info) => {
                 // dont calculate stuff we dont need in non-lohi situations
-                if lohi {
+                if minmax {
                     // temp variable to prevent borrow + mut borrow
-                    let l = match &low {
+                    let l = match &min {
                         None => mem_info.clone(),
                         Some(x) => x.min(&mem_info),
                     };
-                    low.borrow_mut().replace(l);
+                    min.borrow_mut().replace(l);
 
-                    let h = match &high {
+                    let h = match &max {
                         None => mem_info.clone(),
                         Some(x) => x.max(&mem_info),
                     };
-                    high.borrow_mut().replace(h);
+                    max.borrow_mut().replace(h);
                 }
 
                 let buff_cache = if wide {
@@ -272,9 +299,30 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 }
 
                 if lohi {
-                    let l = low.as_ref().unwrap();
                     tuf_combo(
                         "Low:",
+                        mem_info.low_total,
+                        mem_info.low_used,
+                        mem_info.low_free,
+                        human,
+                        convert,
+                        si,
+                    );
+                    tuf_combo(
+                        "High:",
+                        mem_info.high_total,
+                        mem_info.high_used,
+                        mem_info.free,
+                        human,
+                        convert,
+                        si,
+                    );
+                }
+
+                if minmax {
+                    let l = min.as_ref().unwrap();
+                    tuf_combo(
+                        "MinMem:",
                         l.total,
                         l.total - l.available,
                         l.free,
@@ -283,9 +331,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                         si,
                     );
 
-                    let h = high.as_ref().unwrap();
+                    let h = max.as_ref().unwrap();
                     tuf_combo(
-                        "High:",
+                        "MaxMem:",
                         h.total,
                         h.total - h.available,
                         h.free,
@@ -342,24 +390,26 @@ pub fn uu_app() -> Command {
             "bytes", "kilo", "mega", "giga", "tera", "peta", "kibi", "mebi", "gibi", "tebi", "pebi",
         ]))
         .args([
-            arg!(-b --bytes "show output in bytes").action(ArgAction::SetTrue),
-            arg!(   --kilo  "show output in kilobytes").action(ArgAction::SetFalse),
-            arg!(   --mega  "show output in megabytes").action(ArgAction::SetTrue),
-            arg!(   --giga  "show output in gigabytes").action(ArgAction::SetTrue),
-            arg!(   --tera  "show output in terabytes").action(ArgAction::SetTrue),
-            arg!(   --peta  "show output in petabytes").action(ArgAction::SetTrue),
-            arg!(-k --kibi  "show output in kibibytes").action(ArgAction::SetTrue),
-            arg!(-m --mebi  "show output in mebibytes").action(ArgAction::SetTrue),
-            arg!(-g --gibi  "show output in gibibytes").action(ArgAction::SetTrue),
-            arg!(   --tebi  "show output in tebibytes").action(ArgAction::SetTrue),
-            arg!(   --pebi  "show output in pebibytes").action(ArgAction::SetTrue),
-            arg!(-h --human "show human-readable output").action(ArgAction::SetTrue),
-            arg!(   --si    "use powers of 1000 not 1024").action(ArgAction::SetFalse),
-            // TODO: implement those
-            arg!(-l --lohi "show detailed low and high memory statistics")
+            arg!(-b --bytes  "show output in bytes").action(ArgAction::SetTrue),
+            arg!(   --kilo   "show output in kilobytes").action(ArgAction::SetFalse),
+            arg!(   --mega   "show output in megabytes").action(ArgAction::SetTrue),
+            arg!(   --giga   "show output in gigabytes").action(ArgAction::SetTrue),
+            arg!(   --tera   "show output in terabytes").action(ArgAction::SetTrue),
+            arg!(   --peta   "show output in petabytes").action(ArgAction::SetTrue),
+            arg!(-k --kibi   "show output in kibibytes").action(ArgAction::SetTrue),
+            arg!(-m --mebi   "show output in mebibytes").action(ArgAction::SetTrue),
+            arg!(-g --gibi   "show output in gibibytes").action(ArgAction::SetTrue),
+            arg!(   --tebi   "show output in tebibytes").action(ArgAction::SetTrue),
+            arg!(   --pebi   "show output in pebibytes").action(ArgAction::SetTrue),
+            arg!(-h --human  "show human-readable output").action(ArgAction::SetTrue),
+            arg!(   --si     "use powers of 1000 not 1024").action(ArgAction::SetFalse),
+            arg!(   --minmax "show the minimum and maximum that free has recorded since running")
+                .action(ArgAction::SetTrue),
+            arg!(-l --lohi   "show detailed low and high memory statistics")
                 .action(ArgAction::SetTrue),
             // arg!(-L --line "show output on a single line").action(),
             arg!(-t --total "show total for RAM + swap").action(ArgAction::SetTrue),
+            // TODO: implement those
             // arg!(-v --committed "show committed memory and commit limit").action(),
             // accept 1 as well as 0.5, 0.55, ...
             arg!(-s --seconds "repeat printing every N seconds")
