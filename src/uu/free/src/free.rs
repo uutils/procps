@@ -206,18 +206,25 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let total = matches.get_flag("total");
     let minmax = matches.get_flag("minmax");
     let lohi = matches.get_flag("lohi");
-    let mut count: u64 = matches.get_one("count").unwrap_or(&1_u64).to_owned();
-    let seconds: f64 = matches.get_one("seconds").unwrap_or(&1.0_f64).to_owned();
+    let count_flag = matches.get_one("count");
+    let mut count: u64 = count_flag.unwrap_or(&1_u64).to_owned();
+    let seconds_flag = matches.get_one("seconds");
+    let seconds: f64 = seconds_flag.unwrap_or(&1.0_f64).to_owned();
 
     let dur = Duration::from_nanos(seconds.mul(1_000_000_000.0).round() as u64);
     let convert = detect_unit(&matches);
+
+    let infinite: bool = count_flag.is_none() && seconds_flag.is_some();
 
     // minmax stuff
     let mut min: Option<MemInfo> = None;
     let mut max: Option<MemInfo> = None;
 
-    while count > 0 {
-        count -= 1;
+    while count > 0 || infinite {
+        // prevent underflow
+        if !infinite {
+            count -= 1;
+        }
         match parse_meminfo() {
             Ok(mem_info) => {
                 // dont calculate stuff we dont need in non-lohi situations
@@ -369,7 +376,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 process::exit(1);
             }
         }
-        if count > 0 {
+        if count > 0 || infinite {
             // the original free prints a newline everytime before waiting for the next round
             println!();
             sleep(dur);
