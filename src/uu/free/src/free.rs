@@ -54,6 +54,8 @@ struct MemInfo {
     high_total: u64,
     high_used: u64,
     high_free: u64,
+    commit_limit: u64,
+    committed: u64,
 }
 
 impl MemInfo {
@@ -85,6 +87,8 @@ impl MemInfo {
             high_total: clos(self.high_total, o.high_total),
             high_used: clos(self.high_used, o.high_used),
             high_free: clos(self.high_free, o.high_free),
+            commit_limit: clos(self.commit_limit, o.commit_limit),
+            committed: clos(self.committed, o.committed),
         }
     }
 
@@ -122,6 +126,8 @@ fn parse_meminfo() -> Result<MemInfo, Error> {
                 "HighTotal" => mem_info.high_total = parsed_value,
                 "HighUsed" => mem_info.high_used = parsed_value,
                 "HighFree" => mem_info.high_free = parsed_value,
+                "CommitLimit" => mem_info.commit_limit = parsed_value,
+                "Committed_AS" => mem_info.committed = parsed_value,
                 _ => {}
             }
         }
@@ -156,6 +162,8 @@ fn parse_meminfo() -> Result<MemInfo, Box<dyn std::error::Error>> {
         high_total: 0,
         high_used: 0,
         high_free: 0,
+        commit_limit: 0,
+        committed: 0,
     };
 
     Ok(mem_info)
@@ -168,11 +176,19 @@ fn parse_meminfo() -> Result<MemInfo, Box<dyn std::error::Error>> {
 }
 
 // print total - used - free combo that is used for everything except memory for now
-fn tuf_combo<F>(name: &str, total: u64, used: u64, free: u64, f: F)
+// free can be negative if the memory is overcommitted so it has to be signed
+fn tuf_combo<F>(name: &str, total: u64, used: u64, free: i128, f: F)
 where
     F: Fn(u64) -> String,
 {
-    println!("{:8}{:>12}{:>12}{:>12}", name, f(total), f(used), f(free));
+    // imo ugly hack to convert negative values
+    let free_str: String = if free < 0 {
+        "-".to_owned() + &f((-free) as u64)
+    } else {
+        f(free as u64)
+    };
+
+    println!("{:8}{:>12}{:>12}{:>12}", name, f(total), f(used), free_str);
 }
 
 #[uucore::main]
@@ -189,6 +205,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let mut count: u64 = count_flag.unwrap_or(&1_u64).to_owned();
     let seconds_flag = matches.get_one("seconds");
     let seconds: f64 = seconds_flag.unwrap_or(&1.0_f64).to_owned();
+    let committed = matches.get_flag("committed");
 
     let dur = Duration::from_nanos(seconds.mul(1_000_000_000.0).round() as u64);
     let convert = detect_unit(&matches);
@@ -268,31 +285,43 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                         "Low:",
                         mem_info.low_total,
                         mem_info.low_used,
-                        mem_info.low_free,
+                        mem_info.low_free.into(),
                         n2s,
                     );
                     tuf_combo(
                         "High:",
                         mem_info.high_total,
                         mem_info.high_used,
-                        mem_info.free,
+                        mem_info.free.into(),
                         n2s,
                     );
                 }
 
                 if minmax {
                     let l = min.as_ref().unwrap();
-                    tuf_combo("MinMem:", l.total, l.total - l.available, l.free, n2s);
+                    tuf_combo(
+                        "MinMem:",
+                        l.total,
+                        l.total - l.available,
+                        l.free.into(),
+                        n2s,
+                    );
 
                     let h = max.as_ref().unwrap();
-                    tuf_combo("MaxMem:", h.total, h.total - h.available, h.free, n2s);
+                    tuf_combo(
+                        "MaxMem:",
+                        h.total,
+                        h.total - h.available,
+                        h.free.into(),
+                        n2s,
+                    );
                 }
 
                 tuf_combo(
                     "Swap:",
                     mem_info.swap_total,
                     mem_info.swap_used,
-                    mem_info.swap_free,
+                    mem_info.swap_free.into(),
                     n2s,
                 );
                 if total {
@@ -300,7 +329,17 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                         "Total:",
                         mem_info.total + mem_info.swap_total,
                         used + mem_info.swap_used,
-                        mem_info.free + mem_info.swap_free,
+                        (mem_info.free + mem_info.swap_free).into(),
+                        n2s,
+                    );
+                }
+
+                if committed {
+                    tuf_combo(
+                        "Comm:",
+                        mem_info.commit_limit,
+                        mem_info.committed,
+                        (mem_info.commit_limit as i128) - (mem_info.committed as i128),
                         n2s,
                     );
                 }
@@ -348,10 +387,9 @@ pub fn uu_app() -> Command {
                 .action(ArgAction::SetTrue),
             arg!(-l --lohi   "show detailed low and high memory statistics")
                 .action(ArgAction::SetTrue),
-            // arg!(-L --line "show output on a single line").action(),
             arg!(-t --total "show total for RAM + swap").action(ArgAction::SetTrue),
-            // TODO: implement those
-            // arg!(-v --committed "show committed memory and commit limit").action(),
+            arg!(-v --committed "show committed memory and commit limit")
+                .action(ArgAction::SetTrue),
             // accept 1 as well as 0.5, 0.55, ...
             arg!(-s --seconds "repeat printing every N seconds")
                 .action(ArgAction::Set)
@@ -360,6 +398,7 @@ pub fn uu_app() -> Command {
             arg!(-c --count "repeat printing N times, then exit")
                 .action(ArgAction::Set)
                 .value_parser(clap::value_parser!(u64)),
+            // TODO:
             // arg!(-L --line "show output on a single line").action(),
         ])
         .arg(

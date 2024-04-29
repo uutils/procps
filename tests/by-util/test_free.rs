@@ -66,6 +66,18 @@ fn test_free_lohi() {
 }
 
 #[test]
+fn test_free_committed() {
+    let result = new_ucmd!().arg("-v").succeeds();
+    assert_eq!(result.stdout_str().lines().count(), 4);
+    assert!(result
+        .stdout_str()
+        .lines()
+        .last()
+        .unwrap()
+        .starts_with("Comm:"))
+}
+
+#[test]
 fn test_free_column_format() {
     let re_head_str = r"^ {15}total {8}used {8}free {6}shared {2}buff/cache {3}available$";
     let re_mem_str = r"^Mem:( +\d+){6}$";
