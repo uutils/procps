@@ -206,6 +206,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let seconds_flag = matches.get_one("seconds");
     let seconds: f64 = seconds_flag.unwrap_or(&1.0_f64).to_owned();
     let committed = matches.get_flag("committed");
+    let one_line = matches.get_flag("line");
 
     let dur = Duration::from_nanos(seconds.mul(1_000_000_000.0).round() as u64);
     let convert = detect_unit(&matches);
@@ -252,96 +253,109 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                     true => humanized(x, si),
                     false => convert(x).to_string(),
                 };
-
-                if wide {
-                    wide_header();
+                if one_line {
                     println!(
-                        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
-                        "Mem:",
-                        n2s(mem_info.total),
+                        "{:8}{:>12} {:8}{:>12}  {:8}{:>12} {:8}{:>12}",
+                        "SwapUse",
+                        n2s(mem_info.swap_used),
+                        "CacheUse",
+                        n2s(buff_cache + mem_info.reclaimable),
+                        "MemUse",
                         n2s(used),
-                        n2s(mem_info.free),
-                        n2s(mem_info.shared),
-                        n2s(buff_cache),
-                        n2s(cache + mem_info.reclaimable),
-                        n2s(mem_info.available),
+                        "MemFree",
+                        n2s(mem_info.free)
                     );
                 } else {
-                    header();
-                    println!(
-                        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
-                        "Mem:",
-                        n2s(mem_info.total),
-                        n2s(used),
-                        n2s(mem_info.free),
-                        n2s(mem_info.shared),
-                        n2s(buff_cache + mem_info.reclaimable),
-                        n2s(mem_info.available),
-                    )
-                }
+                    if wide {
+                        wide_header();
+                        println!(
+                            "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+                            "Mem:",
+                            n2s(mem_info.total),
+                            n2s(used),
+                            n2s(mem_info.free),
+                            n2s(mem_info.shared),
+                            n2s(buff_cache),
+                            n2s(cache + mem_info.reclaimable),
+                            n2s(mem_info.available),
+                        );
+                    } else {
+                        header();
+                        println!(
+                            "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+                            "Mem:",
+                            n2s(mem_info.total),
+                            n2s(used),
+                            n2s(mem_info.free),
+                            n2s(mem_info.shared),
+                            n2s(buff_cache + mem_info.reclaimable),
+                            n2s(mem_info.available),
+                        )
+                    }
 
-                if lohi {
-                    tuf_combo(
-                        "Low:",
-                        mem_info.low_total,
-                        mem_info.low_used,
-                        mem_info.low_free.into(),
-                        n2s,
-                    );
-                    tuf_combo(
-                        "High:",
-                        mem_info.high_total,
-                        mem_info.high_used,
-                        mem_info.free.into(),
-                        n2s,
-                    );
-                }
+                    if lohi {
+                        tuf_combo(
+                            "Low:",
+                            mem_info.low_total,
+                            mem_info.low_used,
+                            mem_info.low_free.into(),
+                            n2s,
+                        );
+                        tuf_combo(
+                            "High:",
+                            mem_info.high_total,
+                            mem_info.high_used,
+                            mem_info.free.into(),
+                            n2s,
+                        );
+                    }
 
-                if minmax {
-                    let l = min.as_ref().unwrap();
-                    tuf_combo(
-                        "MinMem:",
-                        l.total,
-                        l.total - l.available,
-                        l.free.into(),
-                        n2s,
-                    );
+                    if minmax {
+                        let l = min.as_ref().unwrap();
+                        tuf_combo(
+                            "MinMem:",
+                            l.total,
+                            l.total - l.available,
+                            l.free.into(),
+                            n2s,
+                        );
 
-                    let h = max.as_ref().unwrap();
-                    tuf_combo(
-                        "MaxMem:",
-                        h.total,
-                        h.total - h.available,
-                        h.free.into(),
-                        n2s,
-                    );
-                }
+                        let h = max.as_ref().unwrap();
+                        tuf_combo(
+                            "MaxMem:",
+                            h.total,
+                            h.total - h.available,
+                            h.free.into(),
+                            n2s,
+                        );
+                    }
 
-                tuf_combo(
-                    "Swap:",
-                    mem_info.swap_total,
-                    mem_info.swap_used,
-                    mem_info.swap_free.into(),
-                    n2s,
-                );
-                if total {
                     tuf_combo(
-                        "Total:",
-                        mem_info.total + mem_info.swap_total,
-                        used + mem_info.swap_used,
-                        (mem_info.free + mem_info.swap_free).into(),
+                        "Swap:",
+                        mem_info.swap_total,
+                        mem_info.swap_used,
+                        mem_info.swap_free.into(),
                         n2s,
                     );
-                }
+                    if total {
+                        tuf_combo(
+                            "Total:",
+                            mem_info.total + mem_info.swap_total,
+                            used + mem_info.swap_used,
+                            (mem_info.free + mem_info.swap_free).into(),
+                            n2s,
+                        );
+                    }
 
-                if committed {
-                    tuf_combo(
-                        "Comm:",
-                        mem_info.commit_limit,
-                        mem_info.committed,
-                        (mem_info.commit_limit as i128) - (mem_info.committed as i128),
-                        n2s,
-                    );
+                    if committed {
+                        tuf_combo(
+                            "Comm:",
+                            mem_info.commit_limit,
+                            mem_info.committed,
+                            (mem_info.commit_limit as i128) - (mem_info.committed as i128),
+                            n2s,
+                        );
+                    }
                 }
             }
             Err(e) => {
@@ -398,8 +412,7 @@ pub fn uu_app() -> Command {
             arg!(-c --count "repeat printing N times, then exit")
                 .action(ArgAction::Set)
                 .value_parser(clap::value_parser!(u64)),
-            // TODO:
-            // arg!(-L --line "show output on a single line").action(),
+            arg!(-L --line "show output on a single line").action(ArgAction::SetTrue),
         ])
         .arg(
             Arg::new("wide")

@@ -78,6 +78,15 @@ fn test_free_committed() {
 }
 
 #[test]
+fn test_free_always_one_line() {
+    // -L should ignore all other parameters and always print one line
+    let result = new_ucmd!().arg("-hltvwL").succeeds();
+    let stdout = result.stdout_str().lines().collect::<Vec<&str>>();
+    assert_eq!(stdout.len(), 1);
+    assert!(stdout[0].starts_with("SwapUse"));
+}
+
+#[test]
 fn test_free_column_format() {
     let re_head_str = r"^ {15}total {8}used {8}free {6}shared {2}buff/cache {3}available$";
     let re_mem_str = r"^Mem:( +\d+){6}$";
