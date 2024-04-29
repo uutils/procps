@@ -168,32 +168,11 @@ fn parse_meminfo() -> Result<MemInfo, Box<dyn std::error::Error>> {
 }
 
 // print total - used - free combo that is used for everything except memory for now
-fn tuf_combo(
-    name: &str,
-    total: u64,
-    used: u64,
-    free: u64,
-    human: bool,
-    convert: fn(u64) -> u64,
-    si: bool,
-) {
-    if human {
-        println!(
-            "{:8}{:>12}{:>12}{:>12}",
-            name,
-            humanized(total, si),
-            humanized(used, si),
-            humanized(free, si)
-        );
-    } else {
-        println!(
-            "{:8}{:>12}{:>12}{:>12}",
-            name,
-            convert(total),
-            convert(used),
-            convert(free)
-        );
-    }
+fn tuf_combo<F>(name: &str, total: u64, used: u64, free: u64, f: F)
+where
+    F: Fn(u64) -> String,
+{
+    println!("{:8}{:>12}{:>12}{:>12}", name, f(total), f(used), f(free));
 }
 
 #[uucore::main]
@@ -251,58 +230,37 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 let cache = if wide { mem_info.cached } else { 0 };
                 let used = mem_info.total - mem_info.available;
 
+                // function that converts the number to the correct string
+                let n2s = |x| match human {
+                    true => humanized(x, si),
+                    false => convert(x).to_string(),
+                };
+
                 if wide {
                     wide_header();
-                    if human {
-                        println!(
-                            "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
-                            "Mem:",
-                            humanized(mem_info.total, si),
-                            humanized(used, si),
-                            humanized(mem_info.free, si),
-                            humanized(mem_info.shared, si),
-                            humanized(buff_cache, si),
-                            humanized(cache + mem_info.reclaimable, si),
-                            humanized(mem_info.available, si),
-                        )
-                    } else {
-                        println!(
-                            "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
-                            "Mem:",
-                            convert(mem_info.total),
-                            convert(used),
-                            convert(mem_info.free),
-                            convert(mem_info.shared),
-                            convert(buff_cache),
-                            convert(cache + mem_info.reclaimable),
-                            convert(mem_info.available),
-                        )
-                    }
+                    println!(
+                        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+                        "Mem:",
+                        n2s(mem_info.total),
+                        n2s(used),
+                        n2s(mem_info.free),
+                        n2s(mem_info.shared),
+                        n2s(buff_cache),
+                        n2s(cache + mem_info.reclaimable),
+                        n2s(mem_info.available),
+                    );
                 } else {
                     header();
-                    if human {
-                        println!(
-                            "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
-                            "Mem:",
-                            humanized(mem_info.total, si),
-                            humanized(used, si),
-                            humanized(mem_info.free, si),
-                            humanized(mem_info.shared, si),
-                            humanized(buff_cache + mem_info.reclaimable, si),
-                            humanized(mem_info.available, si),
-                        )
-                    } else {
-                        println!(
-                            "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
-                            "Mem:",
-                            convert(mem_info.total),
-                            convert(used),
-                            convert(mem_info.free),
-                            convert(mem_info.shared),
-                            convert(buff_cache + mem_info.reclaimable),
-                            convert(mem_info.available),
-                        )
-                    }
+                    println!(
+                        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+                        "Mem:",
+                        n2s(mem_info.total),
+                        n2s(used),
+                        n2s(mem_info.free),
+                        n2s(mem_info.shared),
+                        n2s(buff_cache + mem_info.reclaimable),
+                        n2s(mem_info.available),
+                    )
                 }
 
                 if lohi {
@@ -311,43 +269,23 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                         mem_info.low_total,
                         mem_info.low_used,
                         mem_info.low_free,
-                        human,
-                        convert,
-                        si,
+                        n2s,
                     );
                     tuf_combo(
                         "High:",
                         mem_info.high_total,
                         mem_info.high_used,
                         mem_info.free,
-                        human,
-                        convert,
-                        si,
+                        n2s,
                     );
                 }
 
                 if minmax {
                     let l = min.as_ref().unwrap();
-                    tuf_combo(
-                        "MinMem:",
-                        l.total,
-                        l.total - l.available,
-                        l.free,
-                        human,
-                        convert,
-                        si,
-                    );
+                    tuf_combo("MinMem:", l.total, l.total - l.available, l.free, n2s);
 
                     let h = max.as_ref().unwrap();
-                    tuf_combo(
-                        "MaxMem:",
-                        h.total,
-                        h.total - h.available,
-                        h.free,
-                        human,
-                        convert,
-                        si,
-                    );
+                    tuf_combo("MaxMem:", h.total, h.total - h.available, h.free, n2s);
                 }
 
                 tuf_combo(
@@ -355,9 +293,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                     mem_info.swap_total,
                     mem_info.swap_used,
                     mem_info.swap_free,
-                    human,
-                    convert,
-                    si,
+                    n2s,
                 );
                 if total {
                     tuf_combo(
@@ -365,9 +301,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                         mem_info.total + mem_info.swap_total,
                         used + mem_info.swap_used,
                         mem_info.free + mem_info.swap_free,
-                        human,
-                        convert,
-                        si,
+                        n2s,
                     );
                 }
             }
