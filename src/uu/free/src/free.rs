@@ -181,7 +181,7 @@ fn tuf_combo<F>(name: &str, total: u64, used: u64, free: i128, f: F)
 where
     F: Fn(u64) -> String,
 {
-    // imo ugly hack to convert negative values
+    // ugly hack to convert negative values
     let free_str: String = if free < 0 {
         "-".to_owned() + &f((-free) as u64)
     } else {
