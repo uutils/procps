@@ -69,30 +69,27 @@ impl MemInfo {
             }
         }
 
-        // invert the behaviour for free and avail. memory
-        let choose_min_max = |a: u64, b: u64| compare(a, b, min);
-        let reverse_choose_min_max = |a: u64, b: u64| compare(a, b, !min);
-
+        // !min to invert the behaviour for free and avail. memory
         // looping over structs only exists in serde
         MemInfo {
             total: compare(self.total, o.total, min),
             free: compare(self.free, o.free, !min),
-            available: reverse_choose_min_max(self.available, o.available),
-            shared: choose_min_max(self.shared, o.shared),
-            buffers: choose_min_max(self.buffers, o.buffers),
-            cached: choose_min_max(self.cached, o.cached),
-            swap_total: choose_min_max(self.swap_total, o.swap_total),
-            swap_free: reverse_choose_min_max(self.swap_free, o.swap_free),
-            swap_used: choose_min_max(self.swap_used, o.swap_used),
-            reclaimable: reverse_choose_min_max(self.reclaimable, o.reclaimable),
-            low_total: choose_min_max(self.low_total, o.low_total),
-            low_used: choose_min_max(self.low_used, o.low_used),
-            low_free: reverse_choose_min_max(self.low_free, o.low_free),
-            high_total: choose_min_max(self.high_total, o.high_total),
-            high_used: choose_min_max(self.high_used, o.high_used),
-            high_free: reverse_choose_min_max(self.high_free, o.high_free),
-            commit_limit: choose_min_max(self.commit_limit, o.commit_limit),
-            committed: choose_min_max(self.committed, o.committed),
+            available: compare(self.available, o.available, !min),
+            shared: compare(self.shared, o.shared, min),
+            buffers: compare(self.buffers, o.buffers, min),
+            cached: compare(self.cached, o.cached, min),
+            swap_total: compare(self.swap_total, o.swap_total, min),
+            swap_free: compare(self.swap_free, o.swap_free, !min),
+            swap_used: compare(self.swap_used, o.swap_used, min),
+            reclaimable: compare(self.reclaimable, o.reclaimable, !min),
+            low_total: compare(self.low_total, o.low_total, min),
+            low_used: compare(self.low_used, o.low_used, min),
+            low_free: compare(self.low_free, o.low_free, !min),
+            high_total: compare(self.high_total, o.high_total, min),
+            high_used: compare(self.high_used, o.high_used, min),
+            high_free: compare(self.high_free, o.high_free, !min),
+            commit_limit: compare(self.commit_limit, o.commit_limit, min),
+            committed: compare(self.committed, o.committed, min),
         }
     }
 
