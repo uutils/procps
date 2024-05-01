@@ -70,29 +70,29 @@ impl MemInfo {
         }
 
         // invert the behaviour for free and avail. memory
-        let clos = |a: u64, b: u64| compare(a, b, min);
-        let anticlos = |a: u64, b: u64| compare(a, b, !min);
+        let choose_min_max = |a: u64, b: u64| compare(a, b, min);
+        let reverse_choose_min_max = |a: u64, b: u64| compare(a, b, !min);
 
         // looping over structs only exists in serde
         MemInfo {
-            total: clos(self.total, o.total),
-            free: anticlos(self.free, o.free),
-            available: anticlos(self.available, o.available),
-            shared: clos(self.shared, o.shared),
-            buffers: clos(self.buffers, o.buffers),
-            cached: clos(self.cached, o.cached),
-            swap_total: clos(self.swap_total, o.swap_total),
-            swap_free: anticlos(self.swap_free, o.swap_free),
-            swap_used: clos(self.swap_used, o.swap_used),
-            reclaimable: anticlos(self.reclaimable, o.reclaimable),
-            low_total: clos(self.low_total, o.low_total),
-            low_used: clos(self.low_used, o.low_used),
-            low_free: anticlos(self.low_free, o.low_free),
-            high_total: clos(self.high_total, o.high_total),
-            high_used: clos(self.high_used, o.high_used),
-            high_free: anticlos(self.high_free, o.high_free),
-            commit_limit: clos(self.commit_limit, o.commit_limit),
-            committed: clos(self.committed, o.committed),
+            total: choose_min_max(self.total, o.total),
+            free: reverse_choose_min_max(self.free, o.free),
+            available: reverse_choose_min_max(self.available, o.available),
+            shared: choose_min_max(self.shared, o.shared),
+            buffers: choose_min_max(self.buffers, o.buffers),
+            cached: choose_min_max(self.cached, o.cached),
+            swap_total: choose_min_max(self.swap_total, o.swap_total),
+            swap_free: reverse_choose_min_max(self.swap_free, o.swap_free),
+            swap_used: choose_min_max(self.swap_used, o.swap_used),
+            reclaimable: reverse_choose_min_max(self.reclaimable, o.reclaimable),
+            low_total: choose_min_max(self.low_total, o.low_total),
+            low_used: choose_min_max(self.low_used, o.low_used),
+            low_free: reverse_choose_min_max(self.low_free, o.low_free),
+            high_total: choose_min_max(self.high_total, o.high_total),
+            high_used: choose_min_max(self.high_used, o.high_used),
+            high_free: reverse_choose_min_max(self.high_free, o.high_free),
+            commit_limit: choose_min_max(self.commit_limit, o.commit_limit),
+            committed: choose_min_max(self.committed, o.committed),
         }
     }
 
