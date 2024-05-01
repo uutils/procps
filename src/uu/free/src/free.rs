@@ -75,8 +75,8 @@ impl MemInfo {
 
         // looping over structs only exists in serde
         MemInfo {
-            total: choose_min_max(self.total, o.total),
-            free: reverse_choose_min_max(self.free, o.free),
+            total: compare(self.total, o.total, min),
+            free: compare(self.free, o.free, !min),
             available: reverse_choose_min_max(self.available, o.available),
             shared: choose_min_max(self.shared, o.shared),
             buffers: choose_min_max(self.buffers, o.buffers),
