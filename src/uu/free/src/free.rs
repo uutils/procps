@@ -61,32 +61,36 @@ struct MemInfo {
 impl MemInfo {
     fn make_new(&self, o: &MemInfo, min: bool) -> MemInfo {
         // if min is true return the smaller value, else return the higher
-        let clos = |a: u64, b: u64| -> u64 {
-            if (a < b && min) || (a > b && !min) {
-                a
+        fn compare(a: u64, b: u64, min: bool) -> u64 {
+            if min {
+                a.min(b)
             } else {
-                b
+                a.max(b)
             }
-        };
+        }
+
+        // invert the behaviour for free and avail. memory
+        let clos = |a: u64, b: u64| compare(a, b, min);
+        let anticlos = |a: u64, b: u64| compare(a, b, !min);
 
         // looping over structs only exists in serde
         MemInfo {
             total: clos(self.total, o.total),
-            free: clos(self.free, o.free),
-            available: clos(self.available, o.available),
+            free: anticlos(self.free, o.free),
+            available: anticlos(self.available, o.available),
             shared: clos(self.shared, o.shared),
             buffers: clos(self.buffers, o.buffers),
             cached: clos(self.cached, o.cached),
             swap_total: clos(self.swap_total, o.swap_total),
-            swap_free: clos(self.swap_free, o.swap_free),
+            swap_free: anticlos(self.swap_free, o.swap_free),
             swap_used: clos(self.swap_used, o.swap_used),
-            reclaimable: clos(self.reclaimable, o.reclaimable),
+            reclaimable: anticlos(self.reclaimable, o.reclaimable),
             low_total: clos(self.low_total, o.low_total),
             low_used: clos(self.low_used, o.low_used),
-            low_free: clos(self.low_free, o.low_free),
+            low_free: anticlos(self.low_free, o.low_free),
             high_total: clos(self.high_total, o.high_total),
             high_used: clos(self.high_used, o.high_used),
-            high_free: clos(self.high_free, o.high_free),
+            high_free: anticlos(self.high_free, o.high_free),
             commit_limit: clos(self.commit_limit, o.commit_limit),
             committed: clos(self.committed, o.committed),
         }
