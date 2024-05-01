@@ -223,7 +223,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         }
         match parse_meminfo() {
             Ok(mem_info) => {
-                // dont calculate stuff we dont need in non-lohi situations
+                // Don't calculate stuff we don't need in non-lohi situations
                 if minmax {
                     // temp variable to prevent borrow + mut borrow
                     let l = match &min {
