@@ -60,7 +60,7 @@ struct MemInfo {
 
 impl MemInfo {
     fn make_new(&self, o: &MemInfo, min: bool) -> MemInfo {
-        // to use min
+        // if min is true return the smaller value, else return the higher
         let clos = |a: u64, b: u64| -> u64 {
             if (a < b && min) || (a > b && !min) {
                 a
@@ -155,7 +155,6 @@ fn parse_meminfo() -> Result<MemInfo, Box<dyn std::error::Error>> {
         swap_free: sys.free_swap(),
         swap_used: sys.total_swap().saturating_sub(sys.free_swap()),
         reclaimable: 0,
-        // i dont know how to get that kind of info, you probably have to either pay money to get the info or pay some money for some developer docs
         low_total: 0,
         low_used: 0,
         low_free: 0,
