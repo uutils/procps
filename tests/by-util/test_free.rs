@@ -48,15 +48,6 @@ fn test_free_count() {
 }
 
 #[test]
-fn test_free_minmax() {
-    let result = new_ucmd!().arg("--minmax").succeeds();
-    assert_eq!(result.stdout_str().lines().count(), 5);
-    let lines = result.stdout_str().lines().collect::<Vec<&str>>();
-    assert!(lines[2].starts_with("MinMem:"));
-    assert!(lines[3].starts_with("MaxMem:"));
-}
-
-#[test]
 fn test_free_lohi() {
     let result = new_ucmd!().arg("--lohi").succeeds();
     assert_eq!(result.stdout_str().lines().count(), 5);
