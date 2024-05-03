@@ -239,7 +239,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                             "High:",
                             mem_info.high_total,
                             mem_info.high_used,
-                            mem_info.free.into(),
+                            mem_info.high_free.into(),
                             n2s,
                         );
                     }
