@@ -19,7 +19,6 @@ use clap::ArgAction;
 use clap::ArgGroup;
 use clap::ArgMatches;
 use clap::{crate_version, Command};
-use std::borrow::BorrowMut;
 use std::env;
 #[cfg(target_os = "linux")]
 use std::fs;
@@ -56,50 +55,6 @@ struct MemInfo {
     high_free: u64,
     commit_limit: u64,
     committed: u64,
-}
-
-impl MemInfo {
-    fn make_new(&self, o: &MemInfo, min: bool) -> MemInfo {
-        // if min is true return the smaller value, else return the higher
-        fn compare(a: u64, b: u64, min: bool) -> u64 {
-            if min {
-                a.min(b)
-            } else {
-                a.max(b)
-            }
-        }
-
-        // !min to invert the behaviour for free and avail. memory
-        // looping over structs only exists in serde
-        MemInfo {
-            total: compare(self.total, o.total, min),
-            free: compare(self.free, o.free, !min),
-            available: compare(self.available, o.available, !min),
-            shared: compare(self.shared, o.shared, min),
-            buffers: compare(self.buffers, o.buffers, min),
-            cached: compare(self.cached, o.cached, min),
-            swap_total: compare(self.swap_total, o.swap_total, min),
-            swap_free: compare(self.swap_free, o.swap_free, !min),
-            swap_used: compare(self.swap_used, o.swap_used, min),
-            reclaimable: compare(self.reclaimable, o.reclaimable, !min),
-            low_total: compare(self.low_total, o.low_total, min),
-            low_used: compare(self.low_used, o.low_used, min),
-            low_free: compare(self.low_free, o.low_free, !min),
-            high_total: compare(self.high_total, o.high_total, min),
-            high_used: compare(self.high_used, o.high_used, min),
-            high_free: compare(self.high_free, o.high_free, !min),
-            commit_limit: compare(self.commit_limit, o.commit_limit, min),
-            committed: compare(self.committed, o.committed, min),
-        }
-    }
-
-    fn max(&self, o: &MemInfo) -> MemInfo {
-        self.make_new(o, false)
-    }
-
-    fn min(&self, o: &MemInfo) -> MemInfo {
-        self.make_new(o, true)
-    }
 }
 
 #[cfg(target_os = "linux")]
@@ -199,7 +154,6 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let human = matches.get_flag("human");
     let si = matches.get_flag("si");
     let total = matches.get_flag("total");
-    let minmax = matches.get_flag("minmax");
     let lohi = matches.get_flag("lohi");
     let count_flag = matches.get_one("count");
     let mut count: u64 = count_flag.unwrap_or(&1_u64).to_owned();
@@ -213,10 +167,6 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     let infinite: bool = count_flag.is_none() && seconds_flag.is_some();
 
-    // minmax stuff
-    let mut min: Option<MemInfo> = None;
-    let mut max: Option<MemInfo> = None;
-
     while count > 0 || infinite {
         // prevent underflow
         if !infinite {
@@ -224,22 +174,6 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         }
         match parse_meminfo() {
             Ok(mem_info) => {
-                // Don't calculate stuff we don't need in non-lohi situations
-                if minmax {
-                    // temp variable to prevent borrow + mut borrow
-                    let l = match &min {
-                        None => mem_info.clone(),
-                        Some(x) => x.min(&mem_info),
-                    };
-                    min.borrow_mut().replace(l);
-
-                    let h = match &max {
-                        None => mem_info.clone(),
-                        Some(x) => x.max(&mem_info),
-                    };
-                    max.borrow_mut().replace(h);
-                }
-
                 let buff_cache = if wide {
                     mem_info.buffers
                 } else {
@@ -306,26 +240,6 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                             mem_info.high_total,
                             mem_info.high_used,
                             mem_info.free.into(),
-                            n2s,
-                        );
-                    }
-
-                    if minmax {
-                        let l = min.as_ref().unwrap();
-                        tuf_combo(
-                            "MinMem:",
-                            l.total,
-                            l.total - l.available,
-                            l.free.into(),
-                            n2s,
-                        );
-
-                        let h = max.as_ref().unwrap();
-                        tuf_combo(
-                            "MaxMem:",
-                            h.total,
-                            h.total - h.available,
-                            h.free.into(),
                             n2s,
                         );
                     }
@@ -397,8 +311,6 @@ pub fn uu_app() -> Command {
             arg!(   --pebi   "show output in pebibytes").action(ArgAction::SetTrue),
             arg!(-h --human  "show human-readable output").action(ArgAction::SetTrue),
             arg!(   --si     "use powers of 1000 not 1024").action(ArgAction::SetFalse),
-            arg!(   --minmax "show the minimum and maximum that free has recorded since running")
-                .action(ArgAction::SetTrue),
             arg!(-l --lohi   "show detailed low and high memory statistics")
                 .action(ArgAction::SetTrue),
             arg!(-t --total "show total for RAM + swap").action(ArgAction::SetTrue),
