@@ -84,6 +84,17 @@ fn parse_meminfo() -> Result<MemInfo, Error> {
             }
         }
     }
+    // as far as i understand the kernel doc everything that is not highmem (out of all the memory) is lowmem
+    // from kernel doc: "Highmem is all memory above ~860MB of physical memory."
+    // it would be better to implement this via optionals, etc. but that would require a refactor so lets not do that right now
+
+    if mem_info.low_total == u64::default() {
+        mem_info.low_total = mem_info.total - mem_info.high_total;
+    }
+
+    if mem_info.low_free == u64::default() {
+        mem_info.low_free = mem_info.free - mem_info.high_free;
+    }
 
     mem_info.swap_used = mem_info.swap_total - mem_info.swap_free;
 
