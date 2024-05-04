@@ -57,7 +57,7 @@ struct MemInfo {
 
 #[cfg(target_os = "linux")]
 fn parse_meminfo() -> Result<MemInfo, Error> {
-    // kernel docs: https://www.kernel.org/doc/html/latest/filesystems/proc.html
+    // kernel docs: https://www.kernel.org/doc/html/latest/filesystems/proc.html#meminfo
     let contents = fs::read_to_string("/proc/meminfo")?;
     let mut mem_info = MemInfo::default();
 
