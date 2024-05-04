@@ -48,10 +48,8 @@ struct MemInfo {
     swap_used: u64,
     reclaimable: u64,
     low_total: u64,
-    low_used: u64,
     low_free: u64,
     high_total: u64,
-    high_used: u64,
     high_free: u64,
     commit_limit: u64,
     committed: u64,
@@ -77,10 +75,8 @@ fn parse_meminfo() -> Result<MemInfo, Error> {
                 "SwapFree" => mem_info.swap_free = parsed_value,
                 "SReclaimable" => mem_info.reclaimable = parsed_value,
                 "LowTotal" => mem_info.low_total = parsed_value,
-                "LowUsed" => mem_info.low_used = parsed_value,
                 "LowFree" => mem_info.low_free = parsed_value,
                 "HighTotal" => mem_info.high_total = parsed_value,
-                "HighUsed" => mem_info.high_used = parsed_value,
                 "HighFree" => mem_info.high_free = parsed_value,
                 "CommitLimit" => mem_info.commit_limit = parsed_value,
                 "Committed_AS" => mem_info.committed = parsed_value,
@@ -231,14 +227,14 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                         tuf_combo(
                             "Low:",
                             mem_info.low_total,
-                            mem_info.low_used,
+                            mem_info.low_total - mem_info.low_free,
                             mem_info.low_free.into(),
                             n2s,
                         );
                         tuf_combo(
                             "High:",
                             mem_info.high_total,
-                            mem_info.high_used,
+                            mem_info.high_total - mem_info.high_free,
                             mem_info.high_free.into(),
                             n2s,
                         );
