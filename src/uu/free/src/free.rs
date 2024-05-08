@@ -188,9 +188,12 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 let used = mem_info.total - mem_info.available;
 
                 // function that converts the number to the correct string
-                let n2s = |x| match human {
-                    true => humanized(x, si),
-                    false => convert(x).to_string(),
+                let n2s = |x| {
+                    if human {
+                        humanized(x, si)
+                    } else {
+                        convert(x).to_string()
+                    }
                 };
                 if one_line {
                     println!(
