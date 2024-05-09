@@ -9,6 +9,8 @@ use regex::Regex;
 
 use crate::common::util::TestScenario;
 
+// TODO: make tests combineable (e.g. test --total --human)
+
 #[test]
 fn test_invalid_arg() {
     new_ucmd!().arg("--definitely-invalid").fails().code_is(1);
@@ -25,6 +27,54 @@ fn test_free_wide() {
     let result = new_ucmd!().arg("--wide").succeeds();
     assert!(result.stdout_str().contains("Mem:"));
     assert!(!result.stdout_str().contains("buff/cache"));
+}
+
+#[test]
+fn test_free_total() {
+    let result = new_ucmd!().arg("-t").succeeds();
+    assert_eq!(result.stdout_str().lines().count(), 4);
+    assert!(result
+        .stdout_str()
+        .lines()
+        .last()
+        .unwrap()
+        .starts_with("Total:"))
+}
+
+#[test]
+fn test_free_count() {
+    let result = new_ucmd!().args(&["-c", "2", "-s", "0"]).succeeds();
+    assert_eq!(result.stdout_str().lines().count(), 7);
+}
+
+#[test]
+fn test_free_lohi() {
+    let result = new_ucmd!().arg("--lohi").succeeds();
+    assert_eq!(result.stdout_str().lines().count(), 5);
+    let lines = result.stdout_str().lines().collect::<Vec<&str>>();
+    assert!(lines[2].starts_with("Low:"));
+    assert!(lines[3].starts_with("High:"));
+}
+
+#[test]
+fn test_free_committed() {
+    let result = new_ucmd!().arg("-v").succeeds();
+    assert_eq!(result.stdout_str().lines().count(), 4);
+    assert!(result
+        .stdout_str()
+        .lines()
+        .last()
+        .unwrap()
+        .starts_with("Comm:"))
+}
+
+#[test]
+fn test_free_always_one_line() {
+    // -L should ignore all other parameters and always print one line
+    let result = new_ucmd!().arg("-hltvwL").succeeds();
+    let stdout = result.stdout_str().lines().collect::<Vec<&str>>();
+    assert_eq!(stdout.len(), 1);
+    assert!(stdout[0].starts_with("SwapUse"));
 }
 
 #[test]
