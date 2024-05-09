@@ -327,10 +327,12 @@ pub fn uu_app() -> Command {
             // accept 1 as well as 0.5, 0.55, ...
             arg!(-s --seconds "repeat printing every N seconds")
                 .action(ArgAction::Set)
+                .value_name("N")
                 .value_parser(clap::value_parser!(f64)),
             // big int because predecesor accepts them as well (some scripts might have huge values as some sort of infinite)
             arg!(-c --count "repeat printing N times, then exit")
                 .action(ArgAction::Set)
+                .value_name("N")
                 .value_parser(clap::value_parser!(u64)),
             arg!(-L --line "show output on a single line").action(ArgAction::SetTrue),
         ])
