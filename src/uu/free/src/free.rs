@@ -197,10 +197,10 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 };
                 if one_line {
                     println!(
-                        "{:8}{:>12} {:8}{:>12}  {:8}{:>12} {:8}{:>12}",
+                        "{:8}{:>11} {:8}{:>11}  {:8}{:>10} {:8}{:>11}",
                         "SwapUse",
                         n2s(mem_info.swap_used),
-                        "CacheUse",
+                        "CachUse",
                         n2s(buff_cache + mem_info.reclaimable),
                         "MemUse",
                         n2s(used),
