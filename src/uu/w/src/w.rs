@@ -154,14 +154,19 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     match fetch_user_info() {
         Ok(user_info) => {
             if !no_header {
-                if !short {
-                    println!("USER\tTTY\tLOGIN@\tIDLE\tJCPU\tPCPU\tWHAT");
-                } else {
+                if short {
                     println!("USER\tTTY\tIDLE\tWHAT");
+                } else {
+                    println!("USER\tTTY\tLOGIN@\tIDLE\tJCPU\tPCPU\tWHAT");
                 }
             }
             for user in user_info {
-                if !short {
+                if short {
+                    println!(
+                        "{}\t{}\t{}\t{}",
+                        user.user, user.terminal, user.idle_time, user.command
+                    );
+                } else {
                     println!(
                         "{}\t{}\t{}\t{}\t{}s\t{}s\t{}",
                         user.user,
@@ -171,11 +176,6 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                         user.jcpu,
                         user.pcpu,
                         user.command
-                    );
-                } else {
-                    println!(
-                        "{}\t{}\t{}\t{}",
-                        user.user, user.terminal, user.idle_time, user.command
                     );
                 }
             }
