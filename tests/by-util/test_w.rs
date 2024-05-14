@@ -21,6 +21,8 @@ fn test_no_header() {
 }
 
 #[test]
+// As of now, --short is only implemented for Linux
+#[cfg(target_os = "linux")]
 fn test_option_short() {
     use regex::Regex;
     let cmd = new_ucmd!().arg("--short").succeeds();
