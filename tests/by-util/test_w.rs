@@ -26,9 +26,9 @@ fn test_option_short() {
     let cmd = new_ucmd!().arg("--short").succeeds();
 
     let cmd_output = cmd.stdout_str();
-    let cmd_output_lines: Vec<&str> = cmd_output.split("\n").collect();
+    let cmd_output_lines: Vec<&str> = cmd_output.split('\n').collect();
     let line_output_header = cmd_output_lines[0];
-    let line_output_data_words: Vec<&str> = cmd_output_lines[1].split("\t").collect();
+    let line_output_data_words: Vec<&str> = cmd_output_lines[1].split('\t').collect();
 
     assert!(line_output_header.contains("USER\tTTY\tIDLE\tWHAT"));
     assert!(!line_output_header.contains("USER\tTTY\tLOGIN@\tIDLE\tJCPU\tPCPU\tWHAT"));
