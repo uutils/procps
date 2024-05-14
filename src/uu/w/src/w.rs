@@ -175,10 +175,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 } else {
                     println!(
                         "{}\t{}\t{}\t{}",
-                        user.user,
-                        user.terminal,
-                        user.idle_time,
-                        user.command
+                        user.user, user.terminal, user.idle_time, user.command
                     );
                 }
             }

@@ -32,12 +32,12 @@ fn test_option_short() {
 
     assert!(line_output_header.contains("USER\tTTY\tIDLE\tWHAT"));
     assert!(!line_output_header.contains("USER\tTTY\tLOGIN@\tIDLE\tJCPU\tPCPU\tWHAT"));
-    
+
     let pattern: Vec<Regex> = vec![
-        Regex::new(r"^(\S+)").unwrap(),      // USER
-        Regex::new(r"(\S+)").unwrap(),       // TERMINAL 
-        Regex::new(r"(^$)").unwrap(),        // IDLE_TIME => empty str until IDLE_TIME implemented
-        Regex::new(r"(\d+\.\d+s)?").unwrap() // COMMAND
+        Regex::new(r"^(\S+)").unwrap(),       // USER
+        Regex::new(r"(\S+)").unwrap(),        // TERMINAL
+        Regex::new(r"(^$)").unwrap(),         // IDLE_TIME => empty str until IDLE_TIME implemented
+        Regex::new(r"(\d+\.\d+s)?").unwrap(), // COMMAND
     ];
 
     assert!(pattern[0].is_match(line_output_data_words[0]));
