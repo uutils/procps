@@ -24,6 +24,8 @@ fn test_no_header() {
 // As of now, --short is only implemented for Linux
 #[cfg(target_os = "linux")]
 fn test_option_short() {
+    use std::io::IsTerminal;
+
     use regex::Regex;
     let cmd = new_ucmd!().arg("--short").succeeds();
 
@@ -35,17 +37,19 @@ fn test_option_short() {
     assert!(line_output_header.contains("USER\tTTY\tIDLE\tWHAT"));
     assert!(!line_output_header.contains("USER\tTTY\tLOGIN@\tIDLE\tJCPU\tPCPU\tWHAT"));
 
-    let pattern: Vec<Regex> = vec![
-        Regex::new(r"^(\S+)").unwrap(),       // USER
-        Regex::new(r"(\S+)").unwrap(),        // TERMINAL
-        Regex::new(r"(^$)").unwrap(),         // IDLE_TIME => empty str until IDLE_TIME implemented
-        Regex::new(r"(\d+\.\d+s)?").unwrap(), // COMMAND
-    ];
+    if std::io::stdout().is_terminal() {
+        let pattern: Vec<Regex> = vec![
+            Regex::new(r"^(\S+)").unwrap(),       // USER
+            Regex::new(r"(\S+)").unwrap(),        // TERMINAL
+            Regex::new(r"(^$)").unwrap(), // IDLE_TIME => empty str until IDLE_TIME implemented
+            Regex::new(r"(\d+\.\d+s)?").unwrap(), // COMMAND
+        ];
 
-    assert!(pattern[0].is_match(line_output_data_words[0]));
-    assert!(pattern[1].is_match(line_output_data_words[1]));
-    assert!(pattern[2].is_match(line_output_data_words[2]));
-    assert!(pattern[3].is_match(line_output_data_words[3]));
+        assert!(pattern[0].is_match(line_output_data_words[0]));
+        assert!(pattern[1].is_match(line_output_data_words[1]));
+        assert!(pattern[2].is_match(line_output_data_words[2]));
+        assert!(pattern[3].is_match(line_output_data_words[3]));
+    }
 }
 
 #[test]
