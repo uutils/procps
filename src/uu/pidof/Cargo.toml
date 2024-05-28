@@ -1,0 +1,24 @@
+[package]
+name = "uu_pidof"
+version = "0.0.1"
+edition = "2021"
+authors = ["uutils developers"]
+license = "MIT"
+description = "pidof ~ (uutils) Find the process ID of a running program"
+
+homepage = "https://github.com/uutils/procps"
+repository = "https://github.com/uutils/procps/tree/main/src/uu/pmap"
+keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
+categories = ["command-line-utilities"]
+
+
+[dependencies]
+uucore = { workspace = true }
+clap = { workspace = true }
+
+[lib]
+path = "src/pidof.rs"
+
+[[bin]]
+name = "pidof"
+path = "src/main.rs"

@@ -25,7 +25,7 @@ build = "build.rs"
 default = ["feat_common_core"]
 uudoc = []
 
-feat_common_core = ["pwdx", "free", "w", "watch", "pmap", "slabtop", "pgrep"]
+feat_common_core = ["pwdx", "free", "w", "watch", "pmap", "slabtop", "pgrep", "pidof"]
 
 [workspace.dependencies]
 uucore = "0.0.27"
@@ -63,6 +63,7 @@ watch = { optional = true, version = "0.0.1", package = "uu_watch", path = "src/
 pmap = { optional = true, version = "0.0.1", package = "uu_pmap", path = "src/uu/pmap" }
 slabtop = { optional = true, version = "0.0.1", package = "uu_slabtop", path = "src/uu/slabtop" }
 pgrep = { optional = true, version = "0.0.1", package = "uu_pgrep", path = "src/uu/pgrep" }
+pidof = { optional = true, version = "0.0.1", package = "uu_pidof", path = "src/uu/pidof" }
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"
