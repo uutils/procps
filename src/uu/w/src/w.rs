@@ -258,7 +258,6 @@ mod tests {
     use crate::{
         fetch_cmdline, fetch_pcpu_time, fetch_terminal_number, format_time, get_clock_tick,
     };
-    use chrono;
     use std::{fs, path::Path, process};
 
     #[test]
