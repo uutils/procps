@@ -1,0 +1,25 @@
+[package]
+name = "uu_pgrep"
+version = "0.0.1"
+edition = "2021"
+authors = ["uutils developers"]
+license = "MIT"
+description = "pgrep ~ (uutils) look up, signal, or wait for processes based on name and other attributes"
+
+homepage = "https://github.com/uutils/procps"
+repository = "https://github.com/uutils/procps/tree/main/src/uu/pgrep"
+keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
+categories = ["command-line-utilities"]
+
+
+[dependencies]
+uucore = { workspace = true }
+clap = { workspace = true }
+walkdir = { workspace = true }
+
+[lib]
+path = "src/pgrep.rs"
+
+[[bin]]
+name = "pgrep"
+path = "src/main.rs"
