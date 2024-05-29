@@ -25,7 +25,7 @@ impl TryFrom<DirEntry> for PidEntry {
         let pid = {
             value
                 .path()
-                .into_iter()
+                .iter()
                 .last()
                 .ok_or(io::ErrorKind::Other)?
                 .to_str()
@@ -43,8 +43,7 @@ impl TryFrom<DirEntry> for PidEntry {
 
             content
                 .lines()
-                .map(|it| it.split_once(":"))
-                .flatten()
+                .filter_map(|it| it.split_once(':'))
                 .map(|it| (it.0.to_string(), it.1.trim_start().to_string()))
                 .collect::<HashMap<_, _>>()
         };
@@ -63,20 +62,5 @@ pub fn walk_pid() -> impl Iterator<Item = PidEntry> {
         .into_iter()
         .flatten()
         .filter(|it| it.path().is_dir())
-        .map(PidEntry::try_from)
-        .flatten()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_name() {
-        let r = walk_pid()
-            .filter(|it| !it.cmdline.is_empty())
-            .collect::<Vec<_>>();
-
-        println!()
-    }
+        .flat_map(PidEntry::try_from)
 }

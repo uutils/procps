@@ -53,7 +53,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 name.into()
             };
 
-            programs.iter().find(|it| name.contains(*it)).is_some() ^ should_inverse
+            programs.iter().any(|it| name.contains(it)) ^ should_inverse
         })
         .collect();
 
@@ -74,7 +74,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 }
             })
             .collect::<Vec<_>>();
-        println!("{}", result.join(&delimiter));
+        println!("{}", result.join(delimiter));
     }
 
     Ok(())
