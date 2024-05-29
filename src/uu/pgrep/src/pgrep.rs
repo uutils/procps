@@ -22,8 +22,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         .unwrap_or(&default_delimiter);
 
     let mut programs = matches
-        .get_many::<String>("program-name")
-        .expect("need at least one program-name")
+        .get_many::<String>("pattern")
+        .unwrap_or_default()
         .map(|it| it.to_string())
         .collect::<Vec<_>>();
 
@@ -119,7 +119,7 @@ pub fn uu_app() -> Command {
             // arg!(       --nslist <ns>       ... "list which namespaces will be considered for the --ns option."),
         ])
         .arg(
-            Arg::new("program-name")
+            Arg::new("pattern")
                 .help("Name of the program to find the PID of")
                 .index(1),
         )
