@@ -3,22 +3,8 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use bytesize::ByteSize;
-use bytesize::GB;
-use bytesize::GIB;
-use bytesize::KIB;
-use bytesize::MB;
-use bytesize::MIB;
-use bytesize::PB;
-use bytesize::PIB;
-use bytesize::TB;
-use bytesize::TIB;
-use clap::arg;
-use clap::Arg;
-use clap::ArgAction;
-use clap::ArgGroup;
-use clap::ArgMatches;
-use clap::{crate_version, Command};
+use bytesize::{ByteSize, GB, GIB, KIB, MB, MIB, PB, PIB, TB, TIB};
+use clap::{arg, crate_version, Arg, ArgAction, ArgGroup, ArgMatches, Command};
 use std::env;
 #[cfg(target_os = "linux")]
 use std::fs;
@@ -327,10 +313,12 @@ pub fn uu_app() -> Command {
             // accept 1 as well as 0.5, 0.55, ...
             arg!(-s --seconds "repeat printing every N seconds")
                 .action(ArgAction::Set)
+                .value_name("N")
                 .value_parser(clap::value_parser!(f64)),
             // big int because predecesor accepts them as well (some scripts might have huge values as some sort of infinite)
             arg!(-c --count "repeat printing N times, then exit")
                 .action(ArgAction::Set)
+                .value_name("N")
                 .value_parser(clap::value_parser!(u64)),
             arg!(-L --line "show output on a single line").action(ArgAction::SetTrue),
         ])
