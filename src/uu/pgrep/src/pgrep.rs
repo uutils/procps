@@ -18,10 +18,7 @@ const USAGE: &str = help_usage!("pgrep.md");
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
 
-    let default_delimiter = "\n".into();
-    let delimiter = matches
-        .get_one::<String>("delimiter")
-        .unwrap_or(&default_delimiter);
+    let delimiter = matches.get_one::<String>("delimiter").unwrap();
 
     let mut programs = matches
         .get_many::<String>("pattern")
