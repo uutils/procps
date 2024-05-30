@@ -18,10 +18,10 @@ Ongoing:
 * `watch`: Executes a program periodically, showing output fullscreen.
 * `pmap`: Displays the memory map of a process.
 * `slabtop`: Displays detailed kernel slab cache information in real time.
+* `pgrep`: Searches for processes based on name and other attributes.
 
 TODO:
 * `ps`: Displays information about active processes.
-* `pgrep`: Searches for processes based on name and other attributes.
 * `pidwait`: Waits for a specific process to terminate.
 * `skill`: Sends a signal to processes based on criteria like user, terminal, etc.
 * `tload`: Prints a graphical representation of system load average to the terminal.
