@@ -3,7 +3,6 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use regex::Regex;
 use std::{collections::HashMap, fs, io, path::PathBuf, rc::Rc};
 use walkdir::{DirEntry, WalkDir};
 
@@ -43,16 +42,23 @@ impl PidEntry {
         }
 
         let result: Vec<_> = {
-            // Regex that have been validated
-            let regex = Regex::new(r"\(([^()]*)\)").unwrap();
-            let result = regex
-                .replace_all(&self.inner_stat, |caps: &regex::Captures| {
-                    let inner = &caps[1];
-                    format!("({})", inner.replace(' ', "$$"))
-                })
-                .into_owned();
+            let mut buf = String::with_capacity(self.inner_stat.len());
 
-            result
+            let l = self.inner_stat.find('(');
+            let r = self.inner_stat.find(')');
+            let content = if let (Some(l), Some(r)) = (l, r) {
+                let replaced = self.inner_stat[(l + 1)..r].replace(' ', "$$");
+
+                buf.push_str(&self.inner_stat[..l]);
+                buf.push_str(&replaced);
+                buf.push_str(&self.inner_stat[(r + 1)..self.inner_stat.len()]);
+
+                &buf
+            } else {
+                &self.inner_stat
+            };
+
+            content
                 .split_whitespace()
                 .map(|it| it.replace("$$", " "))
                 .collect()
