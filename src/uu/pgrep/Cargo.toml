@@ -16,6 +16,7 @@ categories = ["command-line-utilities"]
 uucore = { workspace = true }
 clap = { workspace = true }
 walkdir = { workspace = true }
+regex = { workspace = true }
 
 [lib]
 path = "src/pgrep.rs"

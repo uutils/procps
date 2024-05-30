@@ -5,7 +5,9 @@
 
 pub mod pid;
 
-use clap::{arg, crate_version, Arg, ArgAction, Command};
+use std::{borrow::BorrowMut, cmp::Ordering};
+
+use clap::{arg, crate_version, Arg, ArgAction, ArgGroup, Command};
 use pid::walk_pid;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
 
@@ -30,19 +32,68 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let should_ignore_case = matches.get_flag("ignore-case");
     let should_inverse = matches.get_flag("inverse");
 
-    let flag_list_name = matches.get_flag("list-name");
-    let flag_list_full = matches.get_flag("list-full");
+    let flag_newest = matches.get_flag("newest");
+    let flag_oldest = matches.get_flag("oldest");
 
-    let flag_count = matches.get_flag("count");
-    // let flag_full = matches.get_flag("full");
+    if flag_newest != flag_oldest {
+        let mut result = walk_pid().collect::<Vec<_>>();
+
+        result.sort_by(|a, b| {
+            if let (Ok(b), Ok(a)) = (
+                b.to_owned().borrow_mut().start_time(),
+                a.to_owned().borrow_mut().start_time(),
+            ) {
+                b.cmp(&a)
+            } else {
+                Ordering::Equal
+            }
+        });
+
+        let sort = |start_time: u64| {
+            let mut result = result
+                .iter()
+                .filter(move |it| {
+                    if let Ok(s_time) = (*it).to_owned().borrow_mut().start_time() {
+                        s_time == start_time
+                    } else {
+                        false
+                    }
+                })
+                .collect::<Vec<_>>();
+            result.sort_by(|a, b| {
+                if let (Ok(b), Ok(a)) = (
+                    (*b).to_owned().borrow_mut().start_time(),
+                    (*a).to_owned().borrow_mut().start_time(),
+                ) {
+                    b.cmp(&a)
+                } else {
+                    Ordering::Equal
+                }
+            });
+
+            result
+        };
+
+        let mut entry = if flag_newest {
+            result.first()
+        } else {
+            result.last()
+        }
+        .expect("empty pid list")
+        .to_owned();
+
+        println!("{}", sort(entry.start_time()?).first().unwrap().pid);
+        return Ok(());
+    }
 
     if should_ignore_case {
         programs = programs.into_iter().map(|it| it.to_lowercase()).collect();
     }
 
-    let result: Vec<_> = walk_pid()
+    let result = walk_pid()
         .filter(|it| {
-            let Some(name) = it.status.get("Name") else {
+            let binding = it.to_owned().borrow_mut().status();
+            let Some(name) = binding.get("Name") else {
                 return false;
             };
 
@@ -55,8 +106,12 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
             programs.iter().any(|it| name.contains(it)) ^ should_inverse
         })
-        .collect();
+        .collect::<Vec<_>>();
 
+    let flag_list_name = matches.get_flag("list-name");
+    let flag_list_full = matches.get_flag("list-full");
+
+    let flag_count = matches.get_flag("count");
     if flag_count {
         println!("{}", result.len());
     } else {
@@ -67,7 +122,13 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 if flag_list_full {
                     format!("{} {}", it.pid, it.cmdline)
                 } else if flag_list_name {
-                    let name = it.status.get("Name").cloned().unwrap_or_default();
+                    let name = it
+                        .to_owned()
+                        .borrow_mut()
+                        .status()
+                        .get("Name")
+                        .cloned()
+                        .unwrap_or_default();
                     format!("{} {}", it.pid, name)
                 } else {
                     format!("{}", it.pid)
@@ -85,6 +146,7 @@ pub fn uu_app() -> Command {
         .version(crate_version!())
         .about(ABOUT)
         .override_usage(format_usage(USAGE))
+        .group(ArgGroup::new("oldest_newest").args(["oldest", "newest"]))
         .args([
             arg!(-d     --delimiter <string>    "specify output delimiter")
                 .default_value("\n")

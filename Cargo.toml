@@ -55,6 +55,7 @@ uucore = { workspace = true }
 phf = { workspace = true }
 textwrap = { workspace = true }
 sysinfo = { workspace = true }
+regex = { workspace = true }
 
 #
 pwdx = { optional = true, version = "0.0.1", package = "uu_pwdx", path = "src/uu/pwdx" }

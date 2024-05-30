@@ -862,6 +862,7 @@ name = "uu_pgrep"
 version = "0.0.1"
 dependencies = [
  "clap",
+ "regex",
  "uucore",
  "walkdir",
 ]
