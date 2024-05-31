@@ -16,24 +16,75 @@ const USAGE: &str = help_usage!("pgrep.md");
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
+    let patterns = collect_arg_patterns(&matches);
 
     // Some(()) => Detected
     // None => Go on
-    if handle_oldest_newest(&matches).is_some() {
+    if handle_oldest_newest(&matches, &patterns).is_some() {
         return Ok(());
     }
 
-    handle_pid_collect(&matches);
+    handle_normal_pid_collect(&matches, &patterns);
 
     Ok(())
 }
+fn collect_arg_patterns(matches: &ArgMatches) -> Vec<String> {
+    let should_ignore_case = matches.get_flag("ignore-case");
 
-fn handle_oldest_newest(matches: &ArgMatches) -> Option<()> {
+    let programs = matches
+        .get_many::<String>("pattern")
+        .unwrap_or_default()
+        .map(|it| it.to_string());
+
+    if should_ignore_case {
+        programs.map(|it| it.to_lowercase()).collect::<Vec<_>>()
+    } else {
+        programs.collect()
+    }
+}
+
+fn collect_pid(matches: &ArgMatches, patterns: &[String]) -> Vec<PidEntry> {
+    let should_inverse = matches.get_flag("inverse");
+    let should_ignore_case = matches.get_flag("ignore-case");
+
+    walk_pid()
+        .filter(move |it| {
+            let binding = it.to_owned().borrow_mut().status();
+            let Some(name) = binding.get("Name") else {
+                return false;
+            };
+
+            // Processs flag `--ignore-case`
+            let name = if should_ignore_case {
+                name.to_lowercase()
+            } else {
+                name.into()
+            };
+
+            patterns.iter().any(|it| name.contains(it)) ^ should_inverse
+        })
+        .collect::<Vec<_>>()
+}
+
+// Make -o and -n as a group of args
+fn handle_oldest_newest(matches: &ArgMatches, patterns: &[String]) -> Option<()> {
     let flag_newest = matches.get_flag("newest");
     let flag_oldest = matches.get_flag("oldest");
 
     if flag_newest != flag_oldest {
-        let mut result = walk_pid().collect::<Vec<_>>();
+        // Only accept one pattern.
+        if !patterns.is_empty() && patterns.len() != 1 {
+            println!("{:?}", patterns);
+            println!("pgrep: only one pattern can be provided");
+            return Some(());
+        }
+
+        // Processing pattern
+        let mut result = if patterns.len() == 1 {
+            collect_pid(matches, patterns)
+        } else {
+            walk_pid().collect()
+        };
 
         result.sort_by(|a, b| {
             if let (Ok(b), Ok(a)) = (
@@ -49,13 +100,8 @@ fn handle_oldest_newest(matches: &ArgMatches) -> Option<()> {
         let sort = |start_time: u64| {
             let mut result = result
                 .iter()
-                .filter(move |it| {
-                    if let Ok(s_time) = (*it).to_owned().borrow_mut().start_time() {
-                        s_time == start_time
-                    } else {
-                        false
-                    }
-                })
+                .filter(|it| (*it).to_owned().borrow_mut().start_time().is_ok())
+                .filter(move |it| (*it).to_owned().borrow_mut().start_time().unwrap() == start_time)
                 .collect::<Vec<_>>();
             result.sort_by(|a, b| {
                 if let (Ok(b), Ok(a)) = (
@@ -78,6 +124,7 @@ fn handle_oldest_newest(matches: &ArgMatches) -> Option<()> {
         }
         .expect("empty pid list")
         .to_owned();
+
         println!("{}", sort(entry.start_time().unwrap()).first().unwrap().pid);
         return Some(());
     }
@@ -85,47 +132,10 @@ fn handle_oldest_newest(matches: &ArgMatches) -> Option<()> {
     None
 }
 
-fn collect_arg_programs(matches: &ArgMatches) -> Vec<String> {
-    let should_ignore_case = matches.get_flag("ignore-case");
-
-    let programs = matches
-        .get_many::<String>("pattern")
-        .unwrap_or_default()
-        .map(|it| it.to_string());
-
-    if should_ignore_case {
-        programs.map(|it| it.to_lowercase()).collect::<Vec<_>>()
-    } else {
-        programs.collect()
-    }
-}
-
-fn collect_pid(matches: &ArgMatches, programs: Vec<String>) -> impl Iterator<Item = PidEntry> {
-    let should_inverse = matches.get_flag("inverse");
-    let should_ignore_case = matches.get_flag("ignore-case");
-
-    walk_pid().filter(move |it| {
-        let binding = it.to_owned().borrow_mut().status();
-        let Some(name) = binding.get("Name") else {
-            return false;
-        };
-
-        // Processs flag `--ignore-case`
-        let name = if should_ignore_case {
-            name.to_lowercase()
-        } else {
-            name.into()
-        };
-
-        programs.iter().any(|it| name.contains(it)) ^ should_inverse
-    })
-}
-
-fn handle_pid_collect(matches: &ArgMatches) {
+fn handle_normal_pid_collect(matches: &ArgMatches, patterns: &[String]) {
     let delimiter = matches.get_one::<String>("delimiter").unwrap();
 
-    let programs = collect_arg_programs(matches);
-    let result = collect_pid(matches, programs).collect::<Vec<_>>();
+    let result = collect_pid(matches, patterns);
 
     let flag_list_name = matches.get_flag("list-name");
     let flag_list_full = matches.get_flag("list-full");
