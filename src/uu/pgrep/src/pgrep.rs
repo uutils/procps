@@ -74,7 +74,6 @@ fn handle_oldest_newest(matches: &ArgMatches, patterns: &[String]) -> Option<()>
     if flag_newest != flag_oldest {
         // Only accept one pattern.
         if !patterns.is_empty() && patterns.len() != 1 {
-            println!("{:?}", patterns);
             println!("pgrep: only one pattern can be provided");
             return Some(());
         }
@@ -211,6 +210,7 @@ pub fn uu_app() -> Command {
         .arg(
             Arg::new("pattern")
                 .help("Name of the program to find the PID of")
+                .action(ArgAction::Append)
                 .index(1),
         )
 }
