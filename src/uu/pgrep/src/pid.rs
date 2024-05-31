@@ -16,6 +16,8 @@ pub struct PidEntry {
 
     cached_status: Option<Rc<HashMap<String, String>>>,
     cached_stat: Option<Rc<Vec<String>>>,
+
+    cached_start_time: Option<u64>,
 }
 
 impl PidEntry {
@@ -70,14 +72,20 @@ impl PidEntry {
     }
 
     pub fn start_time(&mut self) -> Result<u64, io::Error> {
+        if let Some(time) = self.cached_start_time {
+            return Ok(time);
+        }
+
         // Kernel doc: https://docs.kernel.org/filesystems/proc.html#process-specific-subdirectories
         // Table 1-4
-        Ok(self
+        let time = self
             .stat()?
             .get(21)
             .ok_or(io::ErrorKind::InvalidData)?
             .parse::<u64>()
-            .map_err(|_| io::ErrorKind::InvalidData)?)
+            .map_err(|_| io::ErrorKind::InvalidData)?;
+
+        Ok(time)
     }
 }
 

@@ -5,10 +5,9 @@
 
 pub mod pid;
 
+use clap::{arg, crate_version, Arg, ArgAction, ArgGroup, ArgMatches, Command};
+use pid::{walk_pid, PidEntry};
 use std::{borrow::BorrowMut, cmp::Ordering};
-
-use clap::{arg, crate_version, Arg, ArgAction, ArgGroup, Command};
-use pid::walk_pid;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
 
 const ABOUT: &str = help_about!("pgrep.md");
@@ -18,17 +17,18 @@ const USAGE: &str = help_usage!("pgrep.md");
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
 
-    let delimiter = matches.get_one::<String>("delimiter").unwrap();
+    // Some(()) => Detected
+    // None => Go on
+    if handle_oldest_newest(&matches).is_some() {
+        return Ok(());
+    }
 
-    let mut programs = matches
-        .get_many::<String>("pattern")
-        .unwrap_or_default()
-        .map(|it| it.to_string())
-        .collect::<Vec<_>>();
+    handle_pid_collect(&matches);
 
-    let should_ignore_case = matches.get_flag("ignore-case");
-    let should_inverse = matches.get_flag("inverse");
+    Ok(())
+}
 
+fn handle_oldest_newest(matches: &ArgMatches) -> Option<()> {
     let flag_newest = matches.get_flag("newest");
     let flag_oldest = matches.get_flag("oldest");
 
@@ -78,32 +78,54 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         }
         .expect("empty pid list")
         .to_owned();
-
-        println!("{}", sort(entry.start_time()?).first().unwrap().pid);
-        return Ok(());
+        println!("{}", sort(entry.start_time().unwrap()).first().unwrap().pid);
+        return Some(());
     }
+
+    None
+}
+
+fn collect_arg_programs(matches: &ArgMatches) -> Vec<String> {
+    let should_ignore_case = matches.get_flag("ignore-case");
+
+    let programs = matches
+        .get_many::<String>("pattern")
+        .unwrap_or_default()
+        .map(|it| it.to_string());
 
     if should_ignore_case {
-        programs = programs.into_iter().map(|it| it.to_lowercase()).collect();
+        programs.map(|it| it.to_lowercase()).collect::<Vec<_>>()
+    } else {
+        programs.collect()
     }
+}
 
-    let result = walk_pid()
-        .filter(|it| {
-            let binding = it.to_owned().borrow_mut().status();
-            let Some(name) = binding.get("Name") else {
-                return false;
-            };
+fn collect_pid(matches: &ArgMatches, programs: Vec<String>) -> impl Iterator<Item = PidEntry> {
+    let should_inverse = matches.get_flag("inverse");
+    let should_ignore_case = matches.get_flag("ignore-case");
 
-            // Processs flag `--ignore-case`
-            let name = if should_ignore_case {
-                name.to_lowercase()
-            } else {
-                name.into()
-            };
+    walk_pid().filter(move |it| {
+        let binding = it.to_owned().borrow_mut().status();
+        let Some(name) = binding.get("Name") else {
+            return false;
+        };
 
-            programs.iter().any(|it| name.contains(it)) ^ should_inverse
-        })
-        .collect::<Vec<_>>();
+        // Processs flag `--ignore-case`
+        let name = if should_ignore_case {
+            name.to_lowercase()
+        } else {
+            name.into()
+        };
+
+        programs.iter().any(|it| name.contains(it)) ^ should_inverse
+    })
+}
+
+fn handle_pid_collect(matches: &ArgMatches) {
+    let delimiter = matches.get_one::<String>("delimiter").unwrap();
+
+    let programs = collect_arg_programs(matches);
+    let result = collect_pid(matches, programs).collect::<Vec<_>>();
 
     let flag_list_name = matches.get_flag("list-name");
     let flag_list_full = matches.get_flag("list-full");
@@ -134,14 +156,13 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             .collect::<Vec<_>>();
         println!("{}", result.join(delimiter));
     }
-
-    Ok(())
 }
 
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
         .about(ABOUT)
+        .arg_required_else_help(true)
         .override_usage(format_usage(USAGE))
         .group(ArgGroup::new("oldest_newest").args(["oldest", "newest"]))
         .args([
