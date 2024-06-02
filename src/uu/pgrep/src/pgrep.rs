@@ -18,16 +18,15 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
     let patterns = collect_arg_patterns(&matches);
 
-    // Some(()) => Detected
-    // None => Go on
-    if handle_oldest_newest(&matches, &patterns).is_some() {
-        return Ok(());
+    if let Some(result) =
+        handle_oldest_newest(&matches, &patterns).or(handle_normal_pid_collect(&matches, &patterns))
+    {
+        println!("{}", result);
     }
-
-    handle_normal_pid_collect(&matches, &patterns);
 
     Ok(())
 }
+
 fn collect_arg_patterns(matches: &ArgMatches) -> Vec<String> {
     let should_ignore_case = matches.get_flag("ignore-case");
 
@@ -67,7 +66,7 @@ fn collect_pid(matches: &ArgMatches, patterns: &[String]) -> Vec<PidEntry> {
 }
 
 // Make -o and -n as a group of args
-fn handle_oldest_newest(matches: &ArgMatches, patterns: &[String]) -> Option<()> {
+fn handle_oldest_newest(matches: &ArgMatches, patterns: &[String]) -> Option<String> {
     let flag_newest = matches.get_flag("newest");
     let flag_oldest = matches.get_flag("oldest");
 
@@ -75,7 +74,7 @@ fn handle_oldest_newest(matches: &ArgMatches, patterns: &[String]) -> Option<()>
         // Only accept one pattern.
         if !patterns.is_empty() && patterns.len() != 1 {
             println!("pgrep: only one pattern can be provided");
-            return Some(());
+            return None;
         }
 
         // Processing pattern
@@ -124,14 +123,16 @@ fn handle_oldest_newest(matches: &ArgMatches, patterns: &[String]) -> Option<()>
         .expect("empty pid list")
         .to_owned();
 
-        println!("{}", sort(entry.start_time().unwrap()).first().unwrap().pid);
-        return Some(());
+        return Some(format!(
+            "{}",
+            sort(entry.start_time().unwrap()).first().unwrap().pid,
+        ));
     }
 
     None
 }
 
-fn handle_normal_pid_collect(matches: &ArgMatches, patterns: &[String]) {
+fn handle_normal_pid_collect(matches: &ArgMatches, patterns: &[String]) -> Option<String> {
     let delimiter = matches.get_one::<String>("delimiter").unwrap();
 
     let result = collect_pid(matches, patterns);
@@ -140,8 +141,8 @@ fn handle_normal_pid_collect(matches: &ArgMatches, patterns: &[String]) {
     let flag_list_full = matches.get_flag("list-full");
 
     let flag_count = matches.get_flag("count");
-    if flag_count {
-        println!("{}", result.len());
+    let result = if flag_count {
+        format!("{}", result.len())
     } else {
         // Normal output
         let result = result
@@ -163,8 +164,10 @@ fn handle_normal_pid_collect(matches: &ArgMatches, patterns: &[String]) {
                 }
             })
             .collect::<Vec<_>>();
-        println!("{}", result.join(delimiter));
-    }
+        result.join(delimiter)
+    };
+
+    Some(result)
 }
 
 pub fn uu_app() -> Command {
