@@ -75,10 +75,13 @@ fn collect_pid(matches: &ArgMatches, patterns: &[String]) -> Vec<PidEntry> {
     let should_inverse = matches.get_flag("inverse");
     let should_ignore_case = matches.get_flag("ignore-case");
 
+    let flag_full = matches.get_flag("full");
+
     walk_pid()
         .filter(move |it| {
             let binding = it.to_owned().borrow_mut().status();
-            let Some(name) = binding.get("Name") else {
+            let name = binding.get("Name");
+            let Some(name) = name else {
                 return false;
             };
 
@@ -89,7 +92,12 @@ fn collect_pid(matches: &ArgMatches, patterns: &[String]) -> Vec<PidEntry> {
                 name.into()
             };
 
-            patterns.iter().any(|it| name.contains(it)) ^ should_inverse
+            let mut iter = patterns.iter();
+            (if flag_full {
+                iter.any(|it| name.eq(it))
+            } else {
+                iter.any(|it| name.contains(it))
+            }) ^ should_inverse
         })
         .collect::<Vec<_>>()
 }
@@ -190,27 +198,22 @@ pub fn uu_app() -> Command {
         .about(ABOUT)
         .arg_required_else_help(true)
         .override_usage(format_usage(USAGE))
-        .group(ArgGroup::new("oldest_newest").args(["oldest", "newest"]))
+        .group(ArgGroup::new("oldest_newest").args(["oldest", "newest", "inverse"]))
         .args([
             arg!(-d     --delimiter <string>    "specify output delimiter")
                 .default_value("\n")
                 .hide_default_value(true),
-            arg!(-l     --"list-name"           "list PID and process name")
-                .action(ArgAction::SetTrue),
-            arg!(-a     --"list-full"           "list PID and full command line")
-                .action(ArgAction::SetTrue),
-            arg!(-v     --inverse               "negates the matching").action(ArgAction::SetTrue),
+            arg!(-l     --"list-name"           "list PID and process name"),
+            arg!(-a     --"list-full"           "list PID and full command line"),
+            arg!(-v     --inverse               "negates the matching"),
             // arg!(-w     --lightweight           "list all TID"),
             arg!(-c     --count                 "count of matching processes"),
-            // arg!(-f     --full                  "use full process name to match"),
+            arg!(-f     --full                  "use full process name to match"),
             // arg!(-g     --pgroup <PGID>     ... "match listed process group IDs"),
             // arg!(-G     --group <GID>       ... "match real group IDs"),
-            arg!(-i     --"ignore-case"         "match case insensitively")
-                .action(ArgAction::SetTrue),
-            arg!(-n     --newest                "select most recently started")
-                .action(ArgAction::SetTrue),
-            arg!(-o     --oldest                "select least recently started")
-                .action(ArgAction::SetTrue),
+            arg!(-i     --"ignore-case"         "match case insensitively"),
+            arg!(-n     --newest                "select most recently started"),
+            arg!(-o     --oldest                "select least recently started"),
             arg!(-O     --older <seconds>       "select where older than seconds")
                 .num_args(0..)
                 .default_value("0")
