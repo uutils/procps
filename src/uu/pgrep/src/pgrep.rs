@@ -98,6 +98,7 @@ fn collect_pid(matches: &ArgMatches, patterns: &[String]) -> Vec<PidEntry> {
 fn collect_oldest_newest(matches: &ArgMatches, patterns: &[String]) -> Option<Vec<PidEntry>> {
     let flag_newest = matches.get_flag("newest");
     let flag_oldest = matches.get_flag("oldest");
+    let arg_older = matches.get_one::<u64>("older").unwrap();
 
     if flag_newest != flag_oldest {
         // Only accept one pattern.
@@ -107,10 +108,20 @@ fn collect_oldest_newest(matches: &ArgMatches, patterns: &[String]) -> Option<Ve
         }
 
         // Processing pattern
-        let mut result = if patterns.len() == 1 {
+        let result = if patterns.len() == 1 {
             collect_pid(matches, patterns)
         } else {
             walk_pid().collect()
+        };
+
+        let mut result = {
+            let mut vec = Vec::with_capacity(result.len());
+            for mut ele in result {
+                if ele.start_time().unwrap() >= *arg_older {
+                    vec.push(ele)
+                }
+            }
+            vec
         };
 
         result.sort_by(|a, b| {
@@ -200,7 +211,10 @@ pub fn uu_app() -> Command {
                 .action(ArgAction::SetTrue),
             arg!(-o     --oldest                "select least recently started")
                 .action(ArgAction::SetTrue),
-            // arg!(-O     --older <seconds>       "select where older than seconds"),
+            arg!(-O     --older <seconds>       "select where older than seconds")
+                .num_args(0..)
+                .default_value("0")
+                .value_parser(clap::value_parser!(u64)),
             // arg!(-P     --parent <PPID>         "match only child processes of the given parent"),
             // arg!(-s     --session <SID>         "match session IDs"),
             // arg!(-t     --terminal <tty>        "match by controlling terminal"),
