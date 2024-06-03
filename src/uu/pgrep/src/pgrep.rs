@@ -18,11 +18,40 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
     let patterns = collect_arg_patterns(&matches);
 
-    if let Some(result) =
-        handle_oldest_newest(&matches, &patterns).or(handle_normal_pid_collect(&matches, &patterns))
-    {
-        println!("{}", result);
-    }
+    let Some(result) =
+        collect_oldest_newest(&matches, &patterns).or(collect_normal_pid(&matches, &patterns))
+    else {
+        println!("pgrep: no matching criteria specified");
+        println!("Try `pgrep --help' for more information");
+        return Ok(());
+    };
+
+    // Just processsing output format here
+    let result = || {
+        if matches.get_flag("count") {
+            return format!("{}", result.len());
+        };
+
+        let delimiter = matches.get_one::<String>("delimiter").unwrap();
+
+        let formatted: Vec<_> = if matches.get_flag("list-full") {
+            result
+                .into_iter()
+                .map(|it| format!("{} {}", it.pid, it.cmdline))
+                .collect()
+        } else if matches.get_flag("list-name") {
+            result
+                .into_iter()
+                .map(|it| format!("{} {}", it.pid, it.clone().status().get("Name").unwrap()))
+                .collect()
+        } else {
+            result.into_iter().map(|it| format!("{}", it.pid)).collect()
+        };
+
+        formatted.join(delimiter)
+    };
+
+    println!("{}", result());
 
     Ok(())
 }
@@ -66,7 +95,7 @@ fn collect_pid(matches: &ArgMatches, patterns: &[String]) -> Vec<PidEntry> {
 }
 
 // Make -o and -n as a group of args
-fn handle_oldest_newest(matches: &ArgMatches, patterns: &[String]) -> Option<String> {
+fn collect_oldest_newest(matches: &ArgMatches, patterns: &[String]) -> Option<Vec<PidEntry>> {
     let flag_newest = matches.get_flag("newest");
     let flag_oldest = matches.get_flag("oldest");
 
@@ -95,12 +124,21 @@ fn handle_oldest_newest(matches: &ArgMatches, patterns: &[String]) -> Option<Str
             }
         });
 
+        let mut entry = if flag_newest {
+            result.first()
+        } else {
+            result.last()
+        }
+        .cloned()
+        .expect("empty pid list");
+
         let sort = |start_time: u64| {
             let mut result = result
-                .iter()
+                .into_iter()
                 .filter(|it| (*it).to_owned().borrow_mut().start_time().is_ok())
                 .filter(move |it| (*it).to_owned().borrow_mut().start_time().unwrap() == start_time)
                 .collect::<Vec<_>>();
+
             result.sort_by(|a, b| {
                 if let (Ok(b), Ok(a)) = (
                     (*b).to_owned().borrow_mut().start_time(),
@@ -115,57 +153,22 @@ fn handle_oldest_newest(matches: &ArgMatches, patterns: &[String]) -> Option<Str
             result
         };
 
-        let mut entry = if flag_newest {
-            result.first()
-        } else {
-            result.last()
-        }
-        .expect("empty pid list")
-        .to_owned();
-
-        return Some(format!(
-            "{}",
-            sort(entry.start_time().unwrap()).first().unwrap().pid,
-        ));
+        // TODO: make sure it can be multiple result
+        return Some(vec![sort(entry.start_time().unwrap())
+            .first()
+            .unwrap()
+            .clone()
+            .clone()]);
     }
 
     None
 }
 
-fn handle_normal_pid_collect(matches: &ArgMatches, patterns: &[String]) -> Option<String> {
-    let delimiter = matches.get_one::<String>("delimiter").unwrap();
-
+fn collect_normal_pid(matches: &ArgMatches, patterns: &[String]) -> Option<Vec<PidEntry>> {
     let result = collect_pid(matches, patterns);
 
-    let flag_list_name = matches.get_flag("list-name");
-    let flag_list_full = matches.get_flag("list-full");
-
-    let flag_count = matches.get_flag("count");
-    let result = if flag_count {
-        format!("{}", result.len())
-    } else {
-        // Normal output
-        let result = result
-            .iter()
-            .map(|it| {
-                if flag_list_full {
-                    format!("{} {}", it.pid, it.cmdline)
-                } else if flag_list_name {
-                    let name = it
-                        .to_owned()
-                        .borrow_mut()
-                        .status()
-                        .get("Name")
-                        .cloned()
-                        .unwrap_or_default();
-                    format!("{} {}", it.pid, name)
-                } else {
-                    format!("{}", it.pid)
-                }
-            })
-            .collect::<Vec<_>>();
-        result.join(delimiter)
-    };
+    // Normal output
+    let result = result.into_iter().collect::<Vec<_>>();
 
     Some(result)
 }
