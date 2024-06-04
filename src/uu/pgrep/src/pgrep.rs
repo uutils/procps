@@ -76,6 +76,7 @@ fn collect_pid(matches: &ArgMatches, patterns: &[String]) -> Vec<PidEntry> {
     let should_ignore_case = matches.get_flag("ignore-case");
 
     let flag_full = matches.get_flag("full");
+    let flag_exact = matches.get_flag("exact");
 
     walk_pid()
         .filter(move |it| {
@@ -93,11 +94,19 @@ fn collect_pid(matches: &ArgMatches, patterns: &[String]) -> Vec<PidEntry> {
             };
 
             let mut iter = patterns.iter();
-            (if flag_full {
+
+            let is_matched = if flag_full {
+                // Equals `Name` in /proc/<pid>/status
                 iter.any(|it| name.eq(it))
+            } else if flag_exact {
+                // Equals `cmdline` in /proc/<pid>/cmdline
+                iter.any(|s| it.cmdline.eq(s))
             } else {
+                // Contains `cmdline` in /proc/<pid>/cmdline
                 iter.any(|it| name.contains(it))
-            }) ^ should_inverse
+            };
+
+            is_matched ^ should_inverse
         })
         .collect::<Vec<_>>()
 }
@@ -223,7 +232,7 @@ pub fn uu_app() -> Command {
             // arg!(-t     --terminal <tty>        "match by controlling terminal"),
             // arg!(-u     --euid <ID>         ... "match by effective IDs"),
             // arg!(-U     --uid <ID>          ... "match by real IDs"),
-            // arg!(-x     --exact                 "match exactly with the command name"),
+            arg!(-x     --exact                 "match exactly with the command name"),
             // arg!(-F     --pidfile <file>        "read PIDs from file"),
             // arg!(-L     --logpidfile            "fail if PID file is not locked"),
             // arg!(-r     --runstates <state>     "match runstates [D,S,Z,...]"),
