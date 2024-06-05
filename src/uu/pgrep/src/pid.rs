@@ -3,8 +3,80 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use std::{collections::HashMap, fs, io, path::PathBuf, rc::Rc};
+use std::{
+    collections::{HashMap, HashSet},
+    fs, io,
+    path::PathBuf,
+    rc::Rc,
+};
 use walkdir::{DirEntry, WalkDir};
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TerminalType {
+    Tty(u64),
+    TtyS(u64),
+    Pts(u64),
+}
+
+impl TryFrom<String> for TerminalType {
+    type Error = ();
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::try_from(PathBuf::from(value))
+    }
+}
+
+impl TryFrom<&str> for TerminalType {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::try_from(PathBuf::from(value))
+    }
+}
+
+impl TryFrom<PathBuf> for TerminalType {
+    type Error = ();
+
+    fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
+        // Three case: /dev/pts/* , /dev/ttyS**, /dev/tty**
+
+        let mut iter = value.iter();
+        // Case 1
+
+        // Considering this format: **/**/pts/<num>
+        if let (Some(_), Some(num)) = (iter.find(|it| *it == "pts"), iter.next()) {
+            return num
+                .to_str()
+                .ok_or(())?
+                .parse::<u64>()
+                .map_err(|_| ())
+                .map(TerminalType::Pts);
+        };
+
+        // Considering this format: **/**/ttyS** then **/**/tty**
+        let path = value.to_str().ok_or(())?;
+
+        let f = |prefix: &str| {
+            value
+                .iter()
+                .last()?
+                .to_str()?
+                .strip_prefix(prefix)?
+                .parse::<u64>()
+                .ok()
+        };
+
+        if path.contains("ttyS") {
+            // Case 2
+            f("ttyS").ok_or(()).map(TerminalType::TtyS)
+        } else if path.contains("tty") {
+            // Case 3
+            f("tty").ok_or(()).map(TerminalType::Tty)
+        } else {
+            Err(())
+        }
+    }
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct PidEntry {
@@ -18,9 +90,46 @@ pub struct PidEntry {
     cached_stat: Option<Rc<Vec<String>>>,
 
     cached_start_time: Option<u64>,
+    cached_tty: Option<Rc<HashSet<TerminalType>>>,
 }
 
 impl PidEntry {
+    pub fn try_new(value: PathBuf) -> Result<Self, io::Error> {
+        let dir_append = |mut path: PathBuf, str: String| {
+            path.push(str);
+            path
+        };
+
+        let value = if value.is_symlink() {
+            fs::read_link(value)?
+        } else {
+            value
+        };
+
+        let pid = {
+            value
+                .iter()
+                .last()
+                .ok_or(io::ErrorKind::Other)?
+                .to_str()
+                .ok_or(io::ErrorKind::InvalidData)?
+                .parse::<usize>()
+                .map_err(|_| io::ErrorKind::InvalidData)?
+        };
+        let cmdline = fs::read_to_string(dir_append(value.clone(), "cmdline".into()))?
+            .replace('\0', " ")
+            .trim_end()
+            .into();
+
+        Ok(Self {
+            pid,
+            cmdline,
+            inner_status: fs::read_to_string(dir_append(value.clone(), "status".into()))?,
+            inner_stat: fs::read_to_string(dir_append(value.clone(), "stat".into()))?,
+            ..Default::default()
+        })
+    }
+
     pub fn status(&mut self) -> Rc<HashMap<String, String>> {
         if let Some(c) = &self.cached_status {
             return Rc::clone(c);
@@ -87,43 +196,42 @@ impl PidEntry {
 
         Ok(time)
     }
+
+    /// This function will scan the `/proc/<pid>/df` directory
+    ///
+    /// # Error
+    ///
+    /// If scanned pid undering mismatched permission,
+    /// it will caused [std::io::ErrorKind::PermissionDenied] error.
+    pub fn ttys(&mut self) -> Result<Rc<HashSet<TerminalType>>, io::Error> {
+        if let Some(tty) = &self.cached_tty {
+            return Ok(Rc::clone(tty));
+        }
+
+        let path = PathBuf::from(format!("/proc/{}/fd", self.pid));
+
+        let result = Rc::new(
+            fs::read_dir(path)?
+                .flatten()
+                .filter(|it| it.path().is_symlink())
+                .flat_map(|it| fs::read_link(it.path()))
+                .flat_map(TerminalType::try_from)
+                .collect::<HashSet<_>>(),
+        );
+
+        self.cached_tty = Some(Rc::clone(&result));
+
+        Ok(result)
+    }
 }
 
 impl TryFrom<DirEntry> for PidEntry {
     type Error = io::Error;
 
     fn try_from(value: DirEntry) -> Result<Self, Self::Error> {
-        let dir_append = |mut path: PathBuf, str: String| {
-            path.push(str);
-            path
-        };
+        let value = value.into_path();
 
-        let pid = {
-            value
-                .path()
-                .iter()
-                .last()
-                .ok_or(io::ErrorKind::Other)?
-                .to_str()
-                .ok_or(io::ErrorKind::InvalidData)?
-                .parse::<usize>()
-                .map_err(|_| io::ErrorKind::InvalidData)?
-        };
-        let cmdline = fs::read_to_string(dir_append(value.clone().into_path(), "cmdline".into()))?
-            .replace('\0', " ")
-            .trim_end()
-            .into();
-
-        Ok(Self {
-            pid,
-            cmdline,
-            inner_status: fs::read_to_string(dir_append(
-                value.clone().into_path(),
-                "status".into(),
-            ))?,
-            inner_stat: fs::read_to_string(dir_append(value.clone().into_path(), "stat".into()))?,
-            ..Default::default()
-        })
+        PidEntry::try_new(value)
     }
 }
 

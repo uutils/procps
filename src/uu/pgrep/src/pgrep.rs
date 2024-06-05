@@ -6,8 +6,8 @@
 pub mod pid;
 
 use clap::{arg, crate_version, Arg, ArgAction, ArgGroup, ArgMatches, Command};
-use pid::{walk_pid, PidEntry};
-use std::{borrow::BorrowMut, cmp::Ordering};
+use pid::{walk_pid, PidEntry, TerminalType};
+use std::{borrow::BorrowMut, cmp::Ordering, collections::HashSet};
 use uucore::{error::UResult, format_usage, help_about, help_usage};
 
 const ABOUT: &str = help_about!("pgrep.md");
@@ -78,37 +78,62 @@ fn collect_pid(matches: &ArgMatches, patterns: &[String]) -> Vec<PidEntry> {
     let flag_full = matches.get_flag("full");
     let flag_exact = matches.get_flag("exact");
 
-    walk_pid()
-        .filter(move |it| {
-            let binding = it.to_owned().borrow_mut().status();
-            let name = binding.get("Name");
-            let Some(name) = name else {
-                return false;
-            };
+    let predicate_closure = |mut it: PidEntry| {
+        let binding = it.status();
+        let name = binding.get("Name")?;
 
-            // Processs flag `--ignore-case`
-            let name = if should_ignore_case {
-                name.to_lowercase()
+        // Processs flag `--ignore-case`
+        let name = if should_ignore_case {
+            name.to_lowercase()
+        } else {
+            name.into()
+        };
+
+        let mut iter = patterns.iter();
+
+        let name_matched = if flag_full {
+            // Equals `Name` in /proc/<pid>/status
+            iter.any(|it| name.eq(it))
+        } else if flag_exact {
+            // Equals `cmdline` in /proc/<pid>/cmdline
+            iter.any(|s| it.cmdline.eq(s))
+        } else {
+            // Contains `cmdline` in /proc/<pid>/cmdline
+            iter.any(|it| name.contains(it))
+        };
+
+        let tty_matched = if let Some(ttys) = matches.get_many::<String>("terminal") {
+            // convert from input like `pts/0`
+            let ttys = ttys
+                .cloned()
+                .flat_map(TerminalType::try_from)
+                .collect::<HashSet<_>>();
+
+            if let Ok(value) = it.ttys() {
+                value.iter().any(|it| ttys.contains(it))
             } else {
-                name.into()
-            };
+                false
+            }
+        } else {
+            true
+        };
 
-            let mut iter = patterns.iter();
+        if (name_matched || tty_matched) ^ should_inverse {
+            Some(it)
+        } else {
+            None
+        }
+    };
 
-            let is_matched = if flag_full {
-                // Equals `Name` in /proc/<pid>/status
-                iter.any(|it| name.eq(it))
-            } else if flag_exact {
-                // Equals `cmdline` in /proc/<pid>/cmdline
-                iter.any(|s| it.cmdline.eq(s))
-            } else {
-                // Contains `cmdline` in /proc/<pid>/cmdline
-                iter.any(|it| name.contains(it))
-            };
+    let mut result = Vec::new();
 
-            is_matched ^ should_inverse
-        })
-        .collect::<Vec<_>>()
+    for ele in walk_pid() {
+        if let Some(ele) = predicate_closure(ele) {
+            result.push(ele)
+        }
+    }
+
+    result
 }
 
 // Make -o and -n as a group of args
@@ -125,11 +150,7 @@ fn collect_oldest_newest(matches: &ArgMatches, patterns: &[String]) -> Option<Ve
         }
 
         // Processing pattern
-        let result = if patterns.len() == 1 {
-            collect_pid(matches, patterns)
-        } else {
-            walk_pid().collect()
-        };
+        let result = collect_pid(matches, patterns);
 
         let mut result = {
             let mut vec = Vec::with_capacity(result.len());
@@ -152,13 +173,18 @@ fn collect_oldest_newest(matches: &ArgMatches, patterns: &[String]) -> Option<Ve
             }
         });
 
+        // Check is empty
+        if result.is_empty() {
+            return Some(Vec::new());
+        }
+
         let mut entry = if flag_newest {
             result.first()
         } else {
             result.last()
         }
         .cloned()
-        .expect("empty pid list");
+        .unwrap();
 
         let sort = |start_time: u64| {
             let mut result = result
@@ -229,7 +255,8 @@ pub fn uu_app() -> Command {
                 .value_parser(clap::value_parser!(u64)),
             // arg!(-P     --parent <PPID>         "match only child processes of the given parent"),
             // arg!(-s     --session <SID>         "match session IDs"),
-            // arg!(-t     --terminal <tty>        "match by controlling terminal"),
+            arg!(-t     --terminal <tty>        "match by controlling terminal")
+                .action(ArgAction::Append),
             // arg!(-u     --euid <ID>         ... "match by effective IDs"),
             // arg!(-U     --uid <ID>          ... "match by real IDs"),
             arg!(-x     --exact                 "match exactly with the command name"),
