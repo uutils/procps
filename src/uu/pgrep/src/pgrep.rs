@@ -51,7 +51,10 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         formatted.join(delimiter)
     };
 
-    println!("{}", result());
+    let result = result();
+    if !result.is_empty() {
+        println!("{}", result);
+    };
 
     Ok(())
 }
