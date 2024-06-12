@@ -159,8 +159,8 @@ fn collect_pids(matches: &ArgMatches) -> Vec<PidEntry> {
     let mut result = Vec::new();
 
     for ele in walk_pid() {
-        if let Some(ele) = evaluate(ele) {
-            result.push(ele.clone())
+        if let Some(pid) = evaluate(ele) {
+            result.push(pid.clone())
         }
     }
 
