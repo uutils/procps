@@ -6,9 +6,14 @@
 pub mod pid;
 
 use clap::{arg, crate_version, Arg, ArgAction, ArgGroup, ArgMatches, Command};
+use once_cell::sync::OnceCell;
 use pid::{walk_pid, PidEntry, TerminalType};
+use regex::Regex;
 use std::{borrow::BorrowMut, cmp::Ordering, collections::HashSet};
-use uucore::{error::UResult, format_usage, help_about, help_usage};
+use uucore::{
+    error::{UResult, USimpleError},
+    format_usage, help_about, help_usage,
+};
 
 const ABOUT: &str = help_about!("pgrep.md");
 const USAGE: &str = help_usage!("pgrep.md");
@@ -16,14 +21,32 @@ const USAGE: &str = help_usage!("pgrep.md");
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
-    let patterns = collect_arg_patterns(&matches);
+    let pattern = collect_arg_patterns(&matches);
 
-    let Some(result) =
-        collect_oldest_newest(&matches, &patterns).or(collect_normal_pid(&matches, &patterns))
-    else {
-        println!("pgrep: no matching criteria specified");
-        println!("Try `pgrep --help' for more information");
-        return Ok(());
+    // Start Pattern Check //
+    let flag_newest = matches.get_flag("newest");
+    let flag_oldest = matches.get_flag("oldest");
+
+    if (flag_newest == false && flag_oldest == false) && pattern.is_empty() {
+        return Err(USimpleError::new(
+            2,
+            "no matching criteria specified\nTry `pgrep --help' for more information.",
+        ));
+    }
+
+    if pattern.len() > 1 {
+        return Err(USimpleError::new(
+            2,
+            "only one pattern can be provided\nTry `pgrep --help' for more information.",
+        ));
+    }
+    // End Pattern Check //
+
+    let Some(result) = handle_oldest_newest(&matches).or(handle_matching_pids(&matches)) else {
+        return Err(USimpleError::new(
+            2,
+            "no matching criteria specified\nTry `pgrep --help' for more information",
+        ));
     };
 
     // Just processsing output format here
@@ -62,26 +85,29 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 fn collect_arg_patterns(matches: &ArgMatches) -> Vec<String> {
     let should_ignore_case = matches.get_flag("ignore-case");
 
-    let programs = matches
+    let patterns = matches
         .get_many::<String>("pattern")
         .unwrap_or_default()
         .map(|it| it.to_string());
 
     if should_ignore_case {
-        programs.map(|it| it.to_lowercase()).collect::<Vec<_>>()
+        patterns.map(|it| it.to_lowercase()).collect::<Vec<_>>()
     } else {
-        programs.collect()
+        patterns.collect()
     }
 }
 
-fn collect_pid(matches: &ArgMatches, patterns: &[String]) -> Vec<PidEntry> {
+fn collect_pids(matches: &ArgMatches) -> Vec<PidEntry> {
+    let binding = String::from("");
+    let pattern = matches.get_one::<String>("pattern").unwrap_or(&binding);
+
     let should_inverse = matches.get_flag("inverse");
     let should_ignore_case = matches.get_flag("ignore-case");
 
     let flag_full = matches.get_flag("full");
     let flag_exact = matches.get_flag("exact");
 
-    let predicate_closure = |mut it: PidEntry| {
+    let evaluate = |mut it: PidEntry| {
         let binding = it.status();
         let name = binding.get("Name")?;
 
@@ -92,17 +118,19 @@ fn collect_pid(matches: &ArgMatches, patterns: &[String]) -> Vec<PidEntry> {
             name.into()
         };
 
-        let mut iter = patterns.iter();
-
         let name_matched = if flag_full {
+            static REGEX: OnceCell<Option<Regex>> = OnceCell::new();
+
             // Equals `Name` in /proc/<pid>/status
-            iter.any(|it| name.eq(it))
+            match REGEX.get_or_init(|| Regex::new(pattern).ok()) {
+                Some(regex) => regex.is_match(&name),
+                None => false,
+            }
         } else if flag_exact {
             // Equals `cmdline` in /proc/<pid>/cmdline
-            iter.any(|s| it.cmdline.eq(s))
+            it.cmdline.eq(pattern)
         } else {
-            // Contains `cmdline` in /proc/<pid>/cmdline
-            iter.any(|it| name.contains(it))
+            name.contains(pattern)
         };
 
         let tty_matched = if let Some(ttys) = matches.get_many::<String>("terminal") {
@@ -121,7 +149,7 @@ fn collect_pid(matches: &ArgMatches, patterns: &[String]) -> Vec<PidEntry> {
             true
         };
 
-        if (name_matched || tty_matched) ^ should_inverse {
+        if (name_matched && tty_matched) ^ should_inverse {
             Some(it)
         } else {
             None
@@ -131,8 +159,8 @@ fn collect_pid(matches: &ArgMatches, patterns: &[String]) -> Vec<PidEntry> {
     let mut result = Vec::new();
 
     for ele in walk_pid() {
-        if let Some(ele) = predicate_closure(ele) {
-            result.push(ele)
+        if let Some(ele) = evaluate(ele) {
+            result.push(ele.clone())
         }
     }
 
@@ -140,20 +168,14 @@ fn collect_pid(matches: &ArgMatches, patterns: &[String]) -> Vec<PidEntry> {
 }
 
 // Make -o and -n as a group of args
-fn collect_oldest_newest(matches: &ArgMatches, patterns: &[String]) -> Option<Vec<PidEntry>> {
+fn handle_oldest_newest(matches: &ArgMatches) -> Option<Vec<PidEntry>> {
     let flag_newest = matches.get_flag("newest");
     let flag_oldest = matches.get_flag("oldest");
     let arg_older = matches.get_one::<u64>("older").unwrap();
 
     if flag_newest != flag_oldest {
-        // Only accept one pattern.
-        if !patterns.is_empty() && patterns.len() != 1 {
-            println!("pgrep: only one pattern can be provided");
-            return None;
-        }
-
         // Processing pattern
-        let result = collect_pid(matches, patterns);
+        let result = collect_pids(matches);
 
         let mut result = {
             let mut vec = Vec::with_capacity(result.len());
@@ -210,7 +232,6 @@ fn collect_oldest_newest(matches: &ArgMatches, patterns: &[String]) -> Option<Ve
             result
         };
 
-        // TODO: make sure it can be multiple result
         return Some(vec![sort(entry.start_time().unwrap())
             .first()
             .unwrap()
@@ -221,13 +242,14 @@ fn collect_oldest_newest(matches: &ArgMatches, patterns: &[String]) -> Option<Ve
     None
 }
 
-fn collect_normal_pid(matches: &ArgMatches, patterns: &[String]) -> Option<Vec<PidEntry>> {
-    let result = collect_pid(matches, patterns);
+fn handle_matching_pids(matches: &ArgMatches) -> Option<Vec<PidEntry>> {
+    let result = collect_pids(matches).into_iter().collect::<Vec<_>>();
 
-    // Normal output
-    let result = result.into_iter().collect::<Vec<_>>();
-
-    Some(result)
+    if result.is_empty() {
+        None
+    } else {
+        Some(result)
+    }
 }
 
 pub fn uu_app() -> Command {
