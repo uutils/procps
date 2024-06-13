@@ -513,7 +513,6 @@ dependencies = [
  "clap_complete",
  "clap_mangen",
  "libc",
- "once_cell",
  "phf",
  "phf_codegen",
  "pretty_assertions",
@@ -863,7 +862,6 @@ name = "uu_pgrep"
 version = "0.0.1"
 dependencies = [
  "clap",
- "once_cell",
  "regex",
  "uucore",
  "walkdir",

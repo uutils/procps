@@ -44,7 +44,6 @@ rand = { version = "0.8.5", features = ["small_rng"] }
 bytesize = "1.3.0"
 chrono = { version = "0.4.38", default-features = false, features = ["clock"] }
 walkdir = "2.5.0"
-once_cell = "1.19.0"
 
 [dependencies]
 clap = { workspace = true }
@@ -55,7 +54,6 @@ phf = { workspace = true }
 textwrap = { workspace = true }
 sysinfo = { workspace = true }
 regex = { workspace = true }
-once_cell = { workspace = true }
 
 #
 pwdx = { optional = true, version = "0.0.1", package = "uu_pwdx", path = "src/uu/pwdx" }

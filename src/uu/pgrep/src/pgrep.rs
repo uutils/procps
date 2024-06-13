@@ -6,10 +6,9 @@
 pub mod pid;
 
 use clap::{arg, crate_version, Arg, ArgAction, ArgGroup, ArgMatches, Command};
-use once_cell::sync::OnceCell;
 use pid::{walk_pid, PidEntry, TerminalType};
 use regex::Regex;
-use std::{borrow::BorrowMut, cmp::Ordering, collections::HashSet};
+use std::{borrow::BorrowMut, cmp::Ordering, collections::HashSet, sync::OnceLock};
 use uucore::{
     error::{UResult, USimpleError},
     format_usage, help_about, help_usage,
@@ -27,7 +26,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let flag_newest = matches.get_flag("newest");
     let flag_oldest = matches.get_flag("oldest");
 
-    if (flag_newest == false && flag_oldest == false) && pattern.is_empty() {
+    if (!flag_newest && !flag_oldest) && pattern.is_empty() {
         return Err(USimpleError::new(
             2,
             "no matching criteria specified\nTry `pgrep --help' for more information.",
@@ -119,7 +118,7 @@ fn collect_pids(matches: &ArgMatches) -> Vec<PidEntry> {
         };
 
         let name_matched = if flag_full {
-            static REGEX: OnceCell<Option<Regex>> = OnceCell::new();
+            static REGEX: OnceLock<Option<Regex>> = OnceLock::new();
 
             // Equals `Name` in /proc/<pid>/status
             match REGEX.get_or_init(|| Regex::new(pattern).ok()) {
