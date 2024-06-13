@@ -48,6 +48,22 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         ));
     };
 
+    // From `pgrep` manpage
+    //
+    // EXIT STATUS
+    //
+    // 0
+    //     One or more processes matched the criteria. For pkill and pidwait, one or more processes must also have been successfully signalled or waited for.
+    // 1
+    //     No processes matched or none of them could be signalled.
+    // 2
+    //     Syntax error in the command line.
+    // 3
+    //     Fatal error: out of memory etc.
+    if result.is_empty() {
+        uucore::error::set_exit_code(1);
+    }
+
     // Just processsing output format here
     let result = || {
         if matches.get_flag("count") {
