@@ -14,7 +14,6 @@ use std::ops::Mul;
 use std::process;
 use std::thread::sleep;
 use std::time::Duration;
-use std::u64;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
 
 const ABOUT: &str = help_about!("free.md");
