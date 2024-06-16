@@ -17,12 +17,14 @@ use uucore::{
 const ABOUT: &str = help_about!("pgrep.md");
 const USAGE: &str = help_usage!("pgrep.md");
 
+static REGEX: OnceLock<Regex> = OnceLock::new();
+
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
     let pattern = collect_arg_patterns(&matches);
 
-    // Start Pattern Check //
+    //// Pattern check ////
     let flag_newest = matches.get_flag("newest");
     let flag_oldest = matches.get_flag("oldest");
 
@@ -39,59 +41,56 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             "only one pattern can be provided\nTry `pgrep --help' for more information.",
         ));
     }
-    // End Pattern Check //
 
-    let Some(result) = handle_oldest_newest(&matches).or(handle_matching_pids(&matches)) else {
-        return Err(USimpleError::new(
-            2,
-            "no matching criteria specified\nTry `pgrep --help' for more information",
-        ));
+    // Verifying regex pattern
+    // And put it into static `REGEX`
+    if matches.get_flag("full") {
+        let regex = Regex::new(pattern.first().unwrap())
+            .map_err(|e| USimpleError::new(1, e.to_string()))?;
+        REGEX.set(regex).unwrap();
+    }
+
+    //// Collect pids ////
+    let pids = collect_matched_pids(&matches);
+
+    //// Filtering pids ////
+    let pids = if flag_newest || flag_oldest {
+        let arg_older = matches.get_one::<u64>("older").unwrap_or(&0);
+        filter_oldest_newest(pids, flag_newest, *arg_older)
+    } else {
+        pids
     };
 
-    // From `pgrep` manpage
-    //
-    // EXIT STATUS
-    //
-    // 0
-    //     One or more processes matched the criteria. For pkill and pidwait, one or more processes must also have been successfully signalled or waited for.
-    // 1
-    //     No processes matched or none of them could be signalled.
-    // 2
-    //     Syntax error in the command line.
-    // 3
-    //     Fatal error: out of memory etc.
-    if result.is_empty() {
+    if pids.is_empty() {
         uucore::error::set_exit_code(1);
     }
 
-    // Just processsing output format here
+    //// Processing output ////
     let result = || {
         if matches.get_flag("count") {
-            return format!("{}", result.len());
+            return format!("{}", pids.len());
         };
 
         let delimiter = matches.get_one::<String>("delimiter").unwrap();
 
         let formatted: Vec<_> = if matches.get_flag("list-full") {
-            result
-                .into_iter()
+            pids.into_iter()
                 .map(|it| format!("{} {}", it.pid, it.cmdline))
                 .collect()
         } else if matches.get_flag("list-name") {
-            result
-                .into_iter()
+            pids.into_iter()
                 .map(|it| format!("{} {}", it.pid, it.clone().status().get("Name").unwrap()))
                 .collect()
         } else {
-            result.into_iter().map(|it| format!("{}", it.pid)).collect()
+            pids.into_iter().map(|it| format!("{}", it.pid)).collect()
         };
 
         formatted.join(delimiter)
     };
 
-    let result = result();
-    if !result.is_empty() {
-        println!("{}", result);
+    let output = result();
+    if !output.is_empty() {
+        println!("{}", output);
     };
 
     Ok(())
@@ -112,7 +111,7 @@ fn collect_arg_patterns(matches: &ArgMatches) -> Vec<String> {
     }
 }
 
-fn collect_pids(matches: &ArgMatches) -> Vec<PidEntry> {
+fn collect_matched_pids(matches: &ArgMatches) -> Vec<PidEntry> {
     let binding = String::from("");
     let pattern = matches.get_one::<String>("pattern").unwrap_or(&binding);
 
@@ -134,13 +133,10 @@ fn collect_pids(matches: &ArgMatches) -> Vec<PidEntry> {
         };
 
         let name_matched = if flag_full {
-            static REGEX: OnceLock<Option<Regex>> = OnceLock::new();
-
             // Equals `Name` in /proc/<pid>/status
-            match REGEX.get_or_init(|| Regex::new(pattern).ok()) {
-                Some(regex) => regex.is_match(&name),
-                None => false,
-            }
+            // The `unwrap` operation must succeed
+            // because the REGEX has been verified as correct in `uumain`.
+            REGEX.get().unwrap().is_match(&name)
         } else if flag_exact {
             // Equals `cmdline` in /proc/<pid>/cmdline
             it.cmdline.eq(pattern)
@@ -173,8 +169,8 @@ fn collect_pids(matches: &ArgMatches) -> Vec<PidEntry> {
 
     let mut result = Vec::new();
 
-    for ele in walk_pid() {
-        if let Some(pid) = evaluate(ele) {
+    for pid in walk_pid() {
+        if let Some(pid) = evaluate(pid) {
             result.push(pid.clone())
         }
     }
@@ -183,29 +179,47 @@ fn collect_pids(matches: &ArgMatches) -> Vec<PidEntry> {
 }
 
 // Make -o and -n as a group of args
-fn handle_oldest_newest(matches: &ArgMatches) -> Option<Vec<PidEntry>> {
-    let flag_newest = matches.get_flag("newest");
-    let flag_oldest = matches.get_flag("oldest");
-    let arg_older = matches.get_one::<u64>("older").unwrap();
-
-    if flag_newest != flag_oldest {
-        // Processing pattern
-        let result = collect_pids(matches);
-
-        let mut result = {
-            let mut vec = Vec::with_capacity(result.len());
-            for mut ele in result {
-                if ele.start_time().unwrap() >= *arg_older {
-                    vec.push(ele)
-                }
+fn filter_oldest_newest(pids: Vec<PidEntry>, flag_newest: bool, arg_older: u64) -> Vec<PidEntry> {
+    let mut pids = {
+        let mut tmp_vec = Vec::with_capacity(pids.len());
+        for mut pid in pids {
+            if pid.start_time().unwrap() >= arg_older {
+                tmp_vec.push(pid)
             }
-            vec
-        };
+        }
+        tmp_vec
+    };
+
+    pids.sort_by(|a, b| {
+        if let (Ok(b), Ok(a)) = (
+            b.to_owned().borrow_mut().start_time(),
+            a.to_owned().borrow_mut().start_time(),
+        ) {
+            b.cmp(&a)
+        } else {
+            Ordering::Equal
+        }
+    });
+
+    let mut entry = if flag_newest {
+        pids.first()
+    } else {
+        pids.last()
+    }
+    .cloned()
+    .unwrap();
+
+    let sort = |start_time: u64| {
+        let mut result = pids
+            .into_iter()
+            .filter(|it| (*it).to_owned().borrow_mut().start_time().is_ok())
+            .filter(move |it| (*it).to_owned().borrow_mut().start_time().unwrap() == start_time)
+            .collect::<Vec<_>>();
 
         result.sort_by(|a, b| {
             if let (Ok(b), Ok(a)) = (
-                b.to_owned().borrow_mut().start_time(),
-                a.to_owned().borrow_mut().start_time(),
+                (*b).to_owned().borrow_mut().start_time(),
+                (*a).to_owned().borrow_mut().start_time(),
             ) {
                 b.cmp(&a)
             } else {
@@ -213,58 +227,14 @@ fn handle_oldest_newest(matches: &ArgMatches) -> Option<Vec<PidEntry>> {
             }
         });
 
-        // Check is empty
-        if result.is_empty() {
-            return Some(Vec::new());
-        }
+        result
+    };
 
-        let mut entry = if flag_newest {
-            result.first()
-        } else {
-            result.last()
-        }
-        .cloned()
-        .unwrap();
-
-        let sort = |start_time: u64| {
-            let mut result = result
-                .into_iter()
-                .filter(|it| (*it).to_owned().borrow_mut().start_time().is_ok())
-                .filter(move |it| (*it).to_owned().borrow_mut().start_time().unwrap() == start_time)
-                .collect::<Vec<_>>();
-
-            result.sort_by(|a, b| {
-                if let (Ok(b), Ok(a)) = (
-                    (*b).to_owned().borrow_mut().start_time(),
-                    (*a).to_owned().borrow_mut().start_time(),
-                ) {
-                    b.cmp(&a)
-                } else {
-                    Ordering::Equal
-                }
-            });
-
-            result
-        };
-
-        return Some(vec![sort(entry.start_time().unwrap())
-            .first()
-            .unwrap()
-            .clone()
-            .clone()]);
-    }
-
-    None
-}
-
-fn handle_matching_pids(matches: &ArgMatches) -> Option<Vec<PidEntry>> {
-    let result = collect_pids(matches).into_iter().collect::<Vec<_>>();
-
-    if result.is_empty() {
-        None
-    } else {
-        Some(result)
-    }
+    vec![sort(entry.start_time().unwrap())
+        .first()
+        .unwrap()
+        .clone()
+        .clone()]
 }
 
 pub fn uu_app() -> Command {
