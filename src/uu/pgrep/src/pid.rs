@@ -152,28 +152,7 @@ impl PidEntry {
             return Ok(Rc::clone(c));
         }
 
-        let result: Vec<_> = {
-            let mut buf = String::with_capacity(self.inner_stat.len());
-
-            let l = self.inner_stat.find('(');
-            let r = self.inner_stat.find(')');
-            let content = if let (Some(l), Some(r)) = (l, r) {
-                let replaced = self.inner_stat[(l + 1)..r].replace(' ', "$$");
-
-                buf.push_str(&self.inner_stat[..l]);
-                buf.push_str(&replaced);
-                buf.push_str(&self.inner_stat[(r + 1)..self.inner_stat.len()]);
-
-                &buf
-            } else {
-                &self.inner_stat
-            };
-
-            content
-                .split_whitespace()
-                .map(|it| it.replace("$$", " "))
-                .collect()
-        };
+        let result: Vec<_> = stat_split(&self.inner_stat);
 
         let result = Rc::new(result);
         self.cached_stat = Some(Rc::clone(&result));
@@ -201,7 +180,7 @@ impl PidEntry {
     ///
     /// # Error
     ///
-    /// If scanned pid undering mismatched permission,
+    /// If scanned pid had mismatched permission,
     /// it will caused [std::io::ErrorKind::PermissionDenied] error.
     pub fn ttys(&mut self) -> Result<Rc<HashSet<TerminalType>>, io::Error> {
         if let Some(tty) = &self.cached_tty {
@@ -225,6 +204,37 @@ impl PidEntry {
     }
 }
 
+/// Parsing `/proc/self/stat` file.
+///
+/// In some case, the first pair (and the only one pair) will contains whitespace,
+/// so if we want to parse it, we have to write new algorithm.
+///
+/// TODO: If possible, test and use regex to replace this algorithm.
+fn stat_split(stat: &str) -> Vec<String> {
+    let stat = String::from(stat);
+
+    let mut buf = String::with_capacity(stat.len());
+
+    let l = stat.find('(');
+    let r = stat.find(')');
+    let content = if let (Some(l), Some(r)) = (l, r) {
+        let replaced = stat[(l + 1)..r].replace(' ', "$$");
+
+        buf.push_str(&stat[..l]);
+        buf.push_str(&replaced);
+        buf.push_str(&stat[(r + 1)..stat.len()]);
+
+        &buf
+    } else {
+        &stat
+    };
+
+    content
+        .split_whitespace()
+        .map(|it| it.replace("$$", " "))
+        .collect()
+}
+
 impl TryFrom<DirEntry> for PidEntry {
     type Error = io::Error;
 
@@ -243,4 +253,97 @@ pub fn walk_pid() -> impl Iterator<Item = PidEntry> {
         .flatten()
         .filter(|it| it.path().is_dir())
         .flat_map(PidEntry::try_from)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::*;
+
+    fn current_pid() -> usize {
+        // Direct read link of /proc/self.
+        // It's result must be current programs pid.
+        fs::read_link("/proc/self")
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .parse::<usize>()
+            .unwrap()
+    }
+
+    #[test]
+    fn test_walk_pid() {
+        let current_pid = current_pid();
+
+        let find = walk_pid().find(|it| it.pid == current_pid);
+
+        assert!(find.is_some());
+    }
+
+    #[test]
+    fn test_pid_entry() {
+        let current_pid = current_pid();
+
+        let mut pid_entry =
+            PidEntry::try_new(PathBuf::from_str(&format!("/proc/{}", current_pid)).unwrap())
+                .unwrap();
+
+        let result = WalkDir::new(format!("/proc/{}/fd", current_pid))
+            .into_iter()
+            .flatten()
+            .map(DirEntry::into_path)
+            .flat_map(|it| it.read_link())
+            .flat_map(TerminalType::try_from)
+            .collect::<HashSet<_>>();
+
+        assert_eq!(pid_entry.ttys().unwrap(), result.into())
+    }
+
+    #[test]
+    fn test_stat_split() {
+        let case="32 (idle_inject/3) S 2 0 0 0 -1 69238848 0 0 0 0 0 0 0 0 -51 0 1 0 34 0 0 18446744073709551615 0 0 0 0 0 0 0 2147483647 0 0 0 0 17 3 50 1 0 0 0 0 0 0 0 0 0 0 0";
+        assert!(stat_split(case)[1] == "idle_inject/3");
+
+        let case ="3508 (sh) S 3478 3478 3478 0 -1 4194304 67 0 0 0 0 0 0 0 20 0 1 0 11911 2961408 238 18446744073709551615 94340156948480 94340157028757 140736274114368 0 0 0 0 4096 65538 1 0 0 17 8 0 0 0 0 0 94340157054704 94340157059616 94340163108864 140736274122780 140736274122976 140736274122976 140736274124784 0";
+        assert!(stat_split(case)[1] == "sh");
+
+        let case="47246 (kworker /10:1-events) I 2 0 0 0 -1 69238880 0 0 0 0 17 29 0 0 20 0 1 0 1396260 0 0 18446744073709551615 0 0 0 0 0 0 0 2147483647 0 0 0 0 17 10 0 0 0 0 0 0 0 0 0 0 0 0 0";
+        assert!(stat_split(case)[1] == "kworker /10:1-events");
+    }
+
+    #[test]
+    fn test_tty_convention() {
+        assert_eq!(
+            TerminalType::try_from("/dev/tty1").unwrap(),
+            TerminalType::Tty(1)
+        );
+        assert_eq!(
+            TerminalType::try_from("/dev/tty10").unwrap(),
+            TerminalType::Tty(10)
+        );
+        assert_eq!(
+            TerminalType::try_from("/dev/pts/1").unwrap(),
+            TerminalType::Pts(1)
+        );
+        assert_eq!(
+            TerminalType::try_from("/dev/pts/10").unwrap(),
+            TerminalType::Pts(10)
+        );
+        assert_eq!(
+            TerminalType::try_from("/dev/ttyS1").unwrap(),
+            TerminalType::TtyS(1)
+        );
+        assert_eq!(
+            TerminalType::try_from("/dev/ttyS10").unwrap(),
+            TerminalType::TtyS(10)
+        );
+        assert_eq!(
+            TerminalType::try_from("ttyS10").unwrap(),
+            TerminalType::TtyS(10)
+        );
+
+        assert!(TerminalType::try_from("value").is_err());
+        assert!(TerminalType::try_from("TtyS10").is_err());
+    }
 }
