@@ -5,6 +5,7 @@
 
 use std::{
     collections::{HashMap, HashSet},
+    fmt::{self, Display, Formatter},
     fs, io,
     path::PathBuf,
     rc::Rc,
@@ -75,6 +76,55 @@ impl TryFrom<PathBuf> for TerminalType {
         } else {
             Err(())
         }
+    }
+}
+
+/// State or process
+pub enum RunState {
+    ///`R`, running
+    Running,
+    ///`S`, sleeping
+    Sleeping,
+    ///`D`, sleeping in an uninterruptible wait
+    UninterruptibleWait,
+    ///`Z`, zombie
+    Zombie,
+    ///`T`, traced or stopped
+    Stopped,
+}
+
+impl Display for RunState {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            RunState::Running => write!(f, "R"),
+            RunState::Sleeping => write!(f, "S"),
+            RunState::UninterruptibleWait => write!(f, "D"),
+            RunState::Zombie => write!(f, "Z"),
+            RunState::Stopped => write!(f, "T"),
+        }
+    }
+}
+
+impl TryFrom<char> for RunState {
+    type Error = ();
+
+    fn try_from(value: char) -> Result<Self, Self::Error> {
+        match value {
+            'R' => Ok(RunState::Running),
+            'S' => Ok(RunState::Sleeping),
+            'D' => Ok(RunState::UninterruptibleWait),
+            'Z' => Ok(RunState::Zombie),
+            'T' => Ok(RunState::Stopped),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFrom<String> for RunState {
+    type Error = ();
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        RunState::try_from(value.chars().nth(0).ok_or(())?)
     }
 }
 
@@ -204,6 +254,16 @@ impl PidEntry {
     }
 }
 
+impl TryFrom<DirEntry> for PidEntry {
+    type Error = io::Error;
+
+    fn try_from(value: DirEntry) -> Result<Self, Self::Error> {
+        let value = value.into_path();
+
+        PidEntry::try_new(value)
+    }
+}
+
 /// Parsing `/proc/self/stat` file.
 ///
 /// In some case, the first pair (and the only one pair) will contains whitespace,
@@ -235,16 +295,7 @@ fn stat_split(stat: &str) -> Vec<String> {
         .collect()
 }
 
-impl TryFrom<DirEntry> for PidEntry {
-    type Error = io::Error;
-
-    fn try_from(value: DirEntry) -> Result<Self, Self::Error> {
-        let value = value.into_path();
-
-        PidEntry::try_new(value)
-    }
-}
-
+/// Iterating pid in current system
 pub fn walk_pid() -> impl Iterator<Item = PidEntry> {
     WalkDir::new("/proc/")
         .max_depth(1)

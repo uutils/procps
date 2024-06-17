@@ -3,10 +3,11 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-pub mod pid;
+// Pid utils
+pub mod process;
 
 use clap::{arg, crate_version, Arg, ArgAction, ArgGroup, ArgMatches, Command};
-use pid::{walk_pid, PidEntry, TerminalType};
+use process::{walk_pid, PidEntry, TerminalType};
 use regex::Regex;
 use std::{borrow::BorrowMut, cmp::Ordering, collections::HashSet, sync::OnceLock};
 use uucore::{
