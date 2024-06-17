@@ -80,6 +80,7 @@ impl TryFrom<PathBuf> for TerminalType {
 }
 
 /// State or process
+#[derive(Debug, PartialEq, Eq)]
 pub enum RunState {
     ///`R`, running
     Running,
@@ -106,7 +107,7 @@ impl Display for RunState {
 }
 
 impl TryFrom<char> for RunState {
-    type Error = ();
+    type Error = io::Error;
 
     fn try_from(value: char) -> Result<Self, Self::Error> {
         match value {
@@ -115,16 +116,41 @@ impl TryFrom<char> for RunState {
             'D' => Ok(RunState::UninterruptibleWait),
             'Z' => Ok(RunState::Zombie),
             'T' => Ok(RunState::Stopped),
-            _ => Err(()),
+            _ => Err(io::ErrorKind::InvalidInput.into()),
         }
     }
 }
 
+impl TryFrom<&str> for RunState {
+    type Error = io::Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        if value.len() != 1 {
+            return Err(io::ErrorKind::InvalidInput.into());
+        }
+
+        RunState::try_from(
+            value
+                .chars()
+                .nth(0)
+                .ok_or::<io::Error>(io::ErrorKind::InvalidInput.into())?,
+        )
+    }
+}
+
 impl TryFrom<String> for RunState {
-    type Error = ();
+    type Error = io::Error;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        RunState::try_from(value.chars().nth(0).ok_or(())?)
+        RunState::try_from(value.as_str())
+    }
+}
+
+impl TryFrom<&String> for RunState {
+    type Error = io::Error;
+
+    fn try_from(value: &String) -> Result<Self, Self::Error> {
+        RunState::try_from(value.as_str())
     }
 }
 
@@ -226,6 +252,10 @@ impl PidEntry {
         Ok(time)
     }
 
+    pub fn run_state(&mut self) -> Result<RunState, io::Error> {
+        RunState::try_from(self.stat()?.get(2).unwrap().as_str())
+    }
+
     /// This function will scan the `/proc/<pid>/df` directory
     ///
     /// # Error
@@ -308,9 +338,60 @@ pub fn walk_pid() -> impl Iterator<Item = PidEntry> {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
 
     use super::*;
+    use std::str::FromStr;
+
+    #[test]
+    fn test_tty_convention() {
+        assert_eq!(
+            TerminalType::try_from("/dev/tty1").unwrap(),
+            TerminalType::Tty(1)
+        );
+        assert_eq!(
+            TerminalType::try_from("/dev/tty10").unwrap(),
+            TerminalType::Tty(10)
+        );
+        assert_eq!(
+            TerminalType::try_from("/dev/pts/1").unwrap(),
+            TerminalType::Pts(1)
+        );
+        assert_eq!(
+            TerminalType::try_from("/dev/pts/10").unwrap(),
+            TerminalType::Pts(10)
+        );
+        assert_eq!(
+            TerminalType::try_from("/dev/ttyS1").unwrap(),
+            TerminalType::TtyS(1)
+        );
+        assert_eq!(
+            TerminalType::try_from("/dev/ttyS10").unwrap(),
+            TerminalType::TtyS(10)
+        );
+        assert_eq!(
+            TerminalType::try_from("ttyS10").unwrap(),
+            TerminalType::TtyS(10)
+        );
+
+        assert!(TerminalType::try_from("value").is_err());
+        assert!(TerminalType::try_from("TtyS10").is_err());
+    }
+
+    #[test]
+    fn test_run_state_conversion() {
+        assert_eq!(RunState::try_from("R").unwrap(), RunState::Running);
+        assert_eq!(RunState::try_from("R").unwrap(), RunState::Running);
+        assert_eq!(RunState::try_from("S").unwrap(), RunState::Sleeping);
+        assert_eq!(
+            RunState::try_from("D").unwrap(),
+            RunState::UninterruptibleWait
+        );
+        assert_eq!(RunState::try_from("T").unwrap(), RunState::Stopped);
+        assert_eq!(RunState::try_from("Z").unwrap(), RunState::Zombie);
+
+        assert!(RunState::try_from("G").is_err());
+        assert!(RunState::try_from("Rg").is_err());
+    }
 
     fn current_pid() -> usize {
         // Direct read link of /proc/self.
@@ -361,40 +442,5 @@ mod tests {
 
         let case="47246 (kworker /10:1-events) I 2 0 0 0 -1 69238880 0 0 0 0 17 29 0 0 20 0 1 0 1396260 0 0 18446744073709551615 0 0 0 0 0 0 0 2147483647 0 0 0 0 17 10 0 0 0 0 0 0 0 0 0 0 0 0 0";
         assert!(stat_split(case)[1] == "kworker /10:1-events");
-    }
-
-    #[test]
-    fn test_tty_convention() {
-        assert_eq!(
-            TerminalType::try_from("/dev/tty1").unwrap(),
-            TerminalType::Tty(1)
-        );
-        assert_eq!(
-            TerminalType::try_from("/dev/tty10").unwrap(),
-            TerminalType::Tty(10)
-        );
-        assert_eq!(
-            TerminalType::try_from("/dev/pts/1").unwrap(),
-            TerminalType::Pts(1)
-        );
-        assert_eq!(
-            TerminalType::try_from("/dev/pts/10").unwrap(),
-            TerminalType::Pts(10)
-        );
-        assert_eq!(
-            TerminalType::try_from("/dev/ttyS1").unwrap(),
-            TerminalType::TtyS(1)
-        );
-        assert_eq!(
-            TerminalType::try_from("/dev/ttyS10").unwrap(),
-            TerminalType::TtyS(10)
-        );
-        assert_eq!(
-            TerminalType::try_from("ttyS10").unwrap(),
-            TerminalType::TtyS(10)
-        );
-
-        assert!(TerminalType::try_from("value").is_err());
-        assert!(TerminalType::try_from("TtyS10").is_err());
     }
 }

@@ -122,17 +122,18 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<PidEntry> {
     let flag_full = matches.get_flag("full");
     let flag_exact = matches.get_flag("exact");
 
-    let evaluate = |mut it: PidEntry| {
-        let binding = it.status();
+    let evaluate = |mut pid: PidEntry| {
+        let binding = pid.status();
         let name = binding.get("Name")?;
 
-        // Processs flag `--ignore-case`
+        // Process flag `--ignore-case`
         let name = if should_ignore_case {
             name.to_lowercase()
         } else {
             name.into()
         };
 
+        // Process flag `--full` && `--exact`
         let name_matched = if flag_full {
             // Equals `Name` in /proc/<pid>/status
             // The `unwrap` operation must succeed
@@ -140,11 +141,12 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<PidEntry> {
             REGEX.get().unwrap().is_match(&name)
         } else if flag_exact {
             // Equals `cmdline` in /proc/<pid>/cmdline
-            it.cmdline.eq(pattern)
+            pid.cmdline.eq(pattern)
         } else {
             name.contains(pattern)
         };
 
+        // Process flag `--terminal`
         let tty_matched = if let Some(ttys) = matches.get_many::<String>("terminal") {
             // convert from input like `pts/0`
             let ttys = ttys
@@ -152,7 +154,7 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<PidEntry> {
                 .flat_map(TerminalType::try_from)
                 .collect::<HashSet<_>>();
 
-            if let Ok(value) = it.ttys() {
+            if let Ok(value) = pid.ttys() {
                 value.iter().any(|it| ttys.contains(it))
             } else {
                 false
@@ -161,8 +163,19 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<PidEntry> {
             true
         };
 
-        if (name_matched && tty_matched) ^ should_inverse {
-            Some(it)
+        // Process arg `--runstates`
+        // After testing, I found that GNU implementation
+        // just matching the char in the argument string.
+        let runstate_matched = if let (Some(arg_runstates), Ok(pid_state)) =
+            (matches.get_one::<String>("runstates"), pid.run_state())
+        {
+            arg_runstates.contains(&pid_state.to_string())
+        } else {
+            true
+        };
+
+        if (name_matched && tty_matched && runstate_matched) ^ should_inverse {
+            Some(pid)
         } else {
             None
         }
@@ -273,7 +286,7 @@ pub fn uu_app() -> Command {
             arg!(-x     --exact                 "match exactly with the command name"),
             // arg!(-F     --pidfile <file>        "read PIDs from file"),
             // arg!(-L     --logpidfile            "fail if PID file is not locked"),
-            // arg!(-r     --runstates <state>     "match runstates [D,S,Z,...]"),
+            arg!(-r     --runstates <state>     "match runstates [D,S,Z,...]"),
             // arg!(       --ns <PID>              "match the processes that belong to the same namespace as <pid>"),
             // arg!(       --nslist <ns>       ... "list which namespaces will be considered for the --ns option."),
         ])
