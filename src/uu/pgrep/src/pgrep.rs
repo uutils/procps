@@ -57,9 +57,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     // Verifying regex pattern
     // And put it into static `REGEX`
-    if matches.get_flag("full") {
+    if matches.get_flag("exact") {
         let regex = Regex::new(pattern.first().unwrap())
-            .map_err(|e| USimpleError::new(1, e.to_string()))?;
+            .map_err(|e| USimpleError::new(2, e.to_string()))?;
         REGEX.set(regex).unwrap();
     }
 
@@ -147,12 +147,12 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<PidEntry> {
         };
 
         // Process flag `--full` && `--exact`
-        let name_matched = if flag_full {
+        let name_matched = if flag_exact {
             // Equals `Name` in /proc/<pid>/status
             // The `unwrap` operation must succeed
             // because the REGEX has been verified as correct in `uumain`.
             REGEX.get().unwrap().is_match(&name)
-        } else if flag_exact {
+        } else if flag_full {
             // Equals `cmdline` in /proc/<pid>/cmdline
             pid.cmdline.eq(pattern)
         } else {
