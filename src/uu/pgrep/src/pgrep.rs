@@ -154,7 +154,7 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<PidEntry> {
             REGEX.get().unwrap().is_match(&name)
         } else if flag_full {
             // Equals `cmdline` in /proc/<pid>/cmdline
-            pid.cmdline.eq(pattern)
+            pid.cmdline.contains(pattern)
         } else {
             name.contains(pattern)
         };
