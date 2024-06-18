@@ -47,6 +47,16 @@ fn test_invalid_regex() {
     new_ucmd!().arg("{(*").arg("--exact").fails().code_is(2);
 }
 
+#[test]
+#[cfg(target_os = "linux")]
+fn test_valid_regex() {
+    new_ucmd!()
+        .arg("NO_PROGRAM*")
+        .arg("--exact")
+        .fails()
+        .code_is(1);
+}
+
 #[cfg(target_os = "linux")]
 #[test]
 fn test_delimiter() {
@@ -54,4 +64,20 @@ fn test_delimiter() {
     let output = binding.code_is(0).stdout_str();
 
     assert!(output.contains('|'))
+}
+
+#[test]
+fn test_too_many_patterns() {
+    new_ucmd!().arg("sh").arg("sh").fails().code_is(2);
+}
+
+#[test]
+fn test_too_few_patterns() {
+    new_ucmd!().fails().code_is(2);
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_ignore_case() {
+    new_ucmd!().arg("SH").arg("-i").succeeds().code_is(0);
 }

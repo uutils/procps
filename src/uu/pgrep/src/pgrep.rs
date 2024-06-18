@@ -142,10 +142,10 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<ProcessInformation> {
         let name = binding.get("Name")?;
 
         // Process flag `--ignore-case`
-        let name = if should_ignore_case {
-            name.to_lowercase()
+        let (name, pattern) = if should_ignore_case {
+            (name.to_lowercase(), pattern.to_lowercase())
         } else {
-            name.into()
+            (name.into(), pattern.into())
         };
 
         // Process flag `--full` && `--exact`
@@ -156,9 +156,9 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<ProcessInformation> {
             REGEX.get().unwrap().is_match(&name)
         } else if flag_full {
             // Equals `cmdline` in /proc/<pid>/cmdline
-            pid.cmdline.contains(pattern)
+            pid.cmdline.contains(&pattern)
         } else {
-            name.contains(pattern)
+            name.contains(&pattern)
         };
 
         // Process flag `--terminal`
@@ -278,7 +278,6 @@ pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
         .about(ABOUT)
-        .arg_required_else_help(true)
         .override_usage(format_usage(USAGE))
         .group(ArgGroup::new("oldest_newest").args(["oldest", "newest", "inverse"]))
         .args([
