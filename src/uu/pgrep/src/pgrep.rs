@@ -20,12 +20,24 @@ const USAGE: &str = help_usage!("pgrep.md");
 
 static REGEX: OnceLock<Regex> = OnceLock::new();
 
+/// # Conceptual model of `pgrep`
+///
+/// At first, `pgrep` command will check the patterns is legal.
+/// In this stage, `pgrep` will construct regex if `--exact` argument was passed.
+///
+/// Then, `pgrep` will collect all *matched* pids, and filtering them.
+/// In this stage `pgrep` command will collect all the pids and its information from __/proc/__
+/// file system. At the same time, `pgrep` will construct filters from command
+/// line arguments to filter the collected pids. Note that the "-o" and "-n" flag filters works
+/// if them enabled and based on general collecting result.
+///
+/// Last, `pgrep` will construct output format from arguments, and print the processed result.
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
     let pattern = collect_arg_patterns(&matches);
 
-    //// Pattern check ////
+    // Pattern check
     let flag_newest = matches.get_flag("newest");
     let flag_oldest = matches.get_flag("oldest");
 
@@ -51,12 +63,13 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         REGEX.set(regex).unwrap();
     }
 
-    //// Collect pids ////
+    // Collect pids
     let pids = collect_matched_pids(&matches);
 
-    //// Filtering pids ////
+    // Filtering pids
     let pids = if flag_newest || flag_oldest {
         let arg_older = matches.get_one::<u64>("older").unwrap_or(&0);
+        // `-o` and `-n` flag will be processed after pids collected
         filter_oldest_newest(pids, flag_newest, *arg_older)
     } else {
         pids
@@ -66,7 +79,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         uucore::error::set_exit_code(1);
     }
 
-    //// Processing output ////
+    // Processing output
     let result = || {
         if matches.get_flag("count") {
             return format!("{}", pids.len());
