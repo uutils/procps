@@ -7,7 +7,7 @@
 pub mod process;
 
 use clap::{arg, crate_version, Arg, ArgAction, ArgGroup, ArgMatches, Command};
-use process::{walk_pid, PidEntry, TerminalType};
+use process::{walk_process, ProcessInformation, TerminalType};
 use regex::Regex;
 use std::{borrow::BorrowMut, cmp::Ordering, collections::HashSet, sync::OnceLock};
 use uucore::{
@@ -110,6 +110,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     Ok(())
 }
 
+/// Collect patterns from command line arguments
 fn collect_arg_patterns(matches: &ArgMatches) -> Vec<String> {
     let should_ignore_case = matches.get_flag("ignore-case");
 
@@ -125,7 +126,8 @@ fn collect_arg_patterns(matches: &ArgMatches) -> Vec<String> {
     }
 }
 
-fn collect_matched_pids(matches: &ArgMatches) -> Vec<PidEntry> {
+/// Collect pids with filter construct from command line arguments
+fn collect_matched_pids(matches: &ArgMatches) -> Vec<ProcessInformation> {
     let binding = String::from("");
     let pattern = matches.get_one::<String>("pattern").unwrap_or(&binding);
 
@@ -135,7 +137,7 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<PidEntry> {
     let flag_full = matches.get_flag("full");
     let flag_exact = matches.get_flag("exact");
 
-    let evaluate = |mut pid: PidEntry| {
+    let evaluate = |mut pid: ProcessInformation| {
         let binding = pid.status();
         let name = binding.get("Name")?;
 
@@ -196,7 +198,7 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<PidEntry> {
 
     let mut result = Vec::new();
 
-    for pid in walk_pid() {
+    for pid in walk_process() {
         if let Some(pid) = evaluate(pid) {
             result.push(pid.clone())
         }
@@ -206,7 +208,11 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<PidEntry> {
 }
 
 // Make -o and -n as a group of args
-fn filter_oldest_newest(pids: Vec<PidEntry>, flag_newest: bool, arg_older: u64) -> Vec<PidEntry> {
+fn filter_oldest_newest(
+    pids: Vec<ProcessInformation>,
+    flag_newest: bool,
+    arg_older: u64,
+) -> Vec<ProcessInformation> {
     let mut pids = {
         let mut tmp_vec = Vec::with_capacity(pids.len());
         for mut pid in pids {
@@ -236,7 +242,11 @@ fn filter_oldest_newest(pids: Vec<PidEntry>, flag_newest: bool, arg_older: u64) 
     .cloned()
     .unwrap();
 
-    let sort = |start_time: u64| {
+    // Sort pid by start time.
+    //
+    // This closure will second sort the collecting result because there
+    // might be some process start at the same time, and then pick the first of the result.
+    let second_sort = |start_time: u64| {
         let mut result = pids
             .into_iter()
             .filter(|it| (*it).to_owned().borrow_mut().start_time().is_ok())
@@ -257,7 +267,7 @@ fn filter_oldest_newest(pids: Vec<PidEntry>, flag_newest: bool, arg_older: u64) 
         result
     };
 
-    vec![sort(entry.start_time().unwrap())
+    vec![second_sort(entry.start_time().unwrap())
         .first()
         .unwrap()
         .clone()

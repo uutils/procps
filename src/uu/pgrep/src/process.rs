@@ -154,22 +154,33 @@ impl TryFrom<&String> for RunState {
     }
 }
 
+/// Process ID and its information
 #[derive(Debug, Clone, Default)]
-pub struct PidEntry {
+pub struct ProcessInformation {
     pub pid: usize,
     pub cmdline: String,
 
     inner_status: String,
     inner_stat: String,
 
+    /// Processed `/proc/self/status` file
     cached_status: Option<Rc<HashMap<String, String>>>,
+    /// Processed `/proc/self/stat` file
     cached_stat: Option<Rc<Vec<String>>>,
 
     cached_start_time: Option<u64>,
     cached_tty: Option<Rc<HashSet<TerminalType>>>,
 }
 
-impl PidEntry {
+impl ProcessInformation {
+    /// Try new with pid path such as `/proc/self`
+    ///
+    /// # Error
+    ///
+    /// If the files in path cannot be parsed into [ProcessInformation],
+    /// it almost caused by wrong filesystem structure.
+    ///
+    /// - [The /proc Filesystem](https://docs.kernel.org/filesystems/proc.html#process-specific-subdirectories)
     pub fn try_new(value: PathBuf) -> Result<Self, io::Error> {
         let dir_append = |mut path: PathBuf, str: String| {
             path.push(str);
@@ -206,6 +217,7 @@ impl PidEntry {
         })
     }
 
+    /// Collect information from `/proc/<pid>/status` file
     pub fn status(&mut self) -> Rc<HashMap<String, String>> {
         if let Some(c) = &self.cached_status {
             return Rc::clone(c);
@@ -223,6 +235,7 @@ impl PidEntry {
         Rc::clone(&result)
     }
 
+    /// Collect information from `/proc/<pid>/stat` file
     fn stat(&mut self) -> Result<Rc<Vec<String>>, io::Error> {
         if let Some(c) = &self.cached_stat {
             return Ok(Rc::clone(c));
@@ -235,6 +248,9 @@ impl PidEntry {
         Ok(Rc::clone(&result))
     }
 
+    /// Fetch start time from [ProcessInformation::cached_stat]
+    ///
+    /// - [The /proc Filesystem: Table 1-4](https://docs.kernel.org/filesystems/proc.html#id10)
     pub fn start_time(&mut self) -> Result<u64, io::Error> {
         if let Some(time) = self.cached_start_time {
             return Ok(time);
@@ -249,9 +265,14 @@ impl PidEntry {
             .parse::<u64>()
             .map_err(|_| io::ErrorKind::InvalidData)?;
 
+        self.cached_start_time = Some(time);
+
         Ok(time)
     }
 
+    /// Fetch start time from [ProcessInformation::cached_stat]
+    ///
+    /// - [The /proc Filesystem: Table 1-4](https://docs.kernel.org/filesystems/proc.html#id10)
     pub fn run_state(&mut self) -> Result<RunState, io::Error> {
         RunState::try_from(self.stat()?.get(2).unwrap().as_str())
     }
@@ -284,13 +305,13 @@ impl PidEntry {
     }
 }
 
-impl TryFrom<DirEntry> for PidEntry {
+impl TryFrom<DirEntry> for ProcessInformation {
     type Error = io::Error;
 
     fn try_from(value: DirEntry) -> Result<Self, Self::Error> {
         let value = value.into_path();
 
-        PidEntry::try_new(value)
+        ProcessInformation::try_new(value)
     }
 }
 
@@ -326,14 +347,14 @@ fn stat_split(stat: &str) -> Vec<String> {
 }
 
 /// Iterating pid in current system
-pub fn walk_pid() -> impl Iterator<Item = PidEntry> {
+pub fn walk_process() -> impl Iterator<Item = ProcessInformation> {
     WalkDir::new("/proc/")
         .max_depth(1)
         .follow_links(false)
         .into_iter()
         .flatten()
         .filter(|it| it.path().is_dir())
-        .flat_map(PidEntry::try_from)
+        .flat_map(ProcessInformation::try_from)
 }
 
 #[cfg(test)]
@@ -408,7 +429,7 @@ mod tests {
     fn test_walk_pid() {
         let current_pid = current_pid();
 
-        let find = walk_pid().find(|it| it.pid == current_pid);
+        let find = walk_process().find(|it| it.pid == current_pid);
 
         assert!(find.is_some());
     }
@@ -417,9 +438,10 @@ mod tests {
     fn test_pid_entry() {
         let current_pid = current_pid();
 
-        let mut pid_entry =
-            PidEntry::try_new(PathBuf::from_str(&format!("/proc/{}", current_pid)).unwrap())
-                .unwrap();
+        let mut pid_entry = ProcessInformation::try_new(
+            PathBuf::from_str(&format!("/proc/{}", current_pid)).unwrap(),
+        )
+        .unwrap();
 
         let result = WalkDir::new(format!("/proc/{}/fd", current_pid))
             .into_iter()
