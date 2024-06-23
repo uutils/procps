@@ -28,7 +28,7 @@ uudoc = []
 feat_common_core = ["pwdx", "free", "w", "watch", "pmap", "slabtop"]
 
 [workspace.dependencies]
-uucore = "0.0.26"
+uucore = "0.0.27"
 clap = { version = "4.5.4", features = ["wrap_help", "cargo"] }
 clap_complete = "4.5.2"
 clap_mangen = "0.2.20"
