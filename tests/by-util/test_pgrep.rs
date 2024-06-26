@@ -45,6 +45,7 @@ fn test_full() {
 #[cfg(target_os = "linux")]
 fn test_invalid_regex() {
     new_ucmd!().arg("{(*").arg("--exact").fails().code_is(2);
+    new_ucmd!().arg("{(*").fails().code_is(2);
 }
 
 #[test]
@@ -55,15 +56,18 @@ fn test_valid_regex() {
         .arg("--exact")
         .fails()
         .code_is(1);
+    new_ucmd!().arg("a*").succeeds();
 }
 
 #[cfg(target_os = "linux")]
 #[test]
 fn test_delimiter() {
-    let binding = new_ucmd!().arg("sh").arg("-d |").succeeds();
-    let output = binding.code_is(0).stdout_str();
-
-    assert!(output.contains('|'))
+    new_ucmd!()
+        .arg("sh")
+        .arg("-d |")
+        .succeeds()
+        .code_is(0)
+        .stdout_contains("|");
 }
 
 #[test]

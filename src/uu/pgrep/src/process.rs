@@ -217,6 +217,14 @@ impl ProcessInformation {
         })
     }
 
+    pub fn inner_status(&self) -> &str {
+        &self.inner_status
+    }
+
+    pub fn inner_stat(&self) -> &str {
+        &self.inner_stat
+    }
+
     /// Collect information from `/proc/<pid>/status` file
     pub fn status(&mut self) -> Rc<HashMap<String, String>> {
         if let Some(c) = &self.cached_status {
@@ -236,16 +244,16 @@ impl ProcessInformation {
     }
 
     /// Collect information from `/proc/<pid>/stat` file
-    fn stat(&mut self) -> Result<Rc<Vec<String>>, io::Error> {
+    fn stat(&mut self) -> Rc<Vec<String>> {
         if let Some(c) = &self.cached_stat {
-            return Ok(Rc::clone(c));
+            return Rc::clone(c);
         }
 
         let result: Vec<_> = stat_split(&self.inner_stat);
 
         let result = Rc::new(result);
         self.cached_stat = Some(Rc::clone(&result));
-        Ok(Rc::clone(&result))
+        Rc::clone(&result)
     }
 
     /// Fetch start time from [ProcessInformation::cached_stat]
@@ -259,7 +267,7 @@ impl ProcessInformation {
         // Kernel doc: https://docs.kernel.org/filesystems/proc.html#process-specific-subdirectories
         // Table 1-4
         let time = self
-            .stat()?
+            .stat()
             .get(21)
             .ok_or(io::ErrorKind::InvalidData)?
             .parse::<u64>()
@@ -270,14 +278,18 @@ impl ProcessInformation {
         Ok(time)
     }
 
-    /// Fetch start time from [ProcessInformation::cached_stat]
+    /// Fetch run state from [ProcessInformation::cached_stat]
     ///
     /// - [The /proc Filesystem: Table 1-4](https://docs.kernel.org/filesystems/proc.html#id10)
+    ///
+    /// # Error
+    ///
+    /// If parsing failed, this function will return [io::ErrorKind::InvalidInput]
     pub fn run_state(&mut self) -> Result<RunState, io::Error> {
-        RunState::try_from(self.stat()?.get(2).unwrap().as_str())
+        RunState::try_from(self.stat().get(2).unwrap().as_str())
     }
 
-    /// This function will scan the `/proc/<pid>/df` directory
+    /// This function will scan the `/proc/<pid>/fd` directory
     ///
     /// # Error
     ///
@@ -401,7 +413,6 @@ mod tests {
     #[test]
     fn test_run_state_conversion() {
         assert_eq!(RunState::try_from("R").unwrap(), RunState::Running);
-        assert_eq!(RunState::try_from("R").unwrap(), RunState::Running);
         assert_eq!(RunState::try_from("S").unwrap(), RunState::Sleeping);
         assert_eq!(
             RunState::try_from("D").unwrap(),
@@ -456,13 +467,13 @@ mod tests {
 
     #[test]
     fn test_stat_split() {
-        let case="32 (idle_inject/3) S 2 0 0 0 -1 69238848 0 0 0 0 0 0 0 0 -51 0 1 0 34 0 0 18446744073709551615 0 0 0 0 0 0 0 2147483647 0 0 0 0 17 3 50 1 0 0 0 0 0 0 0 0 0 0 0";
+        let case = "32 (idle_inject/3) S 2 0 0 0 -1 69238848 0 0 0 0 0 0 0 0 -51 0 1 0 34 0 0 18446744073709551615 0 0 0 0 0 0 0 2147483647 0 0 0 0 17 3 50 1 0 0 0 0 0 0 0 0 0 0 0";
         assert!(stat_split(case)[1] == "idle_inject/3");
 
-        let case ="3508 (sh) S 3478 3478 3478 0 -1 4194304 67 0 0 0 0 0 0 0 20 0 1 0 11911 2961408 238 18446744073709551615 94340156948480 94340157028757 140736274114368 0 0 0 0 4096 65538 1 0 0 17 8 0 0 0 0 0 94340157054704 94340157059616 94340163108864 140736274122780 140736274122976 140736274122976 140736274124784 0";
+        let case = "3508 (sh) S 3478 3478 3478 0 -1 4194304 67 0 0 0 0 0 0 0 20 0 1 0 11911 2961408 238 18446744073709551615 94340156948480 94340157028757 140736274114368 0 0 0 0 4096 65538 1 0 0 17 8 0 0 0 0 0 94340157054704 94340157059616 94340163108864 140736274122780 140736274122976 140736274122976 140736274124784 0";
         assert!(stat_split(case)[1] == "sh");
 
-        let case="47246 (kworker /10:1-events) I 2 0 0 0 -1 69238880 0 0 0 0 17 29 0 0 20 0 1 0 1396260 0 0 18446744073709551615 0 0 0 0 0 0 0 2147483647 0 0 0 0 17 10 0 0 0 0 0 0 0 0 0 0 0 0 0";
+        let case = "47246 (kworker /10:1-events) I 2 0 0 0 -1 69238880 0 0 0 0 17 29 0 0 20 0 1 0 1396260 0 0 18446744073709551615 0 0 0 0 0 0 0 2147483647 0 0 0 0 17 10 0 0 0 0 0 0 0 0 0 0 0 0 0";
         assert!(stat_split(case)[1] == "kworker /10:1-events");
     }
 }
