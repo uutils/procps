@@ -4,7 +4,7 @@
 // file that was distributed with this source code.
 
 use crate::parse::SlabInfo;
-use clap::{arg, crate_version, Command};
+use clap::{arg, crate_version, ArgAction, Command};
 use uucore::{error::UResult, format_usage, help_about, help_usage};
 
 const ABOUT: &str = help_about!("slabtop.md");
@@ -24,12 +24,43 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     let slabinfo = SlabInfo::new()?.sort(*sort_flag, false);
 
+    if matches.get_flag("once") {
+        output_header(&slabinfo);
+        println!();
+        output_list(&slabinfo);
+    } else {
+        // TODO: implement TUI
+        output_header(&slabinfo);
+        println!();
+        output_list(&slabinfo);
+    }
+
+    Ok(())
+}
+
+fn to_kb(byte: u64) -> f64 {
+    byte as f64 / 1024.0
+}
+
+fn percentage(numerator: u64, denominator: u64) -> f64 {
+    if denominator == 0 {
+        return 0.0;
+    }
+
+    let numerator = numerator as f64;
+    let denominator = denominator as f64;
+
+    (numerator / denominator) * 100.0
+}
+
+fn output_header(slabinfo: &SlabInfo) {
     println!(
         r" Active / Total Objects (% used)    : {} / {} ({:.1}%)",
         slabinfo.total_active_objs(),
         slabinfo.total_objs(),
         percentage(slabinfo.total_active_objs(), slabinfo.total_objs())
     );
+
     println!(
         r" Active / Total Slabs (% used)      : {} / {} ({:.1}%)",
         slabinfo.total_active_slabs(),
@@ -58,38 +89,15 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         to_kb(slabinfo.object_avg()),
         to_kb(slabinfo.object_maximum())
     );
+}
 
-    // separate header info and slab list
-    println!();
-
-    // TODO: TUI Implementation
+fn output_list(info: &SlabInfo) {
     let title = format!(
         "{:>6} {:>6} {:>4} {:>8} {:>6} {:>8} {:>10} {:<}",
         "OBJS", "ACTIVE", "USE", "OBJ SIZE", "SLABS", "OBJ/SLAB", "CACHE SIZE", "NAME"
     );
     println!("{}", title);
 
-    output(&slabinfo);
-
-    Ok(())
-}
-
-fn to_kb(byte: u64) -> f64 {
-    byte as f64 / 1024.0
-}
-
-fn percentage(numerator: u64, denominator: u64) -> f64 {
-    if denominator == 0 {
-        return 0.0;
-    }
-
-    let numerator = numerator as f64;
-    let denominator = denominator as f64;
-
-    (numerator / denominator) * 100.0
-}
-
-fn output(info: &SlabInfo) {
     for name in info.names() {
         let objs = info.fetch(name, "num_objs").unwrap_or_default();
         let active = info.fetch(name, "active_objs").unwrap_or_default();
@@ -121,7 +129,7 @@ pub fn uu_app() -> Command {
         .infer_long_args(true)
         .args([
             // arg!(-d --delay <secs>  "delay updates"),
-            // arg!(-o --once          "only display once, then exit"),
+            arg!(-o --once          "only display once, then exit").action(ArgAction::SetTrue),
             arg!(-s --sort  <char>  "specify sort criteria by character (see below)"),
         ])
         .after_help(
