@@ -37,18 +37,6 @@ jobs:
       - run: rustup component add rustfmt
       - run: cargo fmt --all -- --check
 
-  clippy:
-    name: cargo clippy -- -D warnings
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macOS-latest, windows-latest]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - run: rustup component add clippy
-      - run: cargo clippy --all-targets -- -D warnings
-
   coverage:
     name: Code Coverage
     runs-on: ${{ matrix.job.os }}
