@@ -77,11 +77,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     }
 
     // Processing output
-    let result = || {
-        if matches.get_flag("count") {
-            return format!("{}", pids.len());
-        };
-
+    let output = if matches.get_flag("count") {
+        format!("{}", pids.len())
+    } else {
         let delimiter = matches.get_one::<String>("delimiter").unwrap();
 
         let formatted: Vec<_> = if matches.get_flag("list-full") {
@@ -99,7 +97,6 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         formatted.join(delimiter)
     };
 
-    let output = result();
     if !output.is_empty() {
         println!("{}", output);
     };
