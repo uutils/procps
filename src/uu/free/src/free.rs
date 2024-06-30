@@ -4,7 +4,7 @@
 // file that was distributed with this source code.
 
 use bytesize::{ByteSize, GB, GIB, KIB, MB, MIB, PB, PIB, TB, TIB};
-use clap::{arg, crate_version, Arg, ArgAction, ArgGroup, ArgMatches, Command};
+use clap::{arg, crate_version, ArgAction, ArgGroup, ArgMatches, Command};
 use std::env;
 #[cfg(target_os = "linux")]
 use std::fs;
@@ -321,20 +321,9 @@ pub fn uu_app() -> Command {
                 .value_name("N")
                 .value_parser(clap::value_parser!(u64)),
             arg!(-L --line "show output on a single line").action(ArgAction::SetTrue),
+            arg!(-w --wide "wide output").action(ArgAction::SetTrue),
+            arg!(   --help "display this help and exit").action(ArgAction::Help),
         ])
-        .arg(
-            Arg::new("wide")
-                .short('w')
-                .long("wide")
-                .help("wide output")
-                .action(ArgAction::SetTrue),
-        )
-        .arg(
-            Arg::new("help")
-                .long("help")
-                .action(ArgAction::Help)
-                .help("display this help and exit"),
-        )
 }
 
 #[cfg(target_os = "linux")]
