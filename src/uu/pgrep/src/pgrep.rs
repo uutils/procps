@@ -160,7 +160,7 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<ProcessInformation> {
                 } else {
                     // From manpage:
                     // The process name used for matching is limited to the 15 characters present in the output of /proc/pid/stat.
-                    &pid.inner_stat()[..15]
+                    &pid.proc_stat()[..15]
                 };
 
                 REGEX.get().unwrap().is_match(want)
