@@ -28,3 +28,7 @@ mod test_pmap;
 #[cfg(feature = "slabtop")]
 #[path = "by-util/test_slabtop.rs"]
 mod test_slabtop;
+
+#[cfg(feature = "pgrep")]
+#[path = "by-util/test_pgrep.rs"]
+mod test_pgrep;
