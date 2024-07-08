@@ -15,6 +15,7 @@ categories = ["command-line-utilities"]
 [dependencies]
 uucore = { workspace = true }
 clap = { workspace = true }
+uu_pgrep = { path = "../pgrep" }
 
 [lib]
 path = "src/pidof.rs"

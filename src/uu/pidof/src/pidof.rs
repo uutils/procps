@@ -19,19 +19,68 @@ pub fn uu_app() -> Command {
         .infer_long_args(true)
         .disable_help_flag(true)
         .disable_version_flag(true)
-        .arg(Arg::new("program-name"))
-        .args([
-            arg!(-c         "Return PIDs with the same root directory").action(ArgAction::SetTrue),
-            arg!(-d <sep>   "Use the provided character as output separator"),
-            arg!(-h         "Display this help text").action(ArgAction::Help),
-            arg!(-n         "Avoid using stat system function on network shares")
+        .arg(
+            Arg::new("program-name")
+                .help("Program name.")
+                .required(true)
+                .index(1),
+        )
+        .arg(
+            Arg::new("c")
+                .short('c')
+                .help("Return PIDs with the same root directory")
                 .action(ArgAction::SetTrue),
-            arg!(-o <pid>   "Omit results with a given PID").action(ArgAction::Set),
-            arg!(-q         "Quiet mode. Do not display output").action(ArgAction::SetTrue),
-            arg!(-s         "Only return one PID").action(ArgAction::SetTrue),
-            arg!(-x         "Return PIDs of shells running scripts with a matching name")
+        )
+        .arg(
+            Arg::new("d")
+                .short('d')
+                .help("Use the provided character as output separator")
+                .action(ArgAction::Set)
+                .value_name("sep")
+                .default_value(" ")
+                .hide_default_value(true),
+        )
+        .arg(
+            Arg::new("help")
+                .short('h')
+                .help("Display this help text")
+                .action(ArgAction::Help),
+        )
+        .arg(
+            Arg::new("n")
+                .short('n')
+                .help("Avoid using stat system function on network shares")
                 .action(ArgAction::SetTrue),
-            arg!(-z         "List zombie and I/O waiting processes. May cause pidof to hang.")
+        )
+        .arg(
+            Arg::new("o")
+                .short('o')
+                .help("Omit results with a given PID")
+                .action(ArgAction::Set)
+                .value_name("pid"),
+        )
+        .arg(
+            Arg::new("q")
+                .short('q')
+                .help("Quiet mode. Do not display output")
                 .action(ArgAction::SetTrue),
-        ])
+        )
+        .arg(
+            Arg::new("s")
+                .short('s')
+                .help("Only return one PID")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("x")
+                .short('x')
+                .help("Return PIDs of shells running scripts with a matching name")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("z")
+                .short('z')
+                .help("List zombie and I/O waiting processes. May cause pidof to hang.")
+                .action(ArgAction::SetTrue),
+        )
 }

@@ -873,6 +873,7 @@ name = "uu_pidof"
 version = "0.0.1"
 dependencies = [
  "clap",
+ "uu_pgrep",
  "uucore",
 ]
 
