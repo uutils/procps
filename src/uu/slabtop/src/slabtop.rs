@@ -5,9 +5,10 @@
 
 use crate::parse::SlabInfo;
 use clap::{arg, crate_version, ArgAction, Command};
-use uucore::{error::UResult, format_usage, help_about, help_usage};
+use uucore::{error::UResult, format_usage, help_about, help_section, help_usage};
 
 const ABOUT: &str = help_about!("slabtop.md");
+const AFTER_HELP: &str = help_section!("after help", "slabtop.md");
 const USAGE: &str = help_usage!("slabtop.md");
 
 mod parse;
@@ -121,6 +122,7 @@ fn output_list(info: &SlabInfo) {
     }
 }
 
+#[allow(clippy::cognitive_complexity)]
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
@@ -132,17 +134,5 @@ pub fn uu_app() -> Command {
             arg!(-o --once          "only display once, then exit").action(ArgAction::SetTrue),
             arg!(-s --sort  <char>  "specify sort criteria by character (see below)"),
         ])
-        .after_help(
-            r"The following are valid sort criteria:
- a: sort by number of active objects
- b: sort by objects per slab
- c: sort by cache size
- l: sort by number of slabs
- v: sort by (non display) number of active slabs
- n: sort by name
- o: sort by number of objects (the default)
- p: sort by (non display) pages per slab
- s: sort by object size
- u: sort by cache utilization",
-        )
+        .after_help(AFTER_HELP)
 }
