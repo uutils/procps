@@ -9,3 +9,16 @@ use crate::common::util::TestScenario;
 fn test_invalid_arg() {
     new_ucmd!().arg("--definitely-invalid").fails().code_is(1);
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_find_init() {
+    new_ucmd!().arg("init").succeeds();
+}
+
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_find_kthreadd() {
+    new_ucmd!().arg("kthreadd").succeeds();
+}

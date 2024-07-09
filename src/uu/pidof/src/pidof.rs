@@ -3,6 +3,8 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use std::path::PathBuf;
+
 use clap::{crate_version, Arg, ArgAction, ArgMatches, Command};
 use uu_pgrep::process::{walk_process, ProcessInformation};
 use uucore::{error::UResult, format_usage, help_about, help_usage};
@@ -36,6 +38,22 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     Ok(())
 }
 
+fn get_executable_name(process: &mut ProcessInformation) -> String {
+    let binding = process.cmdline.split(' ').collect::<Vec<_>>();
+    let mut path = binding.first().unwrap().to_string();
+
+    if path.is_empty() {
+        path.clone_from(&process.status()["Name"]);
+    };
+
+    PathBuf::from(path)
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string()
+}
+
 fn collect_matched_pids(matches: &ArgMatches) -> Vec<ProcessInformation> {
     let program_name: Vec<_> = matches
         .get_many::<String>("program-name")
@@ -52,7 +70,7 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<ProcessInformation> {
 
     let mut processed = Vec::new();
     for mut process in collected {
-        let contains = program_name.contains(process.status().get("Name").unwrap());
+        let contains = program_name.contains(&get_executable_name(&mut process));
         let should_omit = arg_omit_pid.contains(&process.pid);
 
         if contains && !should_omit {
