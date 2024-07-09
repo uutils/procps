@@ -16,7 +16,6 @@ fn test_find_init() {
     new_ucmd!().arg("init").succeeds();
 }
 
-
 #[test]
 #[cfg(target_os = "linux")]
 fn test_find_kthreadd() {
