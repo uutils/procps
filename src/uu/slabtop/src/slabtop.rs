@@ -122,6 +122,7 @@ fn output_list(info: &SlabInfo) {
     }
 }
 
+#[allow(clippy::cognitive_complexity)]
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
