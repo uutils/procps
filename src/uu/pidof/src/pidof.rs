@@ -1,3 +1,8 @@
+// This file is part of the uutils procps package.
+//
+// For the full copyright and license information, please view the LICENSE
+// file that was distributed with this source code.
+
 use clap::{crate_version, Arg, ArgAction, ArgMatches, Command};
 use uu_pgrep::process::{walk_process, ProcessInformation};
 use uucore::{error::UResult, format_usage, help_about, help_usage};
