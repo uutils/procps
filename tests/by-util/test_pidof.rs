@@ -21,3 +21,15 @@ fn test_find_init() {
 fn test_find_kthreadd() {
     new_ucmd!().arg("kthreadd").succeeds();
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_no_program() {
+    new_ucmd!().fails().code_is(1);
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_no_pid_found() {
+    new_ucmd!().arg("NO_THIS_PROGRAM").fails().code_is(1);
+}

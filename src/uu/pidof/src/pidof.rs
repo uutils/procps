@@ -25,6 +25,12 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     };
 
     let mut collected = collect_matched_pids(&matches);
+
+    if collected.is_empty() {
+        uucore::error::set_exit_code(1);
+        return Ok(());
+    };
+
     collected.sort_by(|a, b| b.pid.cmp(&a.pid));
 
     let output = collected
