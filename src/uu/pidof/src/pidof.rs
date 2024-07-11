@@ -102,8 +102,6 @@ pub fn uu_app() -> Command {
         .about(ABOUT)
         .override_usage(format_usage(USAGE))
         .infer_long_args(true)
-        .disable_help_flag(true)
-        .disable_version_flag(true)
         .arg(
             Arg::new("program-name")
                 .help("Program name.")
@@ -124,12 +122,6 @@ pub fn uu_app() -> Command {
                 .value_name("sep")
                 .default_value(" ")
                 .hide_default_value(true),
-        )
-        .arg(
-            Arg::new("help")
-                .short('h')
-                .help("Display this help text")
-                .action(ArgAction::Help),
         )
         // .arg(
         //     Arg::new("n")
