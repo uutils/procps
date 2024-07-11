@@ -134,6 +134,7 @@ pub fn uu_app() -> Command {
                 .short('o')
                 .help("Omit results with a given PID")
                 .action(ArgAction::Append)
+                .value_parser(clap::value_parser!(usize))
                 .value_name("omitpid"),
         )
         // .arg(
