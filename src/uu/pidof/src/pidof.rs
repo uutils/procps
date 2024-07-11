@@ -24,14 +24,12 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         return Ok(());
     };
 
-    let mut collected = collect_matched_pids(&matches);
+    let collected = collect_matched_pids(&matches);
 
     if collected.is_empty() {
         uucore::error::set_exit_code(1);
         return Ok(());
     };
-
-    collected.sort_by(|a, b| b.pid.cmp(&a.pid));
 
     let output = collected
         .into_iter()
@@ -86,6 +84,8 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<ProcessInformation> {
             processed.push(process)
         }
     }
+
+    processed.sort_by(|a, b| b.pid.cmp(&a.pid));
 
     let flag_s = matches.get_flag("s");
     if flag_s {
