@@ -39,7 +39,10 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         .collect::<Vec<_>>()
         .join(arg_separator);
 
-    println!("{output}");
+    let flag_quite = matches.get_flag("q");
+    if !flag_quite {
+        println!("{output}");
+    }
 
     Ok(())
 }
@@ -137,12 +140,12 @@ pub fn uu_app() -> Command {
                 .value_parser(clap::value_parser!(usize))
                 .value_name("omitpid"),
         )
-        // .arg(
-        //     Arg::new("q")
-        //         .short('q')
-        //         .help("Quiet mode. Do not display output")
-        //         .action(ArgAction::SetTrue),
-        // )
+        .arg(
+            Arg::new("q")
+                .short('q')
+                .help("Quiet mode. Do not display output")
+                .action(ArgAction::SetTrue),
+        )
         .arg(
             Arg::new("s")
                 .short('s')
