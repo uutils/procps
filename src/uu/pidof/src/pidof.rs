@@ -39,8 +39,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         .collect::<Vec<_>>()
         .join(arg_separator);
 
-    let flag_quite = matches.get_flag("q");
-    if !flag_quite {
+    let flag_quiet = matches.get_flag("q");
+    if !flag_quiet {
         println!("{output}");
     }
 
