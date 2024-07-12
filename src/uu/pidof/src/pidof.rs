@@ -109,7 +109,8 @@ pub fn uu_app() -> Command {
             Arg::new("program-name")
                 .help("Program name.")
                 .required(true)
-                .index(1),
+                .index(1)
+                .action(ArgAction::Append),
         )
         // .arg(
         //     Arg::new("c")
