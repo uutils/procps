@@ -62,7 +62,7 @@ fn get_executable_name(process: &mut ProcessInformation) -> String {
 }
 
 fn collect_matched_pids(matches: &ArgMatches) -> Vec<ProcessInformation> {
-    let program_name: Vec<_> = matches
+    let program_names: Vec<_> = matches
         .get_many::<String>("program-name")
         .unwrap()
         .cloned()
@@ -77,7 +77,7 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<ProcessInformation> {
 
     let mut processed = Vec::new();
     for mut process in collected {
-        let contains = program_name.contains(&get_executable_name(&mut process));
+        let contains = program_names.contains(&get_executable_name(&mut process));
         let should_omit = arg_omit_pid.contains(&process.pid);
 
         if contains && !should_omit {
