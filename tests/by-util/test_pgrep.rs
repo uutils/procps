@@ -4,6 +4,11 @@
 // file that was distributed with this source code.
 
 use crate::common::util::TestScenario;
+#[cfg(target_os = "linux")]
+use regex::Regex;
+
+#[cfg(target_os = "linux")]
+const SINGLE_PID: &str = "^[1-9][0-9]*";
 
 #[test]
 fn test_no_args() {
@@ -48,7 +53,10 @@ fn test_help() {
 #[cfg(target_os = "linux")]
 fn test_oldest() {
     for arg in ["-o", "--oldest"] {
-        new_ucmd!().arg(arg).succeeds();
+        new_ucmd!()
+            .arg(arg)
+            .succeeds()
+            .stdout_matches(&Regex::new(SINGLE_PID).unwrap());
     }
 }
 
@@ -56,7 +64,10 @@ fn test_oldest() {
 #[cfg(target_os = "linux")]
 fn test_newest() {
     for arg in ["-n", "--newest"] {
-        new_ucmd!().arg(arg).succeeds();
+        new_ucmd!()
+            .arg(arg)
+            .succeeds()
+            .stdout_matches(&Regex::new(SINGLE_PID).unwrap());
     }
 }
 
