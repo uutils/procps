@@ -6,6 +6,35 @@
 use crate::common::util::TestScenario;
 
 #[test]
+fn test_no_args() {
+    new_ucmd!()
+        .fails()
+        .code_is(2)
+        .no_stdout()
+        .stderr_contains("no matching criteria specified");
+}
+
+#[test]
+fn test_non_matching_pattern() {
+    new_ucmd!()
+        .arg("THIS_PATTERN_DOES_NOT_MATCH")
+        .fails()
+        .code_is(1)
+        .no_output();
+}
+
+#[test]
+fn test_too_many_patterns() {
+    new_ucmd!()
+        .arg("sh")
+        .arg("sh")
+        .fails()
+        .code_is(2)
+        .no_stdout()
+        .stderr_contains("only one pattern can be provided");
+}
+
+#[test]
 fn test_invalid_arg() {
     new_ucmd!().arg("--definitely-invalid").fails().code_is(1);
 }
@@ -29,15 +58,6 @@ fn test_newest() {
     for arg in ["-n", "--newest"] {
         new_ucmd!().arg(arg).succeeds();
     }
-}
-
-#[test]
-fn test_non_matching_pattern() {
-    new_ucmd!()
-        .arg("THIS_PATTERN_DOES_NOT_MATCH")
-        .fails()
-        .code_is(1)
-        .no_output();
 }
 
 #[test]
@@ -77,26 +97,6 @@ fn test_delimiter() {
             .succeeds()
             .stdout_contains("|");
     }
-}
-
-#[test]
-fn test_too_many_patterns() {
-    new_ucmd!()
-        .arg("sh")
-        .arg("sh")
-        .fails()
-        .code_is(2)
-        .no_stdout()
-        .stderr_contains("only one pattern can be provided");
-}
-
-#[test]
-fn test_no_args() {
-    new_ucmd!()
-        .fails()
-        .code_is(2)
-        .no_stdout()
-        .stderr_contains("no matching criteria specified");
 }
 
 #[test]
