@@ -36,7 +36,8 @@ fn test_non_matching_pattern() {
     new_ucmd!()
         .arg("THIS_PATTERN_DOES_NOT_MATCH")
         .fails()
-        .code_is(1);
+        .code_is(1)
+        .no_output();
 }
 
 #[test]
@@ -80,12 +81,22 @@ fn test_delimiter() {
 
 #[test]
 fn test_too_many_patterns() {
-    new_ucmd!().arg("sh").arg("sh").fails().code_is(2);
+    new_ucmd!()
+        .arg("sh")
+        .arg("sh")
+        .fails()
+        .code_is(2)
+        .no_stdout()
+        .stderr_contains("only one pattern can be provided");
 }
 
 #[test]
 fn test_no_args() {
-    new_ucmd!().fails().code_is(2);
+    new_ucmd!()
+        .fails()
+        .code_is(2)
+        .no_stdout()
+        .stderr_contains("no matching criteria specified");
 }
 
 #[test]
