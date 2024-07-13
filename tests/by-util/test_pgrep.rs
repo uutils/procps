@@ -11,7 +11,7 @@ fn test_invalid_arg() {
 }
 
 #[test]
-fn test_pgrep() {
+fn test_help() {
     new_ucmd!().arg("--help").succeeds();
 }
 
@@ -32,9 +32,9 @@ fn test_newest() {
 }
 
 #[test]
-fn test_not_exist_program() {
+fn test_non_matching_pattern() {
     new_ucmd!()
-        .arg("THIS_PROGRAM_DOES_NOT_EXIST")
+        .arg("THIS_PATTERN_DOES_NOT_MATCH")
         .fails()
         .code_is(1);
 }
@@ -84,7 +84,7 @@ fn test_too_many_patterns() {
 }
 
 #[test]
-fn test_too_few_patterns() {
+fn test_no_args() {
     new_ucmd!().fails().code_is(2);
 }
 
