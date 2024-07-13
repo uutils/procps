@@ -18,13 +18,17 @@ fn test_pgrep() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_oldest() {
-    new_ucmd!().arg("-o").succeeds();
+    for arg in ["-o", "--oldest"] {
+        new_ucmd!().arg(arg).succeeds();
+    }
 }
 
 #[test]
 #[cfg(target_os = "linux")]
 fn test_newest() {
-    new_ucmd!().arg("-n").succeeds();
+    for arg in ["-n", "--newest"] {
+        new_ucmd!().arg(arg).succeeds();
+    }
 }
 
 #[test]
@@ -38,7 +42,9 @@ fn test_not_exist_program() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_full() {
-    new_ucmd!().arg("sh").arg("--full").succeeds();
+    for arg in ["-f", "--full"] {
+        new_ucmd!().arg("sh").arg(arg).succeeds();
+    }
 }
 
 #[test]
@@ -62,11 +68,14 @@ fn test_valid_regex() {
 #[cfg(target_os = "linux")]
 #[test]
 fn test_delimiter() {
-    new_ucmd!()
-        .arg("sh")
-        .arg("-d |")
-        .succeeds()
-        .stdout_contains("|");
+    for arg in ["-d", "--delimiter"] {
+        new_ucmd!()
+            .arg("sh")
+            .arg(arg)
+            .arg("|")
+            .succeeds()
+            .stdout_contains("|");
+    }
 }
 
 #[test]
@@ -82,5 +91,7 @@ fn test_too_few_patterns() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_ignore_case() {
-    new_ucmd!().arg("SH").arg("-i").succeeds();
+    for arg in ["-i", "--ignore-case"] {
+        new_ucmd!().arg("SH").arg(arg).succeeds();
+    }
 }
