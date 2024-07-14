@@ -4,6 +4,40 @@
 // file that was distributed with this source code.
 
 use crate::common::util::TestScenario;
+#[cfg(target_os = "linux")]
+use regex::Regex;
+
+#[cfg(target_os = "linux")]
+const SINGLE_PID: &str = "^[1-9][0-9]*";
+
+#[test]
+fn test_no_args() {
+    new_ucmd!()
+        .fails()
+        .code_is(2)
+        .no_stdout()
+        .stderr_contains("no matching criteria specified");
+}
+
+#[test]
+fn test_non_matching_pattern() {
+    new_ucmd!()
+        .arg("THIS_PATTERN_DOES_NOT_MATCH")
+        .fails()
+        .code_is(1)
+        .no_output();
+}
+
+#[test]
+fn test_too_many_patterns() {
+    new_ucmd!()
+        .arg("sh")
+        .arg("sh")
+        .fails()
+        .code_is(2)
+        .no_stdout()
+        .stderr_contains("only one pattern can be provided");
+}
 
 #[test]
 fn test_invalid_arg() {
@@ -11,34 +45,38 @@ fn test_invalid_arg() {
 }
 
 #[test]
-fn test_pgrep() {
-    new_ucmd!().arg("--help").succeeds().code_is(0);
+fn test_help() {
+    new_ucmd!().arg("--help").succeeds();
 }
 
 #[test]
 #[cfg(target_os = "linux")]
 fn test_oldest() {
-    new_ucmd!().arg("-o").succeeds().code_is(0);
+    for arg in ["-o", "--oldest"] {
+        new_ucmd!()
+            .arg(arg)
+            .succeeds()
+            .stdout_matches(&Regex::new(SINGLE_PID).unwrap());
+    }
 }
 
 #[test]
 #[cfg(target_os = "linux")]
 fn test_newest() {
-    new_ucmd!().arg("-n").succeeds().code_is(0);
-}
-
-#[test]
-fn test_not_exist_program() {
-    new_ucmd!()
-        .arg("THIS_PROGRAM_DOES_NOT_EXIST")
-        .fails()
-        .code_is(1);
+    for arg in ["-n", "--newest"] {
+        new_ucmd!()
+            .arg(arg)
+            .succeeds()
+            .stdout_matches(&Regex::new(SINGLE_PID).unwrap());
+    }
 }
 
 #[test]
 #[cfg(target_os = "linux")]
 fn test_full() {
-    new_ucmd!().arg("sh").arg("--full").succeeds().code_is(0);
+    for arg in ["-f", "--full"] {
+        new_ucmd!().arg("sh").arg(arg).succeeds();
+    }
 }
 
 #[test]
@@ -62,26 +100,20 @@ fn test_valid_regex() {
 #[cfg(target_os = "linux")]
 #[test]
 fn test_delimiter() {
-    new_ucmd!()
-        .arg("sh")
-        .arg("-d |")
-        .succeeds()
-        .code_is(0)
-        .stdout_contains("|");
-}
-
-#[test]
-fn test_too_many_patterns() {
-    new_ucmd!().arg("sh").arg("sh").fails().code_is(2);
-}
-
-#[test]
-fn test_too_few_patterns() {
-    new_ucmd!().fails().code_is(2);
+    for arg in ["-d", "--delimiter"] {
+        new_ucmd!()
+            .arg("sh")
+            .arg(arg)
+            .arg("|")
+            .succeeds()
+            .stdout_contains("|");
+    }
 }
 
 #[test]
 #[cfg(target_os = "linux")]
 fn test_ignore_case() {
-    new_ucmd!().arg("SH").arg("-i").succeeds().code_is(0);
+    for arg in ["-i", "--ignore-case"] {
+        new_ucmd!().arg("SH").arg(arg).succeeds();
+    }
 }
