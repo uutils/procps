@@ -32,3 +32,7 @@ mod test_slabtop;
 #[cfg(feature = "pgrep")]
 #[path = "by-util/test_pgrep.rs"]
 mod test_pgrep;
+
+#[cfg(feature = "pidof")]
+#[path = "by-util/test_pidof.rs"]
+mod test_pidof;

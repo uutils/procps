@@ -524,6 +524,7 @@ dependencies = [
  "textwrap",
  "uu_free",
  "uu_pgrep",
+ "uu_pidof",
  "uu_pmap",
  "uu_pwdx",
  "uu_slabtop",
@@ -865,6 +866,15 @@ dependencies = [
  "regex",
  "uucore",
  "walkdir",
+]
+
+[[package]]
+name = "uu_pidof"
+version = "0.0.1"
+dependencies = [
+ "clap",
+ "uu_pgrep",
+ "uucore",
 ]
 
 [[package]]
