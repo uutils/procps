@@ -19,6 +19,7 @@ Ongoing:
 * `pmap`: Displays the memory map of a process.
 * `slabtop`: Displays detailed kernel slab cache information in real time.
 * `pgrep`: Searches for processes based on name and other attributes.
+* `pidof`: Find the process ID of a running program.
 
 TODO:
 * `ps`: Displays information about active processes.
@@ -29,7 +30,6 @@ TODO:
 * `vmstat`: Reports information about processes, memory, paging, block IO, traps, and CPU activity.
 * `pkill`: Kills processes based on name and other attributes.
 * `snice`: Changes the scheduling priority of a running process.
-* `pidof`: Find the process ID of a running program.
 
 Elsewhere:
 
