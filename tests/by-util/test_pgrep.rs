@@ -62,6 +62,17 @@ fn test_oldest() {
 
 #[test]
 #[cfg(target_os = "linux")]
+fn test_oldest_non_matching_pattern() {
+    new_ucmd!()
+        .arg("--oldest")
+        .arg("non_matching")
+        .fails()
+        .code_is(1)
+        .no_output();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
 fn test_newest() {
     for arg in ["-n", "--newest"] {
         new_ucmd!()
@@ -69,6 +80,17 @@ fn test_newest() {
             .succeeds()
             .stdout_matches(&Regex::new(SINGLE_PID).unwrap());
     }
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_newest_non_matching_pattern() {
+    new_ucmd!()
+        .arg("--newest")
+        .arg("non_matching")
+        .fails()
+        .code_is(1)
+        .no_output();
 }
 
 #[test]

@@ -69,12 +69,13 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     // Collect pids
     let pids = {
         let mut pids = collect_matched_pids(&matches);
-        process_flag_o_n(&matches, &mut pids)
+        if pids.is_empty() {
+            uucore::error::set_exit_code(1);
+            pids
+        } else {
+            process_flag_o_n(&matches, &mut pids)
+        }
     };
-
-    if pids.is_empty() {
-        uucore::error::set_exit_code(1);
-    }
 
     // Processing output
     let output = if matches.get_flag("count") {
