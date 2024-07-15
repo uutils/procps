@@ -139,3 +139,26 @@ fn test_ignore_case() {
         new_ucmd!().arg("SH").arg(arg).succeeds();
     }
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_list_full() {
+    for arg in ["-a", "--list-full"] {
+        new_ucmd!()
+            .arg("sh")
+            .arg(arg)
+            .succeeds()
+            // (?m) enables multi-line mode
+            .stdout_matches(&Regex::new("(?m)^[1-9][0-9]* .+$").unwrap());
+    }
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_list_full_process_with_empty_cmdline() {
+    new_ucmd!()
+        .arg("kthreadd")
+        .arg("--list-full")
+        .succeeds()
+        .stdout_matches(&Regex::new(r"^[1-9][0-9]* \[kthreadd\]\n$").unwrap());
+}
