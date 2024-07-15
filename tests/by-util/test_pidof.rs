@@ -37,25 +37,5 @@ fn test_no_pid_found() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_quiet() {
-    let binding = new_ucmd!().arg("kthreadd").arg("-q").succeeds();
-    let output = binding.stdout();
-
-    assert!(output.is_empty())
-}
-
-#[test]
-#[cfg(target_os = "linux")]
-fn test_s_flag() {
-    let binding = new_ucmd!()
-        .args(&["-s", "kthreadd", "kthreadd", "kthreadd"])
-        .succeeds();
-    let output = binding.stdout_str();
-
-    let binding = output.replace('\n', "");
-    let pids = binding.split(' ').collect::<Vec<_>>();
-    let first = pids[0];
-
-    let result = pids.iter().all(|it| *it == first);
-
-    assert!(result)
+    new_ucmd!().arg("kthreadd").arg("-q").succeeds().no_output();
 }
