@@ -46,13 +46,13 @@ fn test_s_flag() {
     let binding = new_ucmd!()
         .args(&["-s", "kthreadd", "kthreadd", "kthreadd"])
         .succeeds();
-    let output = binding.stdout_str();
+    let output = binding.stdout_str().trim_end();
 
-    let binding = output.replace('\n', "");
-    let pids = binding.split(' ').collect::<Vec<_>>();
+    let pids = output.split(' ').collect::<Vec<_>>();
     let first = pids[0];
 
     let result = pids.iter().all(|it| *it == first);
 
-    assert!(result)
+    assert!(result);
+    assert_eq!(pids.len(), 3);
 }
