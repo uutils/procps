@@ -85,7 +85,15 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
         let formatted: Vec<_> = if matches.get_flag("list-full") {
             pids.into_iter()
-                .map(|it| format!("{} {}", it.pid, it.cmdline))
+                .map(|it| {
+                    // pgrep from procps-ng outputs the process name inside square brackets
+                    // if /proc/<PID>/cmdline is empty
+                    if it.cmdline.is_empty() {
+                        format!("{} [{}]", it.pid, it.clone().status().get("Name").unwrap())
+                    } else {
+                        format!("{} {}", it.pid, it.cmdline)
+                    }
+                })
                 .collect()
         } else if matches.get_flag("list-name") {
             pids.into_iter()
