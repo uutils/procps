@@ -162,3 +162,27 @@ fn test_list_full_process_with_empty_cmdline() {
         .succeeds()
         .stdout_matches(&Regex::new(r"^[1-9][0-9]* \[kthreadd\]\n$").unwrap());
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_count_with_matching_pattern() {
+    for arg in ["-c", "--count"] {
+        new_ucmd!()
+            .arg(arg)
+            .arg("kthreadd")
+            .succeeds()
+            .stdout_is("1\n");
+    }
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_count_with_non_matching_pattern() {
+    new_ucmd!()
+        .arg("--count")
+        .arg("non_matching")
+        .fails()
+        .code_is(1)
+        .stdout_is("0\n")
+        .no_stderr();
+}
