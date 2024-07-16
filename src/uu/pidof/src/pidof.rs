@@ -75,27 +75,32 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<ProcessInformation> {
         .copied()
         .collect::<Vec<_>>();
 
-    let mut processed = Vec::new();
-    for mut process in collected {
-        let contains = program_names.contains(&get_executable_name(&mut process));
-        let should_omit = arg_omit_pid.contains(&process.pid);
+    program_names
+        .into_iter()
+        .flat_map(|program| {
+            let mut processed = Vec::new();
+            for mut process in collected.clone() {
+                let contains = program == get_executable_name(&mut process);
+                let should_omit = arg_omit_pid.contains(&process.pid);
 
-        if contains && !should_omit {
-            processed.push(process)
-        }
-    }
+                if contains && !should_omit {
+                    processed.push(process)
+                }
+            }
 
-    processed.sort_by(|a, b| b.pid.cmp(&a.pid));
+            processed.sort_by(|a, b| b.pid.cmp(&a.pid));
 
-    let flag_s = matches.get_flag("s");
-    if flag_s {
-        match processed.first() {
-            Some(first) => vec![first.clone()],
-            None => Vec::new(),
-        }
-    } else {
-        processed
-    }
+            let flag_s = matches.get_flag("s");
+            if flag_s {
+                match processed.first() {
+                    Some(first) => vec![first.clone()],
+                    None => Vec::new(),
+                }
+            } else {
+                processed
+            }
+        })
+        .collect()
 }
 
 #[allow(clippy::cognitive_complexity)]
