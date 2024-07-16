@@ -33,3 +33,9 @@ fn test_no_program() {
 fn test_no_pid_found() {
     new_ucmd!().arg("NO_THIS_PROGRAM").fails().code_is(1);
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_quiet() {
+    new_ucmd!().arg("kthreadd").arg("-q").succeeds().no_output();
+}

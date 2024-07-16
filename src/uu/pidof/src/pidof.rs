@@ -137,6 +137,7 @@ pub fn uu_app() -> Command {
             Arg::new("o")
                 .short('o')
                 .help("Omit results with a given PID")
+                .value_delimiter(',')
                 .action(ArgAction::Append)
                 .value_parser(clap::value_parser!(usize))
                 .value_name("omitpid"),
