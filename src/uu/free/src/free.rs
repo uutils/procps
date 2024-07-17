@@ -3,7 +3,7 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use bytesize::{ByteSize, GB, GIB, KIB, MB, MIB, PB, PIB, TB, TIB};
+use bytesize::{ByteSize, GB, GIB, KB, KIB, MB, MIB, PB, PIB, TB, TIB};
 use clap::{arg, crate_version, ArgAction, ArgGroup, ArgMatches, Command};
 use std::env;
 #[cfg(target_os = "linux")]
@@ -293,7 +293,7 @@ pub fn uu_app() -> Command {
         ]))
         .args([
             arg!(-b --bytes  "show output in bytes").action(ArgAction::SetTrue),
-            arg!(   --kilo   "show output in kilobytes").action(ArgAction::SetFalse),
+            arg!(   --kilo   "show output in kilobytes").action(ArgAction::SetTrue),
             arg!(   --mega   "show output in megabytes").action(ArgAction::SetTrue),
             arg!(   --giga   "show output in gigabytes").action(ArgAction::SetTrue),
             arg!(   --tera   "show output in terabytes").action(ArgAction::SetTrue),
@@ -366,6 +366,7 @@ fn humanized(kib: u64, si: bool) -> String {
 fn detect_unit(arg: &ArgMatches) -> fn(u64) -> u64 {
     match arg {
         _ if arg.get_flag("bytes") => |kib: u64| ByteSize::kib(kib).0,
+        _ if arg.get_flag("kilo") => |kib: u64| ByteSize::kib(kib).0 / KB,
         _ if arg.get_flag("mega") => |kib: u64| ByteSize::kib(kib).0 / MB,
         _ if arg.get_flag("giga") => |kib: u64| ByteSize::kib(kib).0 / GB,
         _ if arg.get_flag("tera") => |kib: u64| ByteSize::kib(kib).0 / TB,
