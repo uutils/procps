@@ -127,7 +127,7 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
                 user: entry.user(),
                 terminal: entry.tty_device(),
                 login_time: format_time(entry.login_time().to_string()).unwrap_or_default(),
-                idle_time: String::new(), // Placeholder, needs actual implementation
+                idle_time: "TODO".into(), // Placeholder, needs actual implementation
                 jcpu: format!("{:.2}", jcpu),
                 pcpu: fetch_pcpu_time(entry.pid()).unwrap_or_default().to_string(),
                 command: fetch_cmdline(entry.pid()).unwrap_or_default(),
@@ -166,7 +166,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             for user in user_info {
                 if short {
                     println!(
-                        "{:<9}{:<9}{:<17}{:<}",
+                        "{:<9}{:<9}{:<7}{:<}",
                         user.user, user.terminal, user.idle_time, user.command
                     );
                 } else {
