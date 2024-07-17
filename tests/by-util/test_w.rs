@@ -27,7 +27,7 @@ fn test_no_header() {
 
         let result = cmd.stdout_str();
 
-        assert!(!result.contains("USER\tTTY\tLOGIN@\tIDLE\tJCPU\tPCPU\tWHAT"));
+        assert!(!result.contains("USER     TTY      LOGIN@   IDLE   JCPU   PCPU WHAT"));
     }
 }
 
@@ -43,23 +43,27 @@ fn test_option_short() {
     let cmd_output = cmd.stdout_str();
     let cmd_output_lines: Vec<&str> = cmd_output.split('\n').collect();
     let line_output_header = cmd_output_lines[0];
-    let line_output_data_words: Vec<&str> = cmd_output_lines[1].split('\t').collect();
+    let line_output_data_words: Vec<&str> = cmd_output_lines[1]
+        .trim()
+        .split(' ')
+        .filter(|it| !it.is_empty())
+        .collect();
 
-    assert!(line_output_header.contains("USER\tTTY\tIDLE\tWHAT"));
-    assert!(!line_output_header.contains("USER\tTTY\tLOGIN@\tIDLE\tJCPU\tPCPU\tWHAT"));
+    assert!(line_output_header.contains("USER     TTY      IDLE   WHAT"));
+    assert!(!line_output_header.contains("USER     TTY      LOGIN@   IDLE   JCPU   PCPU WHAT"));
 
     if std::io::stdout().is_terminal() {
         let pattern: Vec<Regex> = vec![
-            Regex::new(r"^(\S+)").unwrap(),       // USER
-            Regex::new(r"(\S+)").unwrap(),        // TERMINAL
-            Regex::new(r"(^$)").unwrap(), // IDLE_TIME => empty str until IDLE_TIME implemented
+            Regex::new(r"^(\S+)").unwrap(), // USER
+            Regex::new(r"(\S+)").unwrap(),  // TERMINAL
+            // Regex::new(r"(^$)").unwrap(), // IDLE_TIME => empty str until IDLE_TIME implemented
             Regex::new(r"(\d+\.\d+s)?").unwrap(), // COMMAND
         ];
 
         assert!(pattern[0].is_match(line_output_data_words[0]));
         assert!(pattern[1].is_match(line_output_data_words[1]));
-        assert!(pattern[2].is_match(line_output_data_words[2]));
-        assert!(pattern[3].is_match(line_output_data_words[3]));
+        // assert!(pattern[2].is_match(line_output_data_words[2]));
+        assert!(pattern[2].is_match(line_output_data_words[3]));
     }
 }
 

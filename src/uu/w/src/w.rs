@@ -127,7 +127,7 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
                 user: entry.user(),
                 terminal: entry.tty_device(),
                 login_time: format_time(entry.login_time().to_string()).unwrap_or_default(),
-                idle_time: String::new(), // Placeholder, needs actual implementation
+                idle_time: "TODO".into(), // Placeholder, needs actual implementation
                 jcpu: format!("{:.2}", jcpu),
                 pcpu: fetch_pcpu_time(entry.pid()).unwrap_or_default().to_string(),
                 command: fetch_cmdline(entry.pid()).unwrap_or_default(),
@@ -155,20 +155,23 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         Ok(user_info) => {
             if !no_header {
                 if short {
-                    println!("USER\tTTY\tIDLE\tWHAT");
+                    println!("{:<9}{:<9}{:<7}{:<}", "USER", "TTY", "IDLE", "WHAT");
                 } else {
-                    println!("USER\tTTY\tLOGIN@\tIDLE\tJCPU\tPCPU\tWHAT");
+                    println!(
+                        "{:<9}{:<9}{:<9}{:<6} {:<7}{:<5}{:<}",
+                        "USER", "TTY", "LOGIN@", "IDLE", "JCPU", "PCPU", "WHAT"
+                    );
                 }
             }
             for user in user_info {
                 if short {
                     println!(
-                        "{}\t{}\t{}\t{}",
+                        "{:<9}{:<9}{:<7}{:<}",
                         user.user, user.terminal, user.idle_time, user.command
                     );
                 } else {
                     println!(
-                        "{}\t{}\t{}\t{}\t{}s\t{}s\t{}",
+                        "{:<9}{:<9}{:<9}{:<6} {:<7}{:<5}{:<}",
                         user.user,
                         user.terminal,
                         user.login_time,
