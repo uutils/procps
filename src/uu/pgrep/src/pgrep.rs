@@ -253,6 +253,7 @@ pub fn uu_app() -> Command {
         .version(crate_version!())
         .about(ABOUT)
         .override_usage(format_usage(USAGE))
+        .args_override_self(true)
         .group(ArgGroup::new("oldest_newest").args(["oldest", "newest", "inverse"]))
         .args([
             arg!(-d     --delimiter <string>    "specify output delimiter")

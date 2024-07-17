@@ -132,6 +132,26 @@ fn test_delimiter() {
     }
 }
 
+#[cfg(target_os = "linux")]
+#[test]
+fn test_delimiter_last_wins() {
+    new_ucmd!()
+        .arg("sh")
+        .arg("-d_")
+        .arg("-d:")
+        .succeeds()
+        .stdout_does_not_contain("_")
+        .stdout_contains(":");
+
+    new_ucmd!()
+        .arg("sh")
+        .arg("-d:")
+        .arg("-d_")
+        .succeeds()
+        .stdout_does_not_contain(":")
+        .stdout_contains("_");
+}
+
 #[test]
 #[cfg(target_os = "linux")]
 fn test_ignore_case() {
