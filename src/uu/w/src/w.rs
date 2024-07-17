@@ -155,20 +155,23 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         Ok(user_info) => {
             if !no_header {
                 if short {
-                    println!("USER\tTTY\tIDLE\tWHAT");
+                    println!("{:<9}{:<9}{:<7}{:<}", "USER", "TTY", "IDLE", "WHAT");
                 } else {
-                    println!("USER\tTTY\tLOGIN@\tIDLE\tJCPU\tPCPU\tWHAT");
+                    println!(
+                        "{:<9}{:<9}{:<9}{:<6} {:<7}{:<5}{:<}",
+                        "USER", "TTY", "LOGIN@", "IDLE", "JCPU", "PCPU", "WHAT"
+                    );
                 }
             }
             for user in user_info {
                 if short {
                     println!(
-                        "{}\t{}\t{}\t{}",
+                        "{:<9}{:<9}{:<17}{:<}",
                         user.user, user.terminal, user.idle_time, user.command
                     );
                 } else {
                     println!(
-                        "{}\t{}\t{}\t{}\t{}s\t{}s\t{}",
+                        "{:<9}{:<9}{:<9}{:<6} {:<7}{:<5}{:<}",
                         user.user,
                         user.terminal,
                         user.login_time,
