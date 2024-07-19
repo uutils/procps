@@ -95,6 +95,39 @@ fn test_newest_non_matching_pattern() {
 
 #[test]
 #[cfg(target_os = "linux")]
+fn test_older() {
+    for arg in ["-O", "--older"] {
+        new_ucmd!()
+            .arg(arg)
+            .arg("0")
+            .succeeds()
+            .stdout_matches(&Regex::new("(?m)^[1-9][0-9]*$").unwrap());
+    }
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_older_matching_pattern() {
+    new_ucmd!()
+        .arg("--older=0")
+        .arg("sh")
+        .succeeds()
+        .stdout_matches(&Regex::new("(?m)^[1-9][0-9]*$").unwrap());
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_older_non_matching_pattern() {
+    new_ucmd!()
+        .arg("--older=0")
+        .arg("non_matching")
+        .fails()
+        .code_is(1)
+        .no_stdout();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
 fn test_full() {
     for arg in ["-f", "--full"] {
         new_ucmd!().arg("sh").arg(arg).succeeds();
