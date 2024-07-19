@@ -526,6 +526,7 @@ dependencies = [
  "uu_pgrep",
  "uu_pidof",
  "uu_pmap",
+ "uu_ps",
  "uu_pwdx",
  "uu_slabtop",
  "uu_w",
@@ -882,6 +883,16 @@ name = "uu_pmap"
 version = "0.0.1"
 dependencies = [
  "clap",
+ "uucore",
+]
+
+[[package]]
+name = "uu_ps"
+version = "0.0.1"
+dependencies = [
+ "chrono",
+ "clap",
+ "libc",
  "uucore",
 ]
 
