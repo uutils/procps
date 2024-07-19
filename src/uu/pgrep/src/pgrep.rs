@@ -35,7 +35,11 @@ static REGEX: OnceLock<Regex> = OnceLock::new();
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
-    let pattern = collect_arg_patterns(&matches);
+
+    let pattern = try_get_pattern_from(&matches)?;
+    REGEX
+        .set(Regex::new(&pattern).map_err(|e| USimpleError::new(2, e.to_string()))?)
+        .unwrap();
 
     // Pattern check
     let flag_newest = matches.get_flag("newest");
@@ -47,24 +51,6 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             "no matching criteria specified\nTry `pgrep --help' for more information.",
         ));
     }
-
-    if pattern.len() > 1 {
-        return Err(USimpleError::new(
-            2,
-            "only one pattern can be provided\nTry `pgrep --help' for more information.",
-        ));
-    }
-
-    // Verifying regex pattern
-    // And put it into static `REGEX`
-    let pattern = if matches.get_flag("exact") {
-        format!("^{}$", pattern.first().unwrap())
-    } else {
-        pattern.first().unwrap_or(&String::new()).to_string()
-    };
-    REGEX
-        .set(Regex::new(&pattern).map_err(|e| USimpleError::new(2, e.to_string()))?)
-        .unwrap();
 
     // Collect pids
     let pids = {
@@ -113,20 +99,33 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     Ok(())
 }
 
-/// Collect patterns from command line arguments
-fn collect_arg_patterns(matches: &ArgMatches) -> Vec<String> {
-    let should_ignore_case = matches.get_flag("ignore-case");
+/// Try to get the pattern from the command line arguments. Returns an empty string if no pattern
+/// is specified.
+fn try_get_pattern_from(matches: &ArgMatches) -> UResult<String> {
+    let pattern = match matches.get_many::<String>("pattern") {
+        Some(patterns) if patterns.len() > 1 => {
+            return Err(USimpleError::new(
+                2,
+                "only one pattern can be provided\nTry `pgrep --help' for more information.",
+            ))
+        }
+        Some(mut patterns) => patterns.next().unwrap(),
+        None => return Ok(String::new()),
+    };
 
-    let patterns = matches
-        .get_many::<String>("pattern")
-        .unwrap_or_default()
-        .map(|it| it.to_string());
-
-    if should_ignore_case {
-        patterns.map(|it| it.to_lowercase()).collect::<Vec<_>>()
+    let pattern = if matches.get_flag("ignore-case") {
+        &pattern.to_lowercase()
     } else {
-        patterns.collect()
-    }
+        pattern
+    };
+
+    let pattern = if matches.get_flag("exact") {
+        &format!("^{}$", pattern)
+    } else {
+        pattern
+    };
+
+    Ok(pattern.to_string())
 }
 
 /// Collect pids with filter construct from command line arguments
