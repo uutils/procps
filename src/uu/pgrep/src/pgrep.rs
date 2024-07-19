@@ -6,7 +6,9 @@
 // Pid utils
 pub mod process;
 
-use clap::{arg, crate_version, Arg, ArgAction, ArgGroup, ArgMatches, Command};
+use clap::{
+    arg, crate_version, parser::ValueSource, Arg, ArgAction, ArgGroup, ArgMatches, Command,
+};
 use process::{walk_process, ProcessInformation, TerminalType};
 use regex::Regex;
 use std::{collections::HashSet, sync::OnceLock};
@@ -44,8 +46,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     // Pattern check
     let flag_newest = matches.get_flag("newest");
     let flag_oldest = matches.get_flag("oldest");
+    let flag_older = matches.value_source("older") == Some(ValueSource::CommandLine);
 
-    if (!flag_newest && !flag_oldest) && pattern.is_empty() {
+    if (!flag_newest && !flag_oldest && !flag_older) && pattern.is_empty() {
         return Err(USimpleError::new(
             2,
             "no matching criteria specified\nTry `pgrep --help' for more information.",
