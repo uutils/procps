@@ -7,7 +7,7 @@ license = "MIT"
 description = "pidof ~ (uutils) Find the process ID of a running program"
 
 homepage = "https://github.com/uutils/procps"
-repository = "https://github.com/uutils/procps/tree/main/src/uu/pmap"
+repository = "https://github.com/uutils/procps/tree/main/src/uu/pidof"
 keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
 categories = ["command-line-utilities"]
 
