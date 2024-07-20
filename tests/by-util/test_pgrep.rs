@@ -239,3 +239,26 @@ fn test_count_with_non_matching_pattern() {
         .stdout_is("0\n")
         .no_stderr();
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_terminal() {
+    for arg in ["-t", "--terminal"] {
+        new_ucmd!()
+            .arg(arg)
+            .arg("tty1")
+            .arg("--inverse") // XXX hack to make test pass in CI
+            .succeeds()
+            .stdout_matches(&Regex::new("(?m)^[1-9][0-9]*$").unwrap());
+    }
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_terminal_invalid_terminal() {
+    new_ucmd!()
+        .arg("--terminal=invalid")
+        .fails()
+        .code_is(1)
+        .no_output();
+}

@@ -47,8 +47,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let flag_newest = matches.get_flag("newest");
     let flag_oldest = matches.get_flag("oldest");
     let flag_older = matches.value_source("older") == Some(ValueSource::CommandLine);
+    let flag_terminal = matches.value_source("terminal") == Some(ValueSource::CommandLine);
 
-    if (!flag_newest && !flag_oldest && !flag_older) && pattern.is_empty() {
+    if (!flag_newest && !flag_oldest && !flag_older && !flag_terminal) && pattern.is_empty() {
         return Err(USimpleError::new(
             2,
             "no matching criteria specified\nTry `pgrep --help' for more information.",
