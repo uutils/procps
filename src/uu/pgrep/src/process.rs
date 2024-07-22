@@ -17,13 +17,29 @@ pub enum TerminalType {
     Tty(u64),
     TtyS(u64),
     Pts(u64),
+    Unknown,
+}
+
+impl Display for TerminalType {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Self::Tty(id) => write!(f, "/dev/pts/{}", id),
+            Self::TtyS(id) => write!(f, "/dev/tty{}", id),
+            Self::Pts(id) => write!(f, "/dev/ttyS{}", id),
+            Self::Unknown => write!(f, "?"),
+        }
+    }
 }
 
 impl TryFrom<String> for TerminalType {
     type Error = ();
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        Self::try_from(PathBuf::from(value))
+        if value == "?" {
+            return Ok(TerminalType::Unknown);
+        }
+
+        Self::try_from(value.as_str())
     }
 }
 
@@ -291,6 +307,11 @@ impl ProcessInformation {
 
     /// This function will scan the `/proc/<pid>/fd` directory
     ///
+    /// If the process does not belong to any terminal,
+    /// the result will contain [TerminalType::Unknown].
+    ///
+    /// Otherwise [TerminalType::Unknown] does not appear in the result.
+    ///
     /// # Error
     ///
     /// If scanned pid had mismatched permission,
@@ -302,14 +323,22 @@ impl ProcessInformation {
 
         let path = PathBuf::from(format!("/proc/{}/fd", self.pid));
 
-        let result = Rc::new(
-            fs::read_dir(path)?
-                .flatten()
-                .filter(|it| it.path().is_symlink())
-                .flat_map(|it| fs::read_link(it.path()))
-                .flat_map(TerminalType::try_from)
-                .collect::<HashSet<_>>(),
-        );
+        let Ok(result) = fs::read_dir(path) else {
+            return Ok(Rc::new(HashSet::from_iter([TerminalType::Unknown])));
+        };
+
+        let mut result = result
+            .flatten()
+            .filter(|it| it.path().is_symlink())
+            .flat_map(|it| fs::read_link(it.path()))
+            .flat_map(TerminalType::try_from)
+            .collect::<HashSet<_>>();
+
+        if result.is_empty() {
+            result.insert(TerminalType::Unknown);
+        }
+
+        let result = Rc::new(result);
 
         self.cached_tty = Some(Rc::clone(&result));
 
@@ -376,7 +405,8 @@ mod tests {
     use std::str::FromStr;
 
     #[test]
-    fn test_tty_convention() {
+    fn test_tty_from() {
+        assert_eq!(TerminalType::try_from("?").unwrap(), TerminalType::Unknown);
         assert_eq!(
             TerminalType::try_from("/dev/tty1").unwrap(),
             TerminalType::Tty(1)
@@ -408,6 +438,14 @@ mod tests {
 
         assert!(TerminalType::try_from("value").is_err());
         assert!(TerminalType::try_from("TtyS10").is_err());
+    }
+
+    #[test]
+    fn test_terminal_type_display() {
+        assert_eq!(TerminalType::Pts(10).to_string(), "/dev/pts/10");
+        assert_eq!(TerminalType::Tty(10).to_string(), "/dev/tty10");
+        assert_eq!(TerminalType::TtyS(10).to_string(), "/dev/ttyS10");
+        assert_eq!(TerminalType::Unknown.to_string(), "?");
     }
 
     #[test]
