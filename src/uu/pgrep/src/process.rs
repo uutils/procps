@@ -323,7 +323,11 @@ impl ProcessInformation {
 
         let path = PathBuf::from(format!("/proc/{}/fd", self.pid));
 
-        let mut result = fs::read_dir(path)?
+        let Ok(result) = fs::read_dir(path) else {
+            return Ok(Rc::new(HashSet::from_iter([TerminalType::Unknown])));
+        };
+
+        let mut result = result
             .flatten()
             .filter(|it| it.path().is_symlink())
             .flat_map(|it| fs::read_link(it.path()))

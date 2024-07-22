@@ -253,6 +253,13 @@ fn test_terminal() {
     }
 }
 
+#[cfg(target_os = "linux")]
+#[test]
+fn test_unknown_terminal() {
+    new_ucmd!().arg("--terminal=?").succeeds();
+    new_ucmd!().arg("--terminal=?").arg("kthreadd").succeeds();
+}
+
 #[test]
 #[cfg(target_os = "linux")]
 fn test_terminal_invalid_terminal() {
