@@ -3,9 +3,12 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+mod collector;
+
 #[cfg(target_os = "linux")]
 use clap::crate_version;
 use clap::{Arg, ArgAction, Command};
+use uu_pgrep::process::walk_process;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
 
 const ABOUT: &str = help_about!("ps.md");
@@ -14,6 +17,12 @@ const USAGE: &str = help_usage!("ps.md");
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
+
+    let proc_snapshot = walk_process().collect::<Vec<_>>();
+
+    let mut collected_proc_info = Vec::new();
+
+    collected_proc_info.extend(collector::process_collector(&matches, &proc_snapshot));
 
     Ok(())
 }
