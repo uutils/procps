@@ -6,9 +6,7 @@
 // Pid utils
 pub mod process;
 
-use clap::{
-    arg, crate_version, parser::ValueSource, Arg, ArgAction, ArgGroup, ArgMatches, Command,
-};
+use clap::{arg, crate_version, Arg, ArgAction, ArgGroup, ArgMatches, Command};
 use process::{walk_process, ProcessInformation, TerminalType};
 use regex::Regex;
 use std::{collections::HashSet, sync::OnceLock};
@@ -21,6 +19,18 @@ const ABOUT: &str = help_about!("pgrep.md");
 const USAGE: &str = help_usage!("pgrep.md");
 
 static REGEX: OnceLock<Regex> = OnceLock::new();
+
+struct Settings {
+    exact: bool,
+    full: bool,
+    ignore_case: bool,
+    inverse: bool,
+    newest: bool,
+    oldest: bool,
+    older: Option<u64>,
+    runstates: Option<String>,
+    terminal: Option<HashSet<TerminalType>>,
+}
 
 /// # Conceptual model of `pgrep`
 ///
@@ -43,13 +53,28 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         .set(Regex::new(&pattern).map_err(|e| USimpleError::new(2, e.to_string()))?)
         .unwrap();
 
-    // Pattern check
-    let flag_newest = matches.get_flag("newest");
-    let flag_oldest = matches.get_flag("oldest");
-    let flag_older = matches.value_source("older") == Some(ValueSource::CommandLine);
-    let flag_terminal = matches.value_source("terminal") == Some(ValueSource::CommandLine);
+    let settings = Settings {
+        exact: matches.get_flag("exact"),
+        full: matches.get_flag("full"),
+        ignore_case: matches.get_flag("ignore-case"),
+        inverse: matches.get_flag("inverse"),
+        newest: matches.get_flag("newest"),
+        oldest: matches.get_flag("oldest"),
+        runstates: matches.get_one::<String>("runstates").cloned(),
+        older: matches.get_one::<u64>("older").copied(),
+        terminal: matches.get_many::<String>("terminal").map(|ttys| {
+            ttys.cloned()
+                .flat_map(TerminalType::try_from)
+                .collect::<HashSet<_>>()
+        }),
+    };
 
-    if (!flag_newest && !flag_oldest && !flag_older && !flag_terminal) && pattern.is_empty() {
+    if (!settings.newest
+        && !settings.oldest
+        && settings.older.is_none()
+        && settings.terminal.is_none())
+        && pattern.is_empty()
+    {
         return Err(USimpleError::new(
             2,
             "no matching criteria specified\nTry `pgrep --help' for more information.",
@@ -58,12 +83,12 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     // Collect pids
     let pids = {
-        let mut pids = collect_matched_pids(&matches);
+        let mut pids = collect_matched_pids(&settings);
         if pids.is_empty() {
             uucore::error::set_exit_code(1);
             pids
         } else {
-            process_flag_o_n(&matches, &mut pids)
+            process_flag_o_n(&settings, &mut pids)
         }
     };
 
@@ -133,40 +158,33 @@ fn try_get_pattern_from(matches: &ArgMatches) -> UResult<String> {
 }
 
 /// Collect pids with filter construct from command line arguments
-fn collect_matched_pids(matches: &ArgMatches) -> Vec<ProcessInformation> {
-    let should_inverse = matches.get_flag("inverse");
-    let should_ignore_case = matches.get_flag("ignore-case");
-
-    let flag_full = matches.get_flag("full");
-    let flag_exact = matches.get_flag("exact");
-
+fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
     // Filtration general parameters
     let filtered: Vec<ProcessInformation> = {
         let mut tmp_vec = Vec::new();
 
         for mut pid in walk_process().collect::<Vec<_>>() {
-            let run_state_matched =
-                match (matches.get_one::<String>("runstates"), (pid).run_state()) {
-                    (Some(arg_run_states), Ok(pid_state)) => {
-                        arg_run_states.contains(&pid_state.to_string())
-                    }
-                    _ => true,
-                };
+            let run_state_matched = match (&settings.runstates, (pid).run_state()) {
+                (Some(arg_run_states), Ok(pid_state)) => {
+                    arg_run_states.contains(&pid_state.to_string())
+                }
+                _ => true,
+            };
 
             let binding = pid.status();
             let name = binding.get("Name").unwrap();
-            let name = if should_ignore_case {
+            let name = if settings.ignore_case {
                 name.to_lowercase()
             } else {
                 name.into()
             };
             let pattern_matched = {
-                let want = if flag_exact {
+                let want = if settings.exact {
                     // Equals `Name` in /proc/<pid>/status
                     // The `unwrap` operation must succeed
                     // because the REGEX has been verified as correct in `uumain`.
                     &name
-                } else if flag_full {
+                } else if settings.full {
                     // Equals `cmdline` in /proc/<pid>/cmdline
                     &pid.cmdline
                 } else {
@@ -178,26 +196,19 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<ProcessInformation> {
                 REGEX.get().unwrap().is_match(want)
             };
 
-            let tty_matched = match matches.get_many::<String>("terminal") {
-                Some(ttys) => {
-                    // convert from input like `pts/0`
-                    let ttys = ttys
-                        .cloned()
-                        .flat_map(TerminalType::try_from)
-                        .collect::<HashSet<_>>();
-                    match pid.ttys() {
-                        Ok(value) => value.iter().any(|it| ttys.contains(it)),
-                        Err(_) => false,
-                    }
-                }
+            let tty_matched = match &settings.terminal {
+                Some(ttys) => match pid.ttys() {
+                    Ok(value) => value.iter().any(|it| ttys.contains(it)),
+                    Err(_) => false,
+                },
                 None => true,
             };
 
-            let arg_older = matches.get_one::<u64>("older").unwrap_or(&0);
-            let older_matched = pid.start_time().unwrap() >= *arg_older;
+            let arg_older = settings.older.unwrap_or(0);
+            let older_matched = pid.start_time().unwrap() >= arg_older;
 
             if (run_state_matched && pattern_matched && tty_matched && older_matched)
-                ^ should_inverse
+                ^ settings.inverse
             {
                 tmp_vec.push(pid)
             }
@@ -212,13 +223,10 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<ProcessInformation> {
 ///
 /// This function can also be used as a filter to filter out process information.
 fn process_flag_o_n(
-    matches: &ArgMatches,
+    settings: &Settings,
     pids: &mut [ProcessInformation],
 ) -> Vec<ProcessInformation> {
-    let flag_oldest = matches.get_flag("oldest");
-    let flag_newest = matches.get_flag("newest");
-
-    if flag_oldest || flag_newest {
+    if settings.oldest || settings.newest {
         pids.sort_by(|a, b| {
             b.clone()
                 .start_time()
@@ -226,7 +234,7 @@ fn process_flag_o_n(
                 .cmp(&a.clone().start_time().unwrap())
         });
 
-        let start_time = if flag_newest {
+        let start_time = if settings.newest {
             pids.first().cloned().unwrap().start_time().unwrap()
         } else {
             pids.last().cloned().unwrap().start_time().unwrap()
@@ -238,7 +246,7 @@ fn process_flag_o_n(
             .filter(|it| (*it).clone().start_time().unwrap() == start_time)
             .collect::<Vec<_>>();
 
-        if flag_newest {
+        if settings.newest {
             filtered.sort_by(|a, b| b.pid.cmp(&a.pid))
         } else {
             filtered.sort_by(|a, b| a.pid.cmp(&b.pid))
@@ -274,8 +282,6 @@ pub fn uu_app() -> Command {
             arg!(-n     --newest                "select most recently started"),
             arg!(-o     --oldest                "select least recently started"),
             arg!(-O     --older <seconds>       "select where older than seconds")
-                .num_args(0..)
-                .default_value("0")
                 .value_parser(clap::value_parser!(u64)),
             // arg!(-P     --parent <PPID>         "match only child processes of the given parent"),
             // arg!(-s     --session <SID>         "match session IDs"),
