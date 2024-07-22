@@ -6,7 +6,9 @@
 use std::{
     collections::{HashMap, HashSet},
     fmt::{self, Display, Formatter},
-    fs, io,
+    fs,
+    hash::Hash,
+    io,
     path::PathBuf,
     rc::Rc,
 };
@@ -353,6 +355,15 @@ impl TryFrom<DirEntry> for ProcessInformation {
         let value = value.into_path();
 
         ProcessInformation::try_new(value)
+    }
+}
+
+impl Hash for ProcessInformation {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        // Make it faster.
+        self.pid.hash(state);
+        self.inner_status.hash(state);
+        self.inner_stat.hash(state);
     }
 }
 
