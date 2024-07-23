@@ -253,8 +253,18 @@ fn test_terminal() {
     }
 }
 
-#[cfg(target_os = "linux")]
 #[test]
+#[cfg(target_os = "linux")]
+fn test_terminal_multiple_terminals() {
+    new_ucmd!()
+        .arg("--terminal=tty1,?")
+        .arg("kthreadd")
+        .succeeds()
+        .stdout_matches(&Regex::new(SINGLE_PID).unwrap());
+}
+
+#[test]
+#[cfg(target_os = "linux")]
 fn test_unknown_terminal() {
     new_ucmd!().arg("--terminal=?").succeeds();
     new_ucmd!().arg("--terminal=?").arg("kthreadd").succeeds();

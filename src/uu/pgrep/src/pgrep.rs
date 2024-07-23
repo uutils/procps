@@ -286,7 +286,7 @@ pub fn uu_app() -> Command {
             // arg!(-P     --parent <PPID>         "match only child processes of the given parent"),
             // arg!(-s     --session <SID>         "match session IDs"),
             arg!(-t     --terminal <tty>        "match by controlling terminal")
-                .action(ArgAction::Append),
+                .value_delimiter(','),
             // arg!(-u     --euid <ID>         ... "match by effective IDs"),
             // arg!(-U     --uid <ID>          ... "match by real IDs"),
             arg!(-x     --exact                 "match exactly with the command name"),
