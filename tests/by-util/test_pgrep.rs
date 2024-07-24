@@ -279,3 +279,25 @@ fn test_terminal_invalid_terminal() {
         .code_is(1)
         .no_output();
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_runstates() {
+    for arg in ["-r", "--runstates"] {
+        new_ucmd!()
+            .arg(arg)
+            .arg("S")
+            .succeeds()
+            .stdout_matches(&Regex::new("(?m)^[1-9][0-9]*$").unwrap());
+    }
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_runstates_invalid_runstate() {
+    new_ucmd!()
+        .arg("--runstates=invalid")
+        .fails()
+        .code_is(1)
+        .no_output();
+}
