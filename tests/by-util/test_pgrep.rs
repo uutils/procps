@@ -9,6 +9,9 @@ use regex::Regex;
 
 #[cfg(target_os = "linux")]
 const SINGLE_PID: &str = "^[1-9][0-9]*";
+#[cfg(target_os = "linux")]
+// (?m) enables multi-line mode
+const MULTIPLE_PIDS: &str = "(?m)^[1-9][0-9]*$";
 
 #[test]
 fn test_no_args() {
@@ -101,7 +104,7 @@ fn test_older() {
             .arg(arg)
             .arg("0")
             .succeeds()
-            .stdout_matches(&Regex::new("(?m)^[1-9][0-9]*$").unwrap());
+            .stdout_matches(&Regex::new(MULTIPLE_PIDS).unwrap());
     }
 }
 
@@ -112,7 +115,7 @@ fn test_older_matching_pattern() {
         .arg("--older=0")
         .arg("sh")
         .succeeds()
-        .stdout_matches(&Regex::new("(?m)^[1-9][0-9]*$").unwrap());
+        .stdout_matches(&Regex::new(MULTIPLE_PIDS).unwrap());
 }
 
 #[test]
@@ -249,7 +252,7 @@ fn test_terminal() {
             .arg("tty1")
             .arg("--inverse") // XXX hack to make test pass in CI
             .succeeds()
-            .stdout_matches(&Regex::new("(?m)^[1-9][0-9]*$").unwrap());
+            .stdout_matches(&Regex::new(MULTIPLE_PIDS).unwrap());
     }
 }
 
@@ -288,7 +291,7 @@ fn test_runstates() {
             .arg(arg)
             .arg("S")
             .succeeds()
-            .stdout_matches(&Regex::new("(?m)^[1-9][0-9]*$").unwrap());
+            .stdout_matches(&Regex::new(MULTIPLE_PIDS).unwrap());
     }
 }
 
