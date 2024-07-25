@@ -71,6 +71,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     if (!settings.newest
         && !settings.oldest
+        && settings.runstates.is_none()
         && settings.older.is_none()
         && settings.terminal.is_none())
         && pattern.is_empty()
@@ -168,6 +169,7 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
                 (Some(arg_run_states), Ok(pid_state)) => {
                     arg_run_states.contains(&pid_state.to_string())
                 }
+                (_, Err(_)) => false,
                 _ => true,
             };
 
