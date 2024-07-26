@@ -260,7 +260,7 @@ impl ProcessInformation {
     }
 
     /// Collect information from `/proc/<pid>/stat` file
-    fn stat(&mut self) -> Rc<Vec<String>> {
+    pub fn stat(&mut self) -> Rc<Vec<String>> {
         if let Some(c) = &self.cached_stat {
             return Rc::clone(c);
         }
