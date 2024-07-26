@@ -8,6 +8,7 @@ mod collector;
 #[cfg(target_os = "linux")]
 use clap::crate_version;
 use clap::{Arg, ArgAction, Command};
+use std::{cell::RefCell, rc::Rc};
 use uu_pgrep::process::walk_process;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
 
@@ -18,11 +19,14 @@ const USAGE: &str = help_usage!("ps.md");
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
 
-    let proc_snapshot = walk_process().collect::<Vec<_>>();
+    let snapshot = walk_process()
+        .map(|it| Rc::new(RefCell::new(it)))
+        .collect::<Vec<_>>();
+    let mut proc_infos = Vec::new();
 
-    let mut collected_proc_info = Vec::new();
-
-    collected_proc_info.extend(collector::process_collector(&matches, &proc_snapshot));
+    proc_infos.extend(collector::process_collector(&matches, snapshot.clone()));
+    proc_infos.extend(collector::session_collector(&matches, snapshot.clone()));
+    proc_infos.extend(collector::terminal_collector(&matches, snapshot));
 
     Ok(())
 }
