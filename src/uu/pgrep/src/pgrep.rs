@@ -6,9 +6,7 @@
 // Pid utils
 pub mod process;
 
-use clap::{
-    arg, crate_version, parser::ValueSource, Arg, ArgAction, ArgGroup, ArgMatches, Command,
-};
+use clap::{arg, crate_version, Arg, ArgAction, ArgGroup, ArgMatches, Command};
 use process::{walk_process, ProcessInformation, Teletype};
 use regex::Regex;
 use std::{collections::HashSet, sync::OnceLock};
@@ -32,7 +30,7 @@ struct Settings {
     older: Option<u64>,
     parent: Option<Vec<u64>>,
     runstates: Option<String>,
-    terminal: Option<HashSet<TerminalType>>,
+    terminal: Option<HashSet<Teletype>>,
 }
 
 /// # Conceptual model of `pgrep`
@@ -70,7 +68,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         older: matches.get_one::<u64>("older").copied(),
         terminal: matches.get_many::<String>("terminal").map(|ttys| {
             ttys.cloned()
-                .flat_map(TerminalType::try_from)
+                .flat_map(Teletype::try_from)
                 .collect::<HashSet<_>>()
         }),
     };
@@ -205,18 +203,11 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
                 REGEX.get().unwrap().is_match(want)
             };
 
-            let tty_matched = match matches.get_many::<String>("terminal") {
-                Some(ttys) => {
-                    // convert from input like `pts/0`
-                    let ttys = ttys
-                        .cloned()
-                        .flat_map(Teletype::try_from)
-                        .collect::<HashSet<_>>();
-                    match pid.ttys() {
-                        Ok(value) => value.iter().any(|it| ttys.contains(it)),
-                        Err(_) => false,
-                    }
-                }
+            let tty_matched = match &settings.terminal {
+                Some(ttys) => match pid.ttys() {
+                    Ok(value) => value.iter().any(|it| ttys.contains(it)),
+                    Err(_) => false,
+                },
                 None => true,
             };
 
