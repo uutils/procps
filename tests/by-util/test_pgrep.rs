@@ -304,3 +304,34 @@ fn test_runstates_invalid_runstate() {
         .code_is(1)
         .no_output();
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_parent() {
+    for arg in ["-P", "--parent"] {
+        new_ucmd!()
+            .arg(arg)
+            .arg("0")
+            .succeeds()
+            .stdout_matches(&Regex::new(MULTIPLE_PIDS).unwrap());
+    }
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_parent_multiple_parents() {
+    new_ucmd!()
+        .arg("--parent=0,1")
+        .succeeds()
+        .stdout_matches(&Regex::new(MULTIPLE_PIDS).unwrap());
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_parent_non_matching_parent() {
+    new_ucmd!()
+        .arg("--parent=10000000")
+        .fails()
+        .code_is(1)
+        .no_output();
+}

@@ -28,6 +28,7 @@ struct Settings {
     newest: bool,
     oldest: bool,
     older: Option<u64>,
+    parent: Option<Vec<u64>>,
     runstates: Option<String>,
     terminal: Option<HashSet<TerminalType>>,
 }
@@ -60,6 +61,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         inverse: matches.get_flag("inverse"),
         newest: matches.get_flag("newest"),
         oldest: matches.get_flag("oldest"),
+        parent: matches
+            .get_many::<u64>("parent")
+            .map(|parents| parents.copied().collect()),
         runstates: matches.get_one::<String>("runstates").cloned(),
         older: matches.get_one::<u64>("older").copied(),
         terminal: matches.get_many::<String>("terminal").map(|ttys| {
@@ -73,6 +77,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         && !settings.oldest
         && settings.runstates.is_none()
         && settings.older.is_none()
+        && settings.parent.is_none()
         && settings.terminal.is_none())
         && pattern.is_empty()
     {
@@ -209,7 +214,20 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
             let arg_older = settings.older.unwrap_or(0);
             let older_matched = pid.start_time().unwrap() >= arg_older;
 
-            if (run_state_matched && pattern_matched && tty_matched && older_matched)
+            // the PPID is the fourth field in /proc/<PID>/stat
+            // (https://www.kernel.org/doc/html/latest/filesystems/proc.html#id10)
+            let stat = pid.stat();
+            let ppid = stat.get(3);
+            let parent_matched = match (&settings.parent, ppid) {
+                (Some(parents), Some(ppid)) => parents.contains(&ppid.parse::<u64>().unwrap()),
+                _ => true,
+            };
+
+            if (run_state_matched
+                && pattern_matched
+                && tty_matched
+                && older_matched
+                && parent_matched)
                 ^ settings.inverse
             {
                 tmp_vec.push(pid)
@@ -285,7 +303,9 @@ pub fn uu_app() -> Command {
             arg!(-o     --oldest                "select least recently started"),
             arg!(-O     --older <seconds>       "select where older than seconds")
                 .value_parser(clap::value_parser!(u64)),
-            // arg!(-P     --parent <PPID>         "match only child processes of the given parent"),
+            arg!(-P     --parent <PPID>         "match only child processes of the given parent")
+                .value_delimiter(',')
+                .value_parser(clap::value_parser!(u64)),
             // arg!(-s     --session <SID>         "match session IDs"),
             arg!(-t     --terminal <tty>        "match by controlling terminal")
                 .value_delimiter(','),
