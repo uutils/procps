@@ -1036,6 +1036,7 @@ dependencies = [
  "chrono",
  "clap",
  "libc",
+ "nix",
  "prettytable-rs",
  "uu_pgrep",
  "uucore",

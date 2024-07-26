@@ -17,6 +17,7 @@ clap = { workspace = true }
 chrono = { workspace = true, default-features = false, features = ["clock"] }
 libc = { workspace = true }
 prettytable-rs = { workspace = true }
+nix = { workspace = true }
 
 uu_pgrep = { path = "../pgrep" }
 
