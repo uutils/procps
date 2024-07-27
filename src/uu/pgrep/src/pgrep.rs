@@ -7,7 +7,7 @@
 pub mod process;
 
 use clap::{arg, crate_version, Arg, ArgAction, ArgGroup, ArgMatches, Command};
-use process::{walk_process, ProcessInformation, TerminalType};
+use process::{walk_process, ProcessInformation, Teletype};
 use regex::Regex;
 use std::{collections::HashSet, sync::OnceLock};
 use uucore::{
@@ -30,7 +30,7 @@ struct Settings {
     older: Option<u64>,
     parent: Option<Vec<u64>>,
     runstates: Option<String>,
-    terminal: Option<HashSet<TerminalType>>,
+    terminal: Option<HashSet<Teletype>>,
 }
 
 /// # Conceptual model of `pgrep`
@@ -68,7 +68,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         older: matches.get_one::<u64>("older").copied(),
         terminal: matches.get_many::<String>("terminal").map(|ttys| {
             ttys.cloned()
-                .flat_map(TerminalType::try_from)
+                .flat_map(Teletype::try_from)
                 .collect::<HashSet<_>>()
         }),
     };
