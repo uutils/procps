@@ -10,11 +10,7 @@ mod picker;
 use clap::crate_version;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use prettytable::{format::consts::FORMAT_CLEAN, Row, Table};
-use std::{
-    cell::RefCell,
-    collections::{HashMap, LinkedList},
-    rc::Rc,
-};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use uu_pgrep::process::walk_process;
 use uucore::{
     error::{UResult, USimpleError},
@@ -53,26 +49,27 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         }
     }
 
-    // Collect pickers ordered by headers
-    let picker = picker::collect_picker(codes);
+    // Collect pickers ordered by codes
+    let picker = picker::collect_picker(&codes);
 
     // Constructing table
-    let mut result_table = Table::new();
-    result_table.set_format(*FORMAT_CLEAN);
+    let mut rows = Vec::new();
     for proc in proc_infos {
-        let picked = picker
-            .iter()
-            .map(|f| f(proc.clone()))
-            .collect::<LinkedList<_>>();
-
-        result_table.add_row(Row::from_iter(picked));
+        let picked = picker.iter().map(|f| f(proc.clone())).collect::<Vec<_>>();
+        rows.push(Row::from_iter(picked));
     }
 
     // Apply header mapping
+    let header = codes.iter().flat_map(|it| code_mapping.get(it));
+
+    // Apply header
+    let mut table = Table::from_iter([Row::from_iter(header)]);
+    table.set_format(*FORMAT_CLEAN);
+    table.extend(rows);
 
     // TODO: Sorting
 
-    println!("{}", result_table);
+    println!("{}", table);
 
     Ok(())
 }
@@ -80,10 +77,10 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 /// This function will extract all the needed headers from matches (the data being needed)
 ///
 /// The headers are sequential, and the order about the final output is related to the headers
-fn collect_codes(matches: &ArgMatches) -> LinkedList<String> {
-    let mut mapping = LinkedList::new();
+fn collect_codes(matches: &ArgMatches) -> Vec<String> {
+    let mut mapping = Vec::new();
 
-    let mut append = |code: &str| mapping.push_back(code.into());
+    let mut append = |code: &str| mapping.push(code.into());
 
     // Default header
     append("pid");

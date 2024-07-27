@@ -4,7 +4,7 @@ use uu_pgrep::process::ProcessInformation;
 type RefMutableProcInfo = Rc<RefCell<ProcessInformation>>;
 
 pub(crate) fn collect_picker(
-    code_order: LinkedList<String>,
+    code_order: &[String],
 ) -> LinkedList<Box<dyn Fn(RefMutableProcInfo) -> String>> {
     let mut pickers = LinkedList::new();
 
