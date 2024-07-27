@@ -15,14 +15,14 @@ use std::{
 use walkdir::{DirEntry, WalkDir};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Teletype {
+pub enum TerminalType {
     Tty(u64),
     TtyS(u64),
     Pts(u64),
     Unknown,
 }
 
-impl Display for Teletype {
+impl Display for TerminalType {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             Self::Tty(id) => write!(f, "/dev/pts/{}", id),
@@ -33,19 +33,19 @@ impl Display for Teletype {
     }
 }
 
-impl TryFrom<String> for Teletype {
+impl TryFrom<String> for TerminalType {
     type Error = ();
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         if value == "?" {
-            return Ok(Teletype::Unknown);
+            return Ok(TerminalType::Unknown);
         }
 
         Self::try_from(value.as_str())
     }
 }
 
-impl TryFrom<&str> for Teletype {
+impl TryFrom<&str> for TerminalType {
     type Error = ();
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
@@ -53,7 +53,7 @@ impl TryFrom<&str> for Teletype {
     }
 }
 
-impl TryFrom<PathBuf> for Teletype {
+impl TryFrom<PathBuf> for TerminalType {
     type Error = ();
 
     fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
@@ -69,7 +69,7 @@ impl TryFrom<PathBuf> for Teletype {
                 .ok_or(())?
                 .parse::<u64>()
                 .map_err(|_| ())
-                .map(Teletype::Pts);
+                .map(TerminalType::Pts);
         };
 
         // Considering this format: **/**/ttyS** then **/**/tty**
@@ -87,10 +87,10 @@ impl TryFrom<PathBuf> for Teletype {
 
         if path.contains("ttyS") {
             // Case 2
-            f("ttyS").ok_or(()).map(Teletype::TtyS)
+            f("ttyS").ok_or(()).map(TerminalType::TtyS)
         } else if path.contains("tty") {
             // Case 3
-            f("tty").ok_or(()).map(Teletype::Tty)
+            f("tty").ok_or(()).map(TerminalType::Tty)
         } else {
             Err(())
         }
@@ -187,7 +187,7 @@ pub struct ProcessInformation {
     cached_stat: Option<Rc<Vec<String>>>,
 
     cached_start_time: Option<u64>,
-    cached_tty: Option<Rc<HashSet<Teletype>>>,
+    cached_tty: Option<Rc<HashSet<TerminalType>>>,
 }
 
 impl ProcessInformation {
@@ -318,7 +318,7 @@ impl ProcessInformation {
     ///
     /// If scanned pid had mismatched permission,
     /// it will caused [std::io::ErrorKind::PermissionDenied] error.
-    pub fn ttys(&mut self) -> Result<Rc<HashSet<Teletype>>, io::Error> {
+    pub fn ttys(&mut self) -> Result<Rc<HashSet<TerminalType>>, io::Error> {
         if let Some(tty) = &self.cached_tty {
             return Ok(Rc::clone(tty));
         }
@@ -326,18 +326,18 @@ impl ProcessInformation {
         let path = PathBuf::from(format!("/proc/{}/fd", self.pid));
 
         let Ok(result) = fs::read_dir(path) else {
-            return Ok(Rc::new(HashSet::from_iter([Teletype::Unknown])));
+            return Ok(Rc::new(HashSet::from_iter([TerminalType::Unknown])));
         };
 
         let mut result = result
             .flatten()
             .filter(|it| it.path().is_symlink())
             .flat_map(|it| fs::read_link(it.path()))
-            .flat_map(Teletype::try_from)
+            .flat_map(TerminalType::try_from)
             .collect::<HashSet<_>>();
 
         if result.is_empty() {
-            result.insert(Teletype::Unknown);
+            result.insert(TerminalType::Unknown);
         }
 
         let result = Rc::new(result);
@@ -417,31 +417,46 @@ mod tests {
 
     #[test]
     fn test_tty_from() {
-        assert_eq!(Teletype::try_from("?").unwrap(), Teletype::Unknown);
-        assert_eq!(Teletype::try_from("/dev/tty1").unwrap(), Teletype::Tty(1));
-        assert_eq!(Teletype::try_from("/dev/tty10").unwrap(), Teletype::Tty(10));
-        assert_eq!(Teletype::try_from("/dev/pts/1").unwrap(), Teletype::Pts(1));
+        assert_eq!(TerminalType::try_from("?").unwrap(), TerminalType::Unknown);
         assert_eq!(
-            Teletype::try_from("/dev/pts/10").unwrap(),
-            Teletype::Pts(10)
+            TerminalType::try_from("/dev/tty1").unwrap(),
+            TerminalType::Tty(1)
         );
-        assert_eq!(Teletype::try_from("/dev/ttyS1").unwrap(), Teletype::TtyS(1));
         assert_eq!(
-            Teletype::try_from("/dev/ttyS10").unwrap(),
-            Teletype::TtyS(10)
+            TerminalType::try_from("/dev/tty10").unwrap(),
+            TerminalType::Tty(10)
         );
-        assert_eq!(Teletype::try_from("ttyS10").unwrap(), Teletype::TtyS(10));
+        assert_eq!(
+            TerminalType::try_from("/dev/pts/1").unwrap(),
+            TerminalType::Pts(1)
+        );
+        assert_eq!(
+            TerminalType::try_from("/dev/pts/10").unwrap(),
+            TerminalType::Pts(10)
+        );
+        assert_eq!(
+            TerminalType::try_from("/dev/ttyS1").unwrap(),
+            TerminalType::TtyS(1)
+        );
+        assert_eq!(
+            TerminalType::try_from("/dev/ttyS10").unwrap(),
+            TerminalType::TtyS(10)
+        );
+        assert_eq!(
+            TerminalType::try_from("ttyS10").unwrap(),
+            TerminalType::TtyS(10)
+        );
 
-        assert!(Teletype::try_from("value").is_err());
-        assert!(Teletype::try_from("TtyS10").is_err());
+        assert!(TerminalType::try_from("value").is_err());
+        assert!(TerminalType::try_from("TtyS10").is_err());
     }
 
     #[test]
     fn test_terminal_type_display() {
-        assert_eq!(Teletype::Pts(10).to_string(), "/dev/pts/10");
-        assert_eq!(Teletype::Tty(10).to_string(), "/dev/tty10");
-        assert_eq!(Teletype::TtyS(10).to_string(), "/dev/ttyS10");
-        assert_eq!(Teletype::Unknown.to_string(), "?");
+        assert_eq!(TerminalType::Pts(10).to_string(), "/dev/pts/10");
+        assert_eq!(TerminalType::Tty(10).to_string(), "/dev/tty10");
+        assert_eq!(TerminalType::TtyS(10).to_string(), "/dev/ttyS10");
+        assert_eq!(TerminalType::Unknown.to_string(), "?");
     }
 
     #[test]
@@ -493,7 +508,7 @@ mod tests {
             .flatten()
             .map(DirEntry::into_path)
             .flat_map(|it| it.read_link())
-            .flat_map(Teletype::try_from)
+            .flat_map(TerminalType::try_from)
             .collect::<HashSet<_>>();
 
         assert_eq!(pid_entry.ttys().unwrap(), result.into())
