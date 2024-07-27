@@ -24,9 +24,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         .collect::<Vec<_>>();
     let mut proc_infos = Vec::new();
 
-    proc_infos.extend(collector::process_collector(&matches, snapshot.clone()));
-    proc_infos.extend(collector::session_collector(&matches, snapshot.clone()));
-    proc_infos.extend(collector::terminal_collector(&matches, snapshot));
+    proc_infos.extend(collector::basic_collector(&snapshot));
+    proc_infos.extend(collector::process_collector(&matches, &snapshot));
+    proc_infos.extend(collector::session_collector(&matches, &snapshot));
 
     Ok(())
 }
