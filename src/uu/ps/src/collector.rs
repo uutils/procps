@@ -1,8 +1,12 @@
-use std::{cell::RefCell, path::PathBuf, rc::Rc, str::FromStr};
+// This file is part of the uutils procps package.
+//
+// For the full copyright and license information, please view the LICENSE
+// file that was distributed with this source code.
 
 use clap::ArgMatches;
 use libc::pid_t;
 use nix::errno::Errno;
+use std::{cell::RefCell, path::PathBuf, rc::Rc, str::FromStr};
 use uu_pgrep::process::ProcessInformation;
 
 // TODO: Temporary add to this file, this function will add to uucore.
