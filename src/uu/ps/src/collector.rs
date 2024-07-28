@@ -22,7 +22,7 @@ fn getsid(pid: i32) -> Result<pid_t, Errno> {
     }
 }
 
-// I'm guessing it matches the current terminal
+// Guessing it matches the current terminal
 pub(crate) fn basic_collector(
     proc_snapshot: &[Rc<RefCell<ProcessInformation>>],
 ) -> Vec<Rc<RefCell<ProcessInformation>>> {

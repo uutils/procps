@@ -14,16 +14,11 @@ pub(crate) fn collect_picker(
     let mut pickers = LinkedList::new();
 
     for code in code_order {
-        if code == "pid" || code == "tgid" {
-            pickers.push_back(helper(pid))
-        }
-
-        if code == "tname" || code == "tt" || code == "tty" {
-            pickers.push_back(helper(tty))
-        }
-
-        if code == "time" || code == "cputime" {
-            pickers.push_back(helper(time))
+        match code.as_str() {
+            "pid" | "tgid" => pickers.push_back(helper(pid)),
+            "tname" | "tt" | "tty" => pickers.push_back(helper(tty)),
+            "time" | "cputime" => pickers.push_back(helper(time)),
+            _ => {}
         }
     }
 

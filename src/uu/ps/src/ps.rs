@@ -243,6 +243,7 @@ fn collect_head_mapping(matches: &ArgMatches) -> HashMap<String, String> {
     mapping
 }
 
+#[allow(clippy::cognitive_complexity)]
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
