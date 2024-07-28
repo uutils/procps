@@ -4,7 +4,7 @@
 // file that was distributed with this source code.
 
 use std::{cell::RefCell, collections::LinkedList, rc::Rc};
-use uu_pgrep::process::ProcessInformation;
+use uu_pgrep::process::{ProcessInformation, Teletype};
 
 type RefMutableProcInfo = Rc<RefCell<ProcessInformation>>;
 
@@ -18,6 +18,7 @@ pub(crate) fn collect_picker(
             "pid" | "tgid" => pickers.push_back(helper(pid)),
             "tname" | "tt" | "tty" => pickers.push_back(helper(tty)),
             "time" | "cputime" => pickers.push_back(helper(time)),
+            "cmd" | "ucmd" => pickers.push_back(helper(cmd)),
             _ => {}
         }
     }
@@ -33,13 +34,30 @@ fn helper(
 }
 
 fn pid(proc_info: RefMutableProcInfo) -> String {
-    todo!()
+    format!("{}", proc_info.borrow().pid)
 }
 
 fn tty(proc_info: RefMutableProcInfo) -> String {
-    todo!()
+    match proc_info
+        .borrow_mut()
+        .ttys()
+        .unwrap()
+        .iter()
+        .collect::<Vec<_>>()
+        .first()
+        .unwrap()
+    {
+        Teletype::Tty(tty) => format!("tty{}", tty),
+        Teletype::TtyS(ttys) => format!("ttyS{}", ttys),
+        Teletype::Pts(pts) => format!("pts/{}", pts),
+        Teletype::Unknown => "?".to_owned(),
+    }
 }
 
-fn time(proc_info: RefMutableProcInfo) -> String {
-    todo!()
+fn time(_proc_info: RefMutableProcInfo) -> String {
+    "TODO".into()
+}
+
+fn cmd(proc_info: RefMutableProcInfo) -> String {
+    proc_info.borrow_mut().status().get("Name").unwrap().into()
 }

@@ -75,13 +75,13 @@ fn collect_codes(matches: &ArgMatches) -> Vec<String> {
 
     let mut append = |code: &str| mapping.push(code.into());
 
-    let arg_format = matches.get_many::<String>("o");
+    let arg_format = matches.try_get_many::<String>("o");
 
     match arg_format {
-        Some(formats) => formats
+        Ok(Some(formats)) => formats
             .flat_map(|it| (*it).split("=").collect::<Vec<_>>().first().cloned())
             .for_each(append),
-        None => {
+        _ => {
             // Default header
             append("pid");
             append("tname");
@@ -248,7 +248,7 @@ fn collect_head_mapping(
     append("wops", "WOPS");
 
     // Check code
-    if let Some(formats) = matches.get_many::<String>("o") {
+    if let Ok(Some(formats)) = matches.try_get_many::<String>("o") {
         for it in formats
             .map(|it| it.split("=").collect::<Vec<_>>())
             .filter(|it| it.len() == 2)

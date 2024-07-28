@@ -7,7 +7,7 @@ use clap::ArgMatches;
 use libc::pid_t;
 use nix::errno::Errno;
 use std::{cell::RefCell, path::PathBuf, rc::Rc, str::FromStr};
-use uu_pgrep::process::ProcessInformation;
+use uu_pgrep::process::{ProcessInformation, Teletype};
 
 // TODO: Temporary add to this file, this function will add to uucore.
 #[cfg(not(target_os = "redox"))]
@@ -75,17 +75,37 @@ pub(crate) fn session_collector(
 ) -> Vec<Rc<RefCell<ProcessInformation>>> {
     let mut result = Vec::new();
 
-    // session id
-    let session_id = |pid: i32| getsid(pid);
+    let tty = |proc: &Rc<RefCell<ProcessInformation>>| {
+        proc.borrow_mut()
+            .ttys()
+            .unwrap()
+            .iter()
+            .collect::<Vec<_>>()
+            .first()
+            .cloned()
+            .unwrap()
+            .clone()
+    };
 
     // flag `-d`
+    // Guessing it pid=sid, and all
     if matches.get_flag("d") {
         proc_snapshot.iter().for_each(|it| {});
     }
 
     // flag `-a`
+    // Guessing it pid=sid, and associated terminal.
     if matches.get_flag("a") {
-        proc_snapshot.iter().for_each(|it| {});
+        proc_snapshot.iter().for_each(|it| {
+            let pid = it.borrow().pid;
+
+            if let Ok(sid) = getsid(pid as i32) {
+                // Check is session leader
+                if sid != (pid as i32) && tty(it) != Teletype::Unknown {
+                    result.push(it.clone())
+                }
+            }
+        });
     }
 
     result
