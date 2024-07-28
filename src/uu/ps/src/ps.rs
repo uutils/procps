@@ -38,16 +38,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     // Collect code-header mapping
     let code_mapping = collect_head_mapping(&matches);
-
-    // Check if the `code` exists
-    for code in &codes {
-        if !code_mapping.keys().any(|it| code == it) {
-            return Err(USimpleError::new(
-                1,
-                format!("error: unknown user-defined format specifier \"{}\"", code),
-            ));
-        }
-    }
+    let Ok(code_mapping) = code_mapping else {
+        return Err(code_mapping.err().unwrap());
+    };
 
     // Collect pickers ordered by codes
     let picker = picker::collect_picker(&codes);
@@ -82,20 +75,34 @@ fn collect_codes(matches: &ArgMatches) -> Vec<String> {
 
     let mut append = |code: &str| mapping.push(code.into());
 
-    // Default header
-    append("pid");
-    append("tname");
-    append("time");
-    append("ucmd");
+    let arg_format = matches.get_many::<String>("o");
+
+    match arg_format {
+        Some(formats) => formats
+            .flat_map(|it| (*it).split("=").collect::<Vec<_>>().first().cloned())
+            .for_each(append),
+        None => {
+            // Default header
+            append("pid");
+            append("tname");
+            append("time");
+            append("ucmd");
+        }
+    }
 
     mapping
 }
 
-/// Aims to collect mapping from argument
-fn collect_head_mapping(matches: &ArgMatches) -> HashMap<String, String> {
+/// Collect mapping from argument
+///
+/// TODO: collecting mapping from matches
+fn collect_head_mapping(
+    matches: &ArgMatches,
+) -> Result<HashMap<String, String>, Box<(dyn uucore::error::UError + 'static)>> {
     let mut mapping = HashMap::new();
     let mut append = |code: &str, header: &str| mapping.insert(code.into(), header.into());
 
+    // Those mapping generated from manpage
     append("%cpu", "%CPU");
     append("%mem", "%MEM");
     append("ag_id", "AGID");
@@ -240,7 +247,23 @@ fn collect_head_mapping(matches: &ArgMatches) -> HashMap<String, String> {
     append("wchars", "WCHARS");
     append("wops", "WOPS");
 
-    mapping
+    // Check code
+    if let Some(formats) = matches.get_many::<String>("o") {
+        for it in formats
+            .map(|it| it.split("=").collect::<Vec<_>>())
+            .filter(|it| it.len() == 2)
+        {
+            let code = it.first().cloned().unwrap();
+            if !mapping.contains_key(code) {
+                return Err(USimpleError::new(
+                    1,
+                    format!("error: unknown user-defined format specifier \"{}\"", code),
+                ));
+            }
+        }
+    }
+
+    Ok(mapping)
 }
 
 #[allow(clippy::cognitive_complexity)]
@@ -292,6 +315,13 @@ pub fn uu_app() -> Command {
             //     .help("processes without controlling ttys")
             //     .allow_hyphen_values(true),
         ])
+        .arg(
+            Arg::new("format")
+                .short('o')
+                .long("format")
+                .action(ArgAction::Append)
+                .help("user-defined format"),
+        )
     // .args([
     //     Arg::new("command").short('c').help("command name"),
     //     Arg::new("GID")
