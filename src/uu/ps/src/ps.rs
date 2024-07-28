@@ -62,7 +62,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     // TODO: Sorting
 
-    println!("{}", table);
+    print!("{}", table);
 
     Ok(())
 }
