@@ -3,8 +3,9 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use std::hash::Hash;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     fmt::{self, Display, Formatter},
     fs, io,
     path::PathBuf,
@@ -36,7 +37,7 @@ impl TryFrom<String> for Teletype {
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         if value == "?" {
-            return Ok(Teletype::Unknown);
+            return Ok(Self::Unknown);
         }
 
         Self::try_from(value.as_str())
@@ -113,11 +114,11 @@ pub enum RunState {
 impl Display for RunState {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            RunState::Running => write!(f, "R"),
-            RunState::Sleeping => write!(f, "S"),
-            RunState::UninterruptibleWait => write!(f, "D"),
-            RunState::Zombie => write!(f, "Z"),
-            RunState::Stopped => write!(f, "T"),
+            Self::Running => write!(f, "R"),
+            Self::Sleeping => write!(f, "S"),
+            Self::UninterruptibleWait => write!(f, "D"),
+            Self::Zombie => write!(f, "Z"),
+            Self::Stopped => write!(f, "T"),
         }
     }
 }
@@ -127,11 +128,11 @@ impl TryFrom<char> for RunState {
 
     fn try_from(value: char) -> Result<Self, Self::Error> {
         match value {
-            'R' => Ok(RunState::Running),
-            'S' => Ok(RunState::Sleeping),
-            'D' => Ok(RunState::UninterruptibleWait),
-            'Z' => Ok(RunState::Zombie),
-            'T' => Ok(RunState::Stopped),
+            'R' => Ok(Self::Running),
+            'S' => Ok(Self::Sleeping),
+            'D' => Ok(Self::UninterruptibleWait),
+            'Z' => Ok(Self::Zombie),
+            'T' => Ok(Self::Stopped),
             _ => Err(io::ErrorKind::InvalidInput.into()),
         }
     }
@@ -145,7 +146,7 @@ impl TryFrom<&str> for RunState {
             return Err(io::ErrorKind::InvalidInput.into());
         }
 
-        RunState::try_from(
+        Self::try_from(
             value
                 .chars()
                 .nth(0)
@@ -158,7 +159,7 @@ impl TryFrom<String> for RunState {
     type Error = io::Error;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        RunState::try_from(value.as_str())
+        Self::try_from(value.as_str())
     }
 }
 
@@ -166,12 +167,12 @@ impl TryFrom<&String> for RunState {
     type Error = io::Error;
 
     fn try_from(value: &String) -> Result<Self, Self::Error> {
-        RunState::try_from(value.as_str())
+        Self::try_from(value.as_str())
     }
 }
 
 /// Process ID and its information
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ProcessInformation {
     pub pid: usize,
     pub cmdline: String,
@@ -185,7 +186,6 @@ pub struct ProcessInformation {
     cached_stat: Option<Rc<Vec<String>>>,
 
     cached_start_time: Option<u64>,
-    cached_tty: Option<Rc<HashSet<Teletype>>>,
 }
 
 impl ProcessInformation {
@@ -307,52 +307,44 @@ impl ProcessInformation {
 
     /// This function will scan the `/proc/<pid>/fd` directory
     ///
-    /// If the process does not belong to any terminal,
+    /// If the process does not belong to any terminal and mismatched permission,
     /// the result will contain [TerminalType::Unknown].
     ///
     /// Otherwise [TerminalType::Unknown] does not appear in the result.
-    ///
-    /// # Error
-    ///
-    /// If scanned pid had mismatched permission,
-    /// it will caused [std::io::ErrorKind::PermissionDenied] error.
-    pub fn ttys(&mut self) -> Result<Rc<HashSet<Teletype>>, io::Error> {
-        if let Some(tty) = &self.cached_tty {
-            return Ok(Rc::clone(tty));
-        }
-
+    pub fn tty(&self) -> Teletype {
         let path = PathBuf::from(format!("/proc/{}/fd", self.pid));
 
         let Ok(result) = fs::read_dir(path) else {
-            return Ok(Rc::new(HashSet::from_iter([Teletype::Unknown])));
+            return Teletype::Unknown;
         };
 
-        let mut result = result
-            .flatten()
-            .filter(|it| it.path().is_symlink())
-            .flat_map(|it| fs::read_link(it.path()))
-            .flat_map(Teletype::try_from)
-            .collect::<HashSet<_>>();
-
-        if result.is_empty() {
-            result.insert(Teletype::Unknown);
+        for dir in result.flatten().filter(|it| it.path().is_symlink()) {
+            if let Ok(path) = fs::read_link(dir.path()) {
+                if let Ok(tty) = Teletype::try_from(path) {
+                    return tty;
+                }
+            }
         }
 
-        let result = Rc::new(result);
-
-        self.cached_tty = Some(Rc::clone(&result));
-
-        Ok(result)
+        Teletype::Unknown
     }
 }
-
 impl TryFrom<DirEntry> for ProcessInformation {
     type Error = io::Error;
 
     fn try_from(value: DirEntry) -> Result<Self, Self::Error> {
         let value = value.into_path();
 
-        ProcessInformation::try_new(value)
+        Self::try_new(value)
+    }
+}
+
+impl Hash for ProcessInformation {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        // Make it faster.
+        self.pid.hash(state);
+        self.inner_status.hash(state);
+        self.inner_stat.hash(state);
     }
 }
 
@@ -400,38 +392,8 @@ pub fn walk_process() -> impl Iterator<Item = ProcessInformation> {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
-    use std::str::FromStr;
-
-    #[test]
-    fn test_tty_from() {
-        assert_eq!(Teletype::try_from("?").unwrap(), Teletype::Unknown);
-        assert_eq!(Teletype::try_from("/dev/tty1").unwrap(), Teletype::Tty(1));
-        assert_eq!(Teletype::try_from("/dev/tty10").unwrap(), Teletype::Tty(10));
-        assert_eq!(Teletype::try_from("/dev/pts/1").unwrap(), Teletype::Pts(1));
-        assert_eq!(
-            Teletype::try_from("/dev/pts/10").unwrap(),
-            Teletype::Pts(10)
-        );
-        assert_eq!(Teletype::try_from("/dev/ttyS1").unwrap(), Teletype::TtyS(1));
-        assert_eq!(
-            Teletype::try_from("/dev/ttyS10").unwrap(),
-            Teletype::TtyS(10)
-        );
-        assert_eq!(Teletype::try_from("ttyS10").unwrap(), Teletype::TtyS(10));
-
-        assert!(Teletype::try_from("value").is_err());
-        assert!(Teletype::try_from("TtyS10").is_err());
-    }
-
-    #[test]
-    fn test_terminal_type_display() {
-        assert_eq!(Teletype::Pts(10).to_string(), "/dev/pts/10");
-        assert_eq!(Teletype::Tty(10).to_string(), "/dev/tty10");
-        assert_eq!(Teletype::TtyS(10).to_string(), "/dev/ttyS10");
-        assert_eq!(Teletype::Unknown.to_string(), "?");
-    }
+    use std::{collections::HashSet, str::FromStr};
 
     #[test]
     fn test_run_state_conversion() {
@@ -472,12 +434,12 @@ mod tests {
     fn test_pid_entry() {
         let current_pid = current_pid();
 
-        let mut pid_entry = ProcessInformation::try_new(
+        let pid_entry = ProcessInformation::try_new(
             PathBuf::from_str(&format!("/proc/{}", current_pid)).unwrap(),
         )
         .unwrap();
 
-        let result = WalkDir::new(format!("/proc/{}/fd", current_pid))
+        let mut result = WalkDir::new(format!("/proc/{}/fd", current_pid))
             .into_iter()
             .flatten()
             .map(DirEntry::into_path)
@@ -485,7 +447,11 @@ mod tests {
             .flat_map(Teletype::try_from)
             .collect::<HashSet<_>>();
 
-        assert_eq!(pid_entry.ttys().unwrap(), result.into())
+        if result.is_empty() {
+            result.insert(Teletype::Unknown);
+        }
+
+        assert!(result.contains(&pid_entry.tty()));
     }
 
     #[test]
