@@ -204,10 +204,7 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
             };
 
             let tty_matched = match &settings.terminal {
-                Some(ttys) => match pid.ttys() {
-                    Ok(value) => value.iter().any(|it| ttys.contains(it)),
-                    Err(_) => false,
-                },
+                Some(ttys) => ttys.contains(&pid.tty()),
                 None => true,
             };
 
