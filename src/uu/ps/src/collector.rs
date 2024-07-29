@@ -90,7 +90,7 @@ pub(crate) fn session_collector(
     // flag `-d`
     // Guessing it pid=sid, and all
     if matches.get_flag("d") {
-        proc_snapshot.iter().for_each(|it| {});
+        proc_snapshot.iter().for_each(|_| {});
     }
 
     // flag `-a`

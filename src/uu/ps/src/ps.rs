@@ -10,11 +10,12 @@ mod picker;
 #[cfg(target_os = "linux")]
 use clap::crate_version;
 use clap::{Arg, ArgAction, ArgMatches, Command};
+use parser::{parser, OptionalKeyValue};
 use prettytable::{format::consts::FORMAT_CLEAN, Row, Table};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use uu_pgrep::process::walk_process;
 use uucore::{
-    error::{UResult, USimpleError},
+    error::{UError, UResult, USimpleError},
     format_usage, help_about, help_usage,
 };
 
@@ -34,17 +35,24 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     proc_infos.extend(collector::process_collector(&matches, &snapshot));
     proc_infos.extend(collector::session_collector(&matches, &snapshot));
 
-    // Collect codes with order
-    let codes = collect_codes(&matches);
+    let arg_formats = collect_format(&matches);
+    let Ok(arg_formats) = arg_formats else {
+        return Err(arg_formats.err().unwrap());
+    };
+    let code_mapping = apply_format_mapping(&arg_formats);
 
-    // Collect code-header mapping
-    let code_mapping = collect_head_mapping(&matches);
-    let Ok(code_mapping) = code_mapping else {
-        return Err(code_mapping.err().unwrap());
+    // Collect codes with order
+    let codes = if arg_formats.is_empty() {
+        default_codes()
+    } else {
+        arg_formats
+            .into_iter()
+            .map(|it| it.key().to_owned())
+            .collect()
     };
 
     // Collect pickers ordered by codes
-    let picker = picker::collect_picker(&codes);
+    let picker = picker::collect_pickers(&codes);
 
     // Constructing table
     let mut rows = Vec::new();
@@ -68,28 +76,52 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     Ok(())
 }
 
+fn collect_format(
+    matches: &ArgMatches,
+) -> Result<Vec<OptionalKeyValue>, Box<dyn UError + 'static>> {
+    let arg_format = matches.get_many::<OptionalKeyValue>("format");
+
+    let collect = arg_format.unwrap_or_default().cloned().collect::<Vec<_>>();
+
+    let default_mapping = default_mapping();
+
+    // Validate key is exist
+    for key in collect.iter().map(OptionalKeyValue::key) {
+        if !default_mapping.contains_key(key) {
+            return Err(USimpleError::new(
+                1,
+                format!("error: unknown user-defined format specifier \"{key}\""),
+            ));
+        }
+    }
+
+    Ok(collect)
+}
+
+fn apply_format_mapping(formats: &[OptionalKeyValue]) -> HashMap<String, String> {
+    let mut mapping = default_mapping();
+
+    for optional_kv in formats {
+        let key = optional_kv.key();
+        if !optional_kv.is_value_empty() {
+            mapping.insert(key.to_owned(), optional_kv.try_get::<String>().unwrap());
+        }
+    }
+
+    mapping
+}
+
 /// This function will extract all the needed headers from matches (the data being needed)
 ///
 /// The headers are sequential, and the order about the final output is related to the headers
-fn collect_codes(matches: &ArgMatches) -> Vec<String> {
+fn default_codes() -> Vec<String> {
     let mut mapping = Vec::new();
-
     let mut append = |code: &str| mapping.push(code.into());
 
-    let arg_format = matches.try_get_many::<String>("o");
-
-    match arg_format {
-        Ok(Some(formats)) => formats
-            .flat_map(|it| (*it).split("=").collect::<Vec<_>>().first().cloned())
-            .for_each(append),
-        _ => {
-            // Default header
-            append("pid");
-            append("tname");
-            append("time");
-            append("ucmd");
-        }
-    }
+    append("pid");
+    append("tname");
+    append("time");
+    append("ucmd");
 
     mapping
 }
@@ -97,9 +129,7 @@ fn collect_codes(matches: &ArgMatches) -> Vec<String> {
 /// Collect mapping from argument
 ///
 /// TODO: collecting mapping from matches
-fn collect_head_mapping(
-    matches: &ArgMatches,
-) -> Result<HashMap<String, String>, Box<(dyn uucore::error::UError + 'static)>> {
+fn default_mapping() -> HashMap<String, String> {
     let mut mapping = HashMap::new();
     let mut append = |code: &str, header: &str| mapping.insert(code.into(), header.into());
 
@@ -248,23 +278,7 @@ fn collect_head_mapping(
     append("wchars", "WCHARS");
     append("wops", "WOPS");
 
-    // Check code
-    if let Ok(Some(formats)) = matches.try_get_many::<String>("o") {
-        for it in formats
-            .map(|it| it.split("=").collect::<Vec<_>>())
-            .filter(|it| it.len() == 2)
-        {
-            let code = it.first().cloned().unwrap();
-            if !mapping.contains_key(code) {
-                return Err(USimpleError::new(
-                    1,
-                    format!("error: unknown user-defined format specifier \"{}\"", code),
-                ));
-            }
-        }
-    }
-
-    Ok(mapping)
+    mapping
 }
 
 #[allow(clippy::cognitive_complexity)]
@@ -321,6 +335,8 @@ pub fn uu_app() -> Command {
                 .short('o')
                 .long("format")
                 .action(ArgAction::Append)
+                .value_delimiter(',')
+                .value_parser(parser)
                 .help("user-defined format"),
         )
     // .args([

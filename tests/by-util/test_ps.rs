@@ -10,3 +10,15 @@ use crate::common::util::TestScenario;
 fn test_invalid_arg() {
     new_ucmd!().arg("--definitely-invalid").fails().code_is(1);
 }
+
+#[test]
+fn test_format() {
+    new_ucmd!()
+        .args(&["-o", "cmd=CCMD"])
+        .succeeds()
+        .stdout_contains("CCMD");
+
+    new_ucmd!().args(&["-o", "cmd= "]).succeeds();
+
+    new_ucmd!().args(&["-o", "ccmd=CCMD"]).fails().code_is(1);
+}

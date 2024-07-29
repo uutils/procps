@@ -8,7 +8,7 @@ use uu_pgrep::process::{ProcessInformation, Teletype};
 
 type RefMutableProcInfo = Rc<RefCell<ProcessInformation>>;
 
-pub(crate) fn collect_picker(
+pub(crate) fn collect_pickers(
     code_order: &[String],
 ) -> LinkedList<Box<dyn Fn(RefMutableProcInfo) -> String>> {
     let mut pickers = LinkedList::new();
@@ -18,7 +18,8 @@ pub(crate) fn collect_picker(
             "pid" | "tgid" => pickers.push_back(helper(pid)),
             "tname" | "tt" | "tty" => pickers.push_back(helper(tty)),
             "time" | "cputime" => pickers.push_back(helper(time)),
-            "cmd" | "ucmd" => pickers.push_back(helper(cmd)),
+            "ucmd" => pickers.push_back(helper(ucmd)),
+            "cmd" => pickers.push_back(helper(cmd)),
             _ => {}
         }
     }
@@ -59,5 +60,9 @@ fn time(_proc_info: RefMutableProcInfo) -> String {
 }
 
 fn cmd(proc_info: RefMutableProcInfo) -> String {
+    proc_info.borrow_mut().cmdline.clone()
+}
+
+fn ucmd(proc_info: RefMutableProcInfo) -> String {
     proc_info.borrow_mut().status().get("Name").unwrap().into()
 }
