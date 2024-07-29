@@ -4,6 +4,7 @@
 // file that was distributed with this source code.
 
 mod collector;
+mod parser;
 mod picker;
 
 #[cfg(target_os = "linux")]

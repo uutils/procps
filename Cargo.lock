@@ -1038,6 +1038,7 @@ dependencies = [
  "libc",
  "nix",
  "prettytable-rs",
+ "thiserror",
  "uu_pgrep",
  "uucore",
 ]
