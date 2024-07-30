@@ -2,7 +2,6 @@
 //
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
-// spell-checker:ignore (words) symdir somefakedir
 
 use pretty_assertions::assert_eq;
 use regex::Regex;
@@ -17,20 +16,20 @@ fn test_invalid_arg() {
 }
 
 #[test]
-fn test_free() {
+fn test_no_args() {
     let result = new_ucmd!().succeeds();
     assert!(result.stdout_str().contains("Mem:"));
 }
 
 #[test]
-fn test_free_wide() {
+fn test_wide() {
     let result = new_ucmd!().arg("--wide").succeeds();
     assert!(result.stdout_str().contains("Mem:"));
     assert!(!result.stdout_str().contains("buff/cache"));
 }
 
 #[test]
-fn test_free_total() {
+fn test_total() {
     let result = new_ucmd!().arg("-t").succeeds();
     assert_eq!(result.stdout_str().lines().count(), 4);
     assert!(result
@@ -42,13 +41,13 @@ fn test_free_total() {
 }
 
 #[test]
-fn test_free_count() {
+fn test_count() {
     let result = new_ucmd!().args(&["-c", "2", "-s", "0"]).succeeds();
     assert_eq!(result.stdout_str().lines().count(), 7);
 }
 
 #[test]
-fn test_free_lohi() {
+fn test_lohi() {
     let result = new_ucmd!().arg("--lohi").succeeds();
     assert_eq!(result.stdout_str().lines().count(), 5);
     let lines = result.stdout_str().lines().collect::<Vec<&str>>();
@@ -57,7 +56,7 @@ fn test_free_lohi() {
 }
 
 #[test]
-fn test_free_committed() {
+fn test_committed() {
     let result = new_ucmd!().arg("-v").succeeds();
     assert_eq!(result.stdout_str().lines().count(), 4);
     assert!(result
@@ -69,7 +68,7 @@ fn test_free_committed() {
 }
 
 #[test]
-fn test_free_always_one_line() {
+fn test_always_one_line() {
     // -L should ignore all other parameters and always print one line
     let result = new_ucmd!().arg("-hltvwL").succeeds();
     let stdout = result.stdout_str().lines().collect::<Vec<&str>>();
@@ -78,7 +77,7 @@ fn test_free_always_one_line() {
 }
 
 #[test]
-fn test_free_column_format() {
+fn test_column_format() {
     let re_head_str = r"^ {15}total {8}used {8}free {6}shared {2}buff/cache {3}available$";
     let re_mem_str = r"^Mem:( +\d+){6}$";
     let re_swap_str = r"^Swap: ( +\d+){3}$";
@@ -101,7 +100,7 @@ fn test_free_column_format() {
 }
 
 #[test]
-fn test_free_wide_column_format() {
+fn test_wide_column_format() {
     let re_head_str = r"^ {15}total {8}used {8}free {6}shared {5}buffers {7}cache {3}available$";
     let re_mem_str = r"^Mem:( +\d+){7}$";
     let re_swap_str = r"^Swap: ( +\d+){3}$";
