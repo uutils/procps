@@ -17,49 +17,49 @@ fn test_invalid_arg() {
 
 #[test]
 fn test_no_args() {
-    let re_head_str = r"^ {15}total {8}used {8}free {6}shared {2}buff/cache {3}available$";
-    let re_mem_str = r"^Mem:( +\d+){6}$";
-    let re_swap_str = r"^Swap: ( +\d+){3}$";
+    let header_pattern = r"^ {15}total {8}used {8}free {6}shared {2}buff/cache {3}available$";
+    let mem_pattern = r"^Mem:( +\d+){6}$";
+    let swap_pattern = r"^Swap: ( +\d+){3}$";
 
-    let re_list = vec![
-        Regex::new(re_head_str).unwrap(),
-        Regex::new(re_mem_str).unwrap(),
-        Regex::new(re_swap_str).unwrap(),
+    let patterns = vec![
+        Regex::new(header_pattern).unwrap(),
+        Regex::new(mem_pattern).unwrap(),
+        Regex::new(swap_pattern).unwrap(),
     ];
 
     let binding = new_ucmd!().succeeds();
-    let free_result = binding.stdout_str();
-    assert_eq!(free_result.len(), 207);
+    let output = binding.stdout_str();
+    assert_eq!(output.len(), 207);
 
     // Check the format for each line output
-    let mut free_lines = free_result.lines();
-    for re in re_list {
-        assert!(re.is_match(free_lines.next().unwrap()));
+    let mut lines = output.lines();
+    for pattern in patterns {
+        assert!(pattern.is_match(lines.next().unwrap()));
     }
 }
 
 #[test]
 fn test_wide() {
-    let re_head_str = r"^ {15}total {8}used {8}free {6}shared {5}buffers {7}cache {3}available$";
-    let re_mem_str = r"^Mem:( +\d+){7}$";
-    let re_swap_str = r"^Swap: ( +\d+){3}$";
+    let header_pattern = r"^ {15}total {8}used {8}free {6}shared {5}buffers {7}cache {3}available$";
+    let mem_pattern = r"^Mem:( +\d+){7}$";
+    let swap_pattern = r"^Swap: ( +\d+){3}$";
 
-    let re_list = vec![
-        Regex::new(re_head_str).unwrap(),
-        Regex::new(re_mem_str).unwrap(),
-        Regex::new(re_swap_str).unwrap(),
+    let patterns = vec![
+        Regex::new(header_pattern).unwrap(),
+        Regex::new(mem_pattern).unwrap(),
+        Regex::new(swap_pattern).unwrap(),
     ];
 
     let binding = new_ucmd!().arg("--wide").succeeds();
-    let free_result = binding.stdout_str();
+    let output = binding.stdout_str();
 
     // The total number of character is always fixed
-    assert_eq!(free_result.len(), 231);
+    assert_eq!(output.len(), 231);
 
     // Check the format for each line output
-    let mut free_lines = free_result.lines();
-    for re in re_list {
-        assert!(re.is_match(free_lines.next().unwrap()));
+    let mut lines = output.lines();
+    for pattern in patterns {
+        assert!(pattern.is_match(lines.next().unwrap()));
     }
 }
 
