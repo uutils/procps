@@ -50,29 +50,33 @@ fn test_wide() {
         Regex::new(swap_pattern).unwrap(),
     ];
 
-    let binding = new_ucmd!().arg("--wide").succeeds();
-    let output = binding.stdout_str();
+    for arg in ["-w", "--wide"] {
+        let binding = new_ucmd!().arg(arg).succeeds();
+        let output = binding.stdout_str();
 
-    // The total number of character is always fixed
-    assert_eq!(output.len(), 231);
+        // The total number of character is always fixed
+        assert_eq!(output.len(), 231);
 
-    // Check the format for each line output
-    let mut lines = output.lines();
-    for pattern in patterns {
-        assert!(pattern.is_match(lines.next().unwrap()));
+        // Check the format for each line output
+        let mut lines = output.lines();
+        for pattern in &patterns {
+            assert!(pattern.is_match(lines.next().unwrap()));
+        }
     }
 }
 
 #[test]
 fn test_total() {
-    let result = new_ucmd!().arg("-t").succeeds();
-    assert_eq!(result.stdout_str().lines().count(), 4);
-    assert!(result
-        .stdout_str()
-        .lines()
-        .last()
-        .unwrap()
-        .starts_with("Total:"))
+    for arg in ["-t", "--total"] {
+        let result = new_ucmd!().arg(arg).succeeds();
+        assert_eq!(result.stdout_str().lines().count(), 4);
+        assert!(result
+            .stdout_str()
+            .lines()
+            .last()
+            .unwrap()
+            .starts_with("Total:"))
+    }
 }
 
 #[test]
@@ -83,23 +87,27 @@ fn test_count() {
 
 #[test]
 fn test_lohi() {
-    let result = new_ucmd!().arg("--lohi").succeeds();
-    assert_eq!(result.stdout_str().lines().count(), 5);
-    let lines = result.stdout_str().lines().collect::<Vec<&str>>();
-    assert!(lines[2].starts_with("Low:"));
-    assert!(lines[3].starts_with("High:"));
+    for arg in ["-l", "--lohi"] {
+        let result = new_ucmd!().arg(arg).succeeds();
+        assert_eq!(result.stdout_str().lines().count(), 5);
+        let lines = result.stdout_str().lines().collect::<Vec<&str>>();
+        assert!(lines[2].starts_with("Low:"));
+        assert!(lines[3].starts_with("High:"));
+    }
 }
 
 #[test]
 fn test_committed() {
-    let result = new_ucmd!().arg("-v").succeeds();
-    assert_eq!(result.stdout_str().lines().count(), 4);
-    assert!(result
-        .stdout_str()
-        .lines()
-        .last()
-        .unwrap()
-        .starts_with("Comm:"))
+    for arg in ["-v", "--committed"] {
+        let result = new_ucmd!().arg(arg).succeeds();
+        assert_eq!(result.stdout_str().lines().count(), 4);
+        assert!(result
+            .stdout_str()
+            .lines()
+            .last()
+            .unwrap()
+            .starts_with("Comm:"))
+    }
 }
 
 #[test]
