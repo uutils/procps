@@ -32,7 +32,7 @@ fn test_no_args() {
     assert_eq!(free_result.len(), 207);
 
     // Check the format for each line output
-    let mut free_lines = free_result.split('\n');
+    let mut free_lines = free_result.lines();
     for re in re_list {
         assert!(re.is_match(free_lines.next().unwrap()));
     }
@@ -57,7 +57,7 @@ fn test_wide() {
     assert_eq!(free_result.len(), 231);
 
     // Check the format for each line output
-    let mut free_lines = free_result.split('\n');
+    let mut free_lines = free_result.lines();
     for re in re_list {
         assert!(re.is_match(free_lines.next().unwrap()));
     }
