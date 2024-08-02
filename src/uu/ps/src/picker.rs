@@ -39,15 +39,7 @@ fn pid(proc_info: RefMutableProcInfo) -> String {
 }
 
 fn tty(proc_info: RefMutableProcInfo) -> String {
-    match proc_info
-        .borrow_mut()
-        .ttys()
-        .unwrap()
-        .iter()
-        .collect::<Vec<_>>()
-        .first()
-        .unwrap()
-    {
+    match proc_info.borrow().tty() {
         Teletype::Tty(tty) => format!("tty{}", tty),
         Teletype::TtyS(ttys) => format!("ttyS{}", ttys),
         Teletype::Pts(pts) => format!("pts/{}", pts),

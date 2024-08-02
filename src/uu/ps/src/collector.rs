@@ -32,15 +32,15 @@ pub(crate) fn basic_collector(
         // SAFETY: The `libc::getpid` always return i32
         let proc_path =
             PathBuf::from_str(&format!("/proc/{}/", unsafe { libc::getpid() })).unwrap();
-        let mut current_proc_info = ProcessInformation::try_new(proc_path).unwrap();
+        let current_proc_info = ProcessInformation::try_new(proc_path).unwrap();
 
-        current_proc_info.ttys().unwrap_or_default()
+        current_proc_info.tty()
     };
 
     for proc_info in proc_snapshot {
-        let proc_ttys = proc_info.borrow_mut().ttys().unwrap();
+        let proc_ttys = proc_info.borrow().tty();
 
-        if proc_ttys.iter().any(|it| current_tty.contains(it)) {
+        if proc_ttys == current_tty {
             result.push(proc_info.clone())
         }
     }
@@ -75,17 +75,7 @@ pub(crate) fn session_collector(
 ) -> Vec<Rc<RefCell<ProcessInformation>>> {
     let mut result = Vec::new();
 
-    let tty = |proc: &Rc<RefCell<ProcessInformation>>| {
-        proc.borrow_mut()
-            .ttys()
-            .unwrap()
-            .iter()
-            .collect::<Vec<_>>()
-            .first()
-            .cloned()
-            .unwrap()
-            .clone()
-    };
+    let tty = |proc: &Rc<RefCell<ProcessInformation>>| proc.borrow_mut().tty();
 
     // flag `-d`
     // Guessing it pid=sid, and all
