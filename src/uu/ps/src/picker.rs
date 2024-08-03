@@ -3,6 +3,7 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use chrono::DateTime;
 use std::{cell::RefCell, collections::LinkedList, rc::Rc};
 use uu_pgrep::process::{ProcessInformation, Teletype};
 
@@ -47,8 +48,20 @@ fn tty(proc_info: RefMutableProcInfo) -> String {
     }
 }
 
-fn time(_proc_info: RefMutableProcInfo) -> String {
-    "TODO".into()
+fn time(proc_info: RefMutableProcInfo) -> String {
+    // https://docs.kernel.org/filesystems/proc.html#id10
+    // Index of 13 14
+
+    let cumulative_cpu_time = {
+        let utime = proc_info.borrow_mut().stat()[13].parse::<i64>().unwrap();
+        let stime = proc_info.borrow_mut().stat()[14].parse::<i64>().unwrap();
+        utime + stime
+    };
+
+    DateTime::from_timestamp_millis(cumulative_cpu_time)
+        .unwrap()
+        .format("%H:%M:%S")
+        .to_string()
 }
 
 fn cmd(proc_info: RefMutableProcInfo) -> String {
