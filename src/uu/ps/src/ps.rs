@@ -7,7 +7,6 @@ mod collector;
 mod parser;
 mod picker;
 
-#[cfg(target_os = "linux")]
 use clap::crate_version;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use parser::{parser, OptionalKeyValue};

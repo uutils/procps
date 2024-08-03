@@ -4,7 +4,9 @@
 // file that was distributed with this source code.
 
 use clap::ArgMatches;
+#[cfg(target_family = "unix")]
 use libc::pid_t;
+#[cfg(target_family = "unix")]
 use nix::errno::Errno;
 use std::{cell::RefCell, path::PathBuf, rc::Rc, str::FromStr};
 use uu_pgrep::process::{ProcessInformation, Teletype};
@@ -12,14 +14,18 @@ use uu_pgrep::process::{ProcessInformation, Teletype};
 // TODO: Temporary add to this file, this function will add to uucore.
 #[cfg(not(target_os = "redox"))]
 fn getsid(pid: i32) -> Result<pid_t, Errno> {
-    unsafe {
+    #[cfg(target_family = "windows")]
+    return Some(0);
+
+    #[cfg(target_family = "unix")]
+    return unsafe {
         let result = libc::getsid(pid);
         if Errno::last() == Errno::UnknownErrno {
             Ok(result)
         } else {
             Err(Errno::last())
         }
-    }
+    };
 }
 
 // Guessing it matches the current terminal

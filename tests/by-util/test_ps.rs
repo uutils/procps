@@ -12,6 +12,7 @@ fn test_invalid_arg() {
 }
 
 #[test]
+#[cfg(target_os = "linux")]
 fn test_format() {
     new_ucmd!()
         .args(&["-o", "cmd=CCMD"])
