@@ -39,15 +39,17 @@ impl OptionalKeyValue {
         T: Into<String>,
     {
         let value: String = value.into();
-        match value.split_once("=") {
-            Some((key, value)) => Self {
+
+        if let Some((key, value)) = value.split_once("=") {
+            Self {
                 key: key.into(),
                 value: Some(value.into()),
-            },
-            None => Self {
+            }
+        } else {
+            Self {
                 key: value,
                 value: None,
-            },
+            }
         }
     }
 
