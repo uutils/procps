@@ -19,19 +19,9 @@ pub(crate) fn apply_format_mapping(formats: &[OptionalKeyValue]) -> HashMap<Stri
     mapping
 }
 
-/// This function will extract all the needed headers from matches (the data being needed)
-///
-/// The headers are sequential, and the order about the final output is related to the headers
+/// Returns the default codes.
 pub(crate) fn default_codes() -> Vec<String> {
-    let mut mapping = Vec::new();
-    let mut append = |code: &str| mapping.push(code.into());
-
-    append("pid");
-    append("tname");
-    append("time");
-    append("ucmd");
-
-    mapping
+    ["pid", "tname", "time", "ucmd"].map(Into::into).to_vec()
 }
 
 /// Collect mapping from argument
