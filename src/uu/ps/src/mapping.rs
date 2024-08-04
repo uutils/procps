@@ -3,8 +3,8 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use std::collections::HashMap;
 use crate::parser::OptionalKeyValue;
+use std::collections::HashMap;
 
 pub(crate) fn apply_format_mapping(formats: &[OptionalKeyValue]) -> HashMap<String, String> {
     let mut mapping = default_mapping();
