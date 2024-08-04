@@ -5,27 +5,28 @@
 
 use clap::ArgMatches;
 #[cfg(target_family = "unix")]
-use libc::pid_t;
-#[cfg(target_family = "unix")]
 use nix::errno::Errno;
 use std::{cell::RefCell, path::PathBuf, rc::Rc, str::FromStr};
 use uu_pgrep::process::{ProcessInformation, Teletype};
 
 // TODO: Temporary add to this file, this function will add to uucore.
 #[cfg(not(target_os = "redox"))]
-fn getsid(pid: i32) -> Result<pid_t, Errno> {
-    #[cfg(target_family = "windows")]
-    return Some(0);
-
-    #[cfg(target_family = "unix")]
-    return unsafe {
+#[cfg(target_family = "unix")]
+fn getsid(pid: i32) -> Option<i32> {
+    unsafe {
         let result = libc::getsid(pid);
         if Errno::last() == Errno::UnknownErrno {
-            Ok(result)
+            Some(result)
         } else {
-            Err(Errno::last())
+            None
         }
-    };
+    }
+}
+
+// TODO: Temporary add to this file, this function will add to uucore.
+#[cfg(target_family = "windows")]
+fn getsid(_pid: i32) -> Option<i32> {
+    Some(0)
 }
 
 // Guessing it matches the current terminal
@@ -95,7 +96,7 @@ pub(crate) fn session_collector(
         proc_snapshot.iter().for_each(|it| {
             let pid = it.borrow().pid;
 
-            if let Ok(sid) = getsid(pid as i32) {
+            if let Some(sid) = getsid(pid as i32) {
                 // Check is session leader
                 if sid != (pid as i32) && tty(it) != Teletype::Unknown {
                     result.push(it.clone())
