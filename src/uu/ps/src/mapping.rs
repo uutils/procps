@@ -25,8 +25,6 @@ pub(crate) fn default_codes() -> Vec<String> {
 }
 
 /// Collect mapping from argument
-///
-/// TODO: collecting mapping from matches
 pub(crate) fn default_mapping() -> HashMap<String, String> {
     let mut mapping = HashMap::new();
     let mut append = |code: &str, header: &str| mapping.insert(code.into(), header.into());

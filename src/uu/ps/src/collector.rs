@@ -85,7 +85,7 @@ pub(crate) fn session_collector(
     let tty = |proc: &Rc<RefCell<ProcessInformation>>| proc.borrow_mut().tty();
 
     // flag `-d`
-    // Guessing it pid=sid, and all
+    // TODO: Implementation this collection, guessing it pid=sid
     if matches.get_flag("d") {
         proc_snapshot.iter().for_each(|_| {});
     }
