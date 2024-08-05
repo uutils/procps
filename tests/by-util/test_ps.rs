@@ -12,7 +12,7 @@ fn test_invalid_arg() {
 
 #[test]
 #[cfg(target_os = "linux")]
-fn test_format() {
+fn test_code_mapping() {
     new_ucmd!()
         .args(&["-o", "cmd=CCMD"])
         .succeeds()
@@ -21,4 +21,16 @@ fn test_format() {
     new_ucmd!().args(&["-o", "cmd= "]).succeeds();
 
     new_ucmd!().args(&["-o", "ccmd=CCMD"]).fails().code_is(1);
+
+    new_ucmd!()
+        .args(&["-o", "cmd=CMD1", "-o", "cmd=CMD2"])
+        .succeeds()
+        .stdout_contains("CMD1")
+        .stdout_contains("CMD2");
+
+    new_ucmd!()
+        .args(&["-o", "cmd=CMD1,cmd=CMD2"])
+        .succeeds()
+        .stdout_contains("CMD1")
+        .stdout_contains("CMD2");
 }

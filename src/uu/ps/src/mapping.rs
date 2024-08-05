@@ -6,17 +6,19 @@
 use crate::parser::OptionalKeyValue;
 use std::collections::HashMap;
 
-pub(crate) fn apply_format_mapping(formats: &[OptionalKeyValue]) -> HashMap<String, String> {
-    let mut mapping = default_mapping();
+pub(crate) fn collect_code_mapping(formats: &[OptionalKeyValue]) -> Vec<(String, String)> {
+    let mapping = default_mapping();
 
-    for optional_kv in formats {
-        let key = optional_kv.key();
-        if !optional_kv.is_value_empty() {
-            mapping.insert(key.to_owned(), optional_kv.try_get::<String>().unwrap());
-        }
-    }
-
-    mapping
+    formats
+        .iter()
+        .map(|it| {
+            let key = it.key().to_string();
+            match it.value() {
+                Some(value) => (key, value.clone()),
+                None => (key.clone(), mapping.get(&key).unwrap().to_string()),
+            }
+        })
+        .collect()
 }
 
 /// Returns the default codes.

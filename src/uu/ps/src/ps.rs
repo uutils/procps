@@ -10,7 +10,7 @@ mod picker;
 
 use clap::crate_version;
 use clap::{Arg, ArgAction, ArgMatches, Command};
-use mapping::{apply_format_mapping, default_codes, default_mapping};
+use mapping::{collect_code_mapping, default_codes, default_mapping};
 use parser::{parser, OptionalKeyValue};
 use prettytable::{format::consts::FORMAT_CLEAN, Row, Table};
 use std::{cell::RefCell, rc::Rc};
@@ -40,16 +40,12 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let Ok(arg_formats) = arg_formats else {
         return Err(arg_formats.err().unwrap());
     };
-    let code_mapping = apply_format_mapping(&arg_formats);
 
     // Collect codes with order
     let codes = if arg_formats.is_empty() {
         default_codes()
     } else {
-        arg_formats
-            .into_iter()
-            .map(|it| it.key().to_owned())
-            .collect()
+        arg_formats.iter().map(|it| it.key().to_owned()).collect()
     };
 
     // Collect pickers ordered by codes
@@ -58,12 +54,21 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     // Constructing table
     let mut rows = Vec::new();
     for proc in proc_infos {
-        let picked = picker.iter().map(|f| f(proc.clone())).collect::<Vec<_>>();
+        let picked = picker
+            .iter()
+            .map(|picker| picker(proc.clone()))
+            .collect::<Vec<_>>();
         rows.push(Row::from_iter(picked));
     }
 
     // Apply header mapping
-    let header = codes.iter().flat_map(|it| code_mapping.get(it));
+    let code_mapping = collect_code_mapping(&arg_formats);
+
+    let header = code_mapping
+        .iter()
+        .map(|(_, header)| header)
+        .map(Into::into)
+        .collect::<Vec<String>>();
 
     // Apply header
     let mut table = Table::from_iter([Row::from_iter(header)]);

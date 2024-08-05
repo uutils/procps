@@ -57,6 +57,10 @@ impl OptionalKeyValue {
         &self.key
     }
 
+    pub fn value(&self) -> &Option<String> {
+        &self.value
+    }
+
     pub fn is_value_empty(&self) -> bool {
         self.value.is_none()
     }
