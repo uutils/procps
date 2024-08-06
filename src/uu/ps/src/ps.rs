@@ -7,15 +7,15 @@ mod collector;
 mod mapping;
 mod parser;
 mod picker;
+mod sorting;
 
 use clap::crate_version;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use mapping::{collect_code_mapping, default_codes, default_mapping};
 use parser::{parser, OptionalKeyValue};
 use prettytable::{format::consts::FORMAT_CLEAN, Row, Table};
-use std::collections::HashSet;
 use std::{cell::RefCell, rc::Rc};
-use uu_pgrep::process::{walk_process, ProcessInformation};
+use uu_pgrep::process::walk_process;
 use uucore::{
     error::{UError, UResult, USimpleError},
     format_usage, help_about, help_usage,
@@ -38,6 +38,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     proc_infos.extend(collector::session_collector(&matches, &snapshot));
 
     proc_infos.dedup_by(|a, b| a.borrow().pid == b.borrow().pid);
+
+    sorting::sorting(&mut proc_infos, &matches);
 
     let arg_formats = collect_format(&matches);
     let Ok(arg_formats) = arg_formats else {
@@ -85,8 +87,6 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let mut table = Table::from_iter([Row::from_iter(header)]);
     table.set_format(*FORMAT_CLEAN);
     table.extend(rows);
-
-    // TODO: Sorting
 
     print!("{}", table);
 
