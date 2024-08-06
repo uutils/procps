@@ -3,14 +3,13 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use clap::Arg;
-use clap::{crate_version, Command};
+use clap::{crate_version, Arg, Command};
 use std::env;
 use std::fs;
 use std::path::Path;
 use std::process;
-
-use uucore::{error::UResult, format_usage, help_about, help_usage};
+use uucore::error::{UResult, USimpleError};
+use uucore::{format_usage, help_about, help_usage};
 
 const ABOUT: &str = help_about!("pwdx.md");
 const USAGE: &str = help_usage!("pwdx.md");
@@ -20,10 +19,16 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
 
     let pid_str = matches.get_one::<String>("pid").unwrap();
-    let pid = pid_str.parse::<i32>().unwrap_or_else(|_| {
-        eprintln!("Invalid PID");
-        process::exit(1);
-    });
+    let pid = match pid_str.parse::<i32>() {
+        // PIDs start at 1, hence 0 is invalid
+        Ok(0) | Err(_) => {
+            return Err(USimpleError::new(
+                1,
+                format!("invalid process id: {pid_str}"),
+            ))
+        }
+        Ok(pid) => pid,
+    };
 
     let cwd_link = format!("/proc/{}/cwd", pid);
 
