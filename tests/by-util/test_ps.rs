@@ -33,4 +33,16 @@ fn test_code_mapping() {
         .succeeds()
         .stdout_contains("CMD1")
         .stdout_contains("CMD2");
+
+    new_ucmd!()
+        .args(&["-o", "ucmd=CMD1", "-o", "ucmd=CMD2"])
+        .succeeds()
+        .stdout_contains("CMD1")
+        .stdout_contains("CMD2");
+
+    new_ucmd!()
+        .args(&["-o", "ucmd=CMD1,ucmd=CMD2"])
+        .succeeds()
+        .stdout_contains("CMD1")
+        .stdout_contains("CMD2");
 }

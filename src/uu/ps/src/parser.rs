@@ -53,6 +53,16 @@ impl OptionalKeyValue {
         }
     }
 
+    pub fn with_key<T>(key: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Self {
+            key: key.into(),
+            value: None,
+        }
+    }
+
     pub fn key(&self) -> &str {
         &self.key
     }
@@ -96,7 +106,9 @@ mod tests {
         assert!(new("value").is_value_empty());
         assert!(!new("value=").is_value_empty());
         assert!(!new("value=v").is_value_empty());
-        assert!(!new("value=?:").is_value_empty())
+        assert!(!new("value=?:").is_value_empty());
+
+        assert!(OptionalKeyValue::with_key("key").key().eq("key"));
     }
 
     #[test]

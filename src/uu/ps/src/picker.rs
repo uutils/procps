@@ -3,24 +3,23 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use chrono::DateTime;
-use std::{cell::RefCell, collections::LinkedList, rc::Rc};
-use uu_pgrep::process::{ProcessInformation, Teletype};
+use std::cell::RefCell;
 
-type RefMutableProcInfo = Rc<RefCell<ProcessInformation>>;
+use chrono::DateTime;
+use uu_pgrep::process::{ProcessInformation, Teletype};
 
 pub(crate) fn collect_pickers(
     code_order: &[String],
-) -> LinkedList<Box<dyn Fn(RefMutableProcInfo) -> String>> {
-    let mut pickers = LinkedList::new();
+) -> Vec<Box<dyn Fn(RefCell<ProcessInformation>) -> String>> {
+    let mut pickers = Vec::new();
 
     for code in code_order {
         match code.as_str() {
-            "pid" | "tgid" => pickers.push_back(helper(pid)),
-            "tname" | "tt" | "tty" => pickers.push_back(helper(tty)),
-            "time" | "cputime" => pickers.push_back(helper(time)),
-            "ucmd" => pickers.push_back(helper(ucmd)),
-            "cmd" => pickers.push_back(helper(cmd)),
+            "pid" | "tgid" => pickers.push(helper(pid)),
+            "tname" | "tt" | "tty" => pickers.push(helper(tty)),
+            "time" | "cputime" => pickers.push(helper(time)),
+            "ucmd" => pickers.push(helper(ucmd)),
+            "cmd" => pickers.push(helper(cmd)),
             _ => {}
         }
     }
@@ -30,16 +29,16 @@ pub(crate) fn collect_pickers(
 
 #[inline]
 fn helper(
-    f: impl Fn(RefMutableProcInfo) -> String + 'static,
-) -> Box<dyn Fn(RefMutableProcInfo) -> String> {
+    f: impl Fn(RefCell<ProcessInformation>) -> String + 'static,
+) -> Box<dyn Fn(RefCell<ProcessInformation>) -> String> {
     Box::new(f)
 }
 
-fn pid(proc_info: RefMutableProcInfo) -> String {
+fn pid(proc_info: RefCell<ProcessInformation>) -> String {
     format!("{}", proc_info.borrow().pid)
 }
 
-fn tty(proc_info: RefMutableProcInfo) -> String {
+fn tty(proc_info: RefCell<ProcessInformation>) -> String {
     match proc_info.borrow().tty() {
         Teletype::Tty(tty) => format!("tty{}", tty),
         Teletype::TtyS(ttys) => format!("ttyS{}", ttys),
@@ -48,7 +47,7 @@ fn tty(proc_info: RefMutableProcInfo) -> String {
     }
 }
 
-fn time(proc_info: RefMutableProcInfo) -> String {
+fn time(proc_info: RefCell<ProcessInformation>) -> String {
     // https://docs.kernel.org/filesystems/proc.html#id10
     // Index of 13 14
 
@@ -64,10 +63,10 @@ fn time(proc_info: RefMutableProcInfo) -> String {
         .to_string()
 }
 
-fn cmd(proc_info: RefMutableProcInfo) -> String {
-    proc_info.borrow_mut().cmdline.clone()
+fn cmd(proc_info: RefCell<ProcessInformation>) -> String {
+    proc_info.borrow().cmdline.clone()
 }
 
-fn ucmd(proc_info: RefMutableProcInfo) -> String {
+fn ucmd(proc_info: RefCell<ProcessInformation>) -> String {
     proc_info.borrow_mut().status().get("Name").unwrap().into()
 }

@@ -49,20 +49,28 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     };
 
     // Collect pickers ordered by codes
-    let picker = picker::collect_pickers(&codes);
+    let pickers = picker::collect_pickers(&codes);
 
     // Constructing table
     let mut rows = Vec::new();
     for proc in proc_infos {
-        let picked = picker
+        let picked = pickers
             .iter()
-            .map(|picker| picker(proc.clone()))
-            .collect::<Vec<_>>();
+            .map(|picker| picker(Rc::unwrap_or_clone(proc.clone())));
         rows.push(Row::from_iter(picked));
     }
 
     // Apply header mapping
-    let code_mapping = collect_code_mapping(&arg_formats);
+    let code_mapping = if arg_formats.is_empty() {
+        let default_mapping = default_mapping();
+        default_codes();
+        codes
+            .into_iter()
+            .map(|code| (code.clone(), default_mapping[&code].to_string()))
+            .collect::<Vec<_>>()
+    } else {
+        collect_code_mapping(&arg_formats)
+    };
 
     let header = code_mapping
         .iter()
