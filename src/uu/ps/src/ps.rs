@@ -39,7 +39,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     proc_infos.dedup_by(|a, b| a.borrow().pid == b.borrow().pid);
 
-    sorting::sorting(&mut proc_infos, &matches);
+    sorting::sort(&mut proc_infos, &matches);
 
     let arg_formats = collect_format(&matches);
     let Ok(arg_formats) = arg_formats else {

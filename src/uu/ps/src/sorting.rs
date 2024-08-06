@@ -8,11 +8,11 @@ use std::{cell::RefCell, rc::Rc};
 use uu_pgrep::process::ProcessInformation;
 
 // TODO: Implementing sorting flags.
-pub(crate) fn sorting(input: &mut [Rc<RefCell<ProcessInformation>>], _matches: &ArgMatches) {
-    default_sort(input)
+pub(crate) fn sort(input: &mut [Rc<RefCell<ProcessInformation>>], _matches: &ArgMatches) {
+    sort_by_pid(input)
 }
 
-/// Default sort by pid.
-fn default_sort(input: &mut [Rc<RefCell<ProcessInformation>>]) {
+/// Sort by pid. (Default)
+fn sort_by_pid(input: &mut [Rc<RefCell<ProcessInformation>>]) {
     input.sort_by(|a, b| a.borrow().pid.cmp(&b.borrow().pid))
 }
