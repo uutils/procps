@@ -121,16 +121,16 @@ mod tests {
     #[test]
     fn test_get_value() {
         // String test
-        assert_eq!(new("value").try_get::<String>().ok(), None);
-        assert_eq!(new("value=").try_get::<String>().ok(), Some("".into()));
-        assert_eq!(new("value=?").try_get::<String>().ok(), Some("?".into()));
+        assert_eq!(new("value").try_get::<String>(), Err(Error::EmptyValue));
+        assert_eq!(new("value=").try_get::<String>(), Ok("".into()));
+        assert_eq!(new("value=?").try_get::<String>(), Ok("?".into()));
 
         // Number test
         assert_eq!(new("value").try_get::<usize>(), Err(Error::EmptyValue));
-        assert_eq!(new("value=0").try_get::<usize>().ok(), Some(0));
-        assert_eq!(new("value=0").try_get::<i128>().ok(), Some(0));
-        assert_eq!(new("value=-1").try_get::<i128>().ok(), Some(-1));
-        assert_eq!(new("value=0").try_get::<u128>().ok(), Some(0));
-        assert_eq!(new("value=-1").try_get::<u128>().ok(), None);
+        assert_eq!(new("value=0").try_get::<usize>(), Ok(0));
+        assert_eq!(new("value=0").try_get::<i128>(), Ok(0));
+        assert_eq!(new("value=-1").try_get::<i128>(), Ok(-1));
+        assert_eq!(new("value=0").try_get::<u128>(), Ok(0));
+        assert_eq!(new("value=-1").try_get::<u128>(), Err(Error::ParsingFailed));
     }
 }
