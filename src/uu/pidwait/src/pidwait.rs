@@ -113,7 +113,7 @@ fn pattern_initialize(matches: &ArgMatches, settings: &Settings) -> UResult<Stri
         pattern
     };
 
-    if !settings.full {
+    if !settings.full && pattern.len() >= 15 {
         const MSG_0: &str= "pidwait: pattern that searches for process name longer than 15 characters will result in zero matches";
         const MSG_1: &str = "Try `pidwait -f' option to match against the complete command line.";
         return Err(USimpleError::new(1, format!("{MSG_0}\n{MSG_1}")));
