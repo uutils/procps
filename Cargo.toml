@@ -25,7 +25,17 @@ build = "build.rs"
 default = ["feat_common_core"]
 uudoc = []
 
-feat_common_core = ["pwdx", "free", "w", "watch", "pmap", "slabtop", "pgrep", "pidof"]
+feat_common_core = [
+    "pwdx",
+    "free",
+    "w",
+    "watch",
+    "pmap",
+    "slabtop",
+    "pgrep",
+    "pidof",
+    "ps",
+]
 
 [workspace.dependencies]
 uucore = "0.0.27"
@@ -38,12 +48,15 @@ libc = "0.2.154"
 phf = "0.11.2"
 phf_codegen = "0.11.2"
 textwrap = { version = "0.16.1", features = ["terminal_size"] }
+thiserror = "1.0.63"
 xattr = "1.3.1"
 tempfile = "3.10.1"
 rand = { version = "0.8.5", features = ["small_rng"] }
 bytesize = "1.3.0"
 chrono = { version = "0.4.38", default-features = false, features = ["clock"] }
 walkdir = "2.5.0"
+prettytable-rs = "0.10.0"
+nix = { version = "0.29", default-features = false }
 
 [dependencies]
 clap = { workspace = true }
@@ -64,6 +77,7 @@ pmap = { optional = true, version = "0.0.1", package = "uu_pmap", path = "src/uu
 slabtop = { optional = true, version = "0.0.1", package = "uu_slabtop", path = "src/uu/slabtop" }
 pgrep = { optional = true, version = "0.0.1", package = "uu_pgrep", path = "src/uu/pgrep" }
 pidof = { optional = true, version = "0.0.1", package = "uu_pidof", path = "src/uu/pidof" }
+ps = { optional = true, version = "0.0.1", package = "uu_ps", path = "src/uu/ps" }
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"

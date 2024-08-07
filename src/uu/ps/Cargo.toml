@@ -1,0 +1,30 @@
+[package]
+name = "uu_ps"
+version = "0.0.1"
+edition = "2021"
+authors = ["uutils developers"]
+license = "MIT"
+description = "ps - (uutils) Report a snapshot of the current processes"
+
+homepage = "https://github.com/uutils/procps"
+repository = "https://github.com/uutils/procps/tree/main/src/uu/ps"
+keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
+categories = ["command-line-utilities"]
+
+[dependencies]
+uucore = { workspace = true, features = ["utmpx"] }
+clap = { workspace = true }
+chrono = { workspace = true, default-features = false, features = ["clock"] }
+libc = { workspace = true }
+prettytable-rs = { workspace = true }
+nix = { workspace = true }
+thiserror = { workspace = true }
+
+uu_pgrep = { path = "../pgrep" }
+
+[lib]
+path = "src/ps.rs"
+
+[[bin]]
+name = "ps"
+path = "src/main.rs"

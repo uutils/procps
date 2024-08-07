@@ -36,3 +36,7 @@ mod test_pgrep;
 #[cfg(feature = "pidof")]
 #[path = "by-util/test_pidof.rs"]
 mod test_pidof;
+
+#[cfg(feature = "ps")]
+#[path = "by-util/test_ps.rs"]
+mod test_ps;
