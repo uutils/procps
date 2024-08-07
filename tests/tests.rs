@@ -40,3 +40,7 @@ mod test_pidof;
 #[cfg(feature = "ps")]
 #[path = "by-util/test_ps.rs"]
 mod test_ps;
+
+#[cfg(feature = "pidwait")]
+#[path = "by-util/test_pidwait.rs"]
+mod test_pidwait;
