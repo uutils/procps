@@ -3,7 +3,7 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use clap::{arg, crate_version, ArgMatches, Command};
+use clap::{arg, crate_version, Arg, ArgAction, ArgMatches, Command};
 use regex::Regex;
 use std::{collections::HashSet, env, sync::OnceLock};
 use uu_pgrep::process::{walk_process, ProcessInformation, RunState, Teletype};
@@ -50,11 +50,17 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         runstates: matches.get_one::<RunState>("runstates").cloned(),
     };
 
-    if !settings.newest
+    let pattern = pattern_initialize(&matches, &settings)?;
+    REGEX
+        .set(Regex::new(&pattern).map_err(|e| USimpleError::new(2, e.to_string()))?)
+        .unwrap();
+
+    if (!settings.newest
         && !settings.oldest
         && settings.runstates.is_none()
         && settings.older.is_none()
-        && settings.terminal.is_none()
+        && settings.terminal.is_none())
+        && pattern.is_empty()
     {
         return Err(USimpleError::new(
             2,
@@ -62,14 +68,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         ));
     }
 
-    let pattern = try_get_pattern_from(&matches, &settings)?;
-    REGEX
-        .set(Regex::new(&pattern).map_err(|e| USimpleError::new(2, e.to_string()))?)
-        .unwrap();
-
     let mut proc_infos = collect_proc_infos(&settings);
 
-    // Process outputting
+    // Process outputs
     if settings.count {
         println!("{}", proc_infos.len())
     }
@@ -83,7 +84,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     Ok(())
 }
 
-fn try_get_pattern_from(matches: &ArgMatches, settings: &Settings) -> UResult<String> {
+fn pattern_initialize(matches: &ArgMatches, settings: &Settings) -> UResult<String> {
     let pattern = match matches.get_many::<String>("pattern") {
         Some(patterns) if patterns.len() > 1 => {
             return Err(USimpleError::new(
@@ -106,6 +107,12 @@ fn try_get_pattern_from(matches: &ArgMatches, settings: &Settings) -> UResult<St
     } else {
         pattern
     };
+
+    if !settings.full {
+        const MSG_0: &str= "pidwait: pattern that searches for process name longer than 15 characters will result in zero matches";
+        const MSG_1: &str = "Try `pidwait -f' option to match against the complete command line.";
+        return Err(USimpleError::new(1, format!("{MSG_0}\n{MSG_1}")));
+    }
 
     Ok(pattern.to_string())
 }
@@ -149,4 +156,10 @@ pub fn uu_app() -> Command {
             arg!(-r --runstates     <state>     "match runstates [D,S,Z,...]"),
             // arg!(-A --"ignore-ancestors"        "exclude our ancestors from results"),
         ])
+        .arg(
+            Arg::new("pattern")
+                .help("Name of the program to find the PID of")
+                .action(ArgAction::Append)
+                .index(1),
+        )
 }
