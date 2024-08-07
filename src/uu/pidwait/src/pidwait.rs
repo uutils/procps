@@ -123,12 +123,53 @@ fn pattern_initialize(matches: &ArgMatches, settings: &Settings) -> UResult<Stri
 }
 
 fn collect_proc_infos(settings: &Settings) -> Vec<ProcessInformation> {
-    let proc_infos: Vec<_> = walk_process().collect();
-    if settings.oldest || settings.newest {
-        if settings.oldest {
-        } else if settings.newest {
+    // Process `-O`
+    let mut proc_infos: Vec<_> = {
+        let mut proc_infos = Vec::new();
+        let older = settings.older.unwrap_or_default();
+        for mut proc_info in walk_process() {
+            if proc_info.start_time().unwrap() >= older {
+                proc_infos.push(proc_info)
+            }
         }
+        proc_infos
+    };
+
+    if proc_infos.is_empty() {
+        return proc_infos;
     }
+
+    // Sorting oldest and newest
+    let proc_infos = if settings.oldest || settings.newest {
+        proc_infos.sort_by(|a, b| {
+            b.clone()
+                .start_time()
+                .unwrap()
+                .cmp(&a.clone().start_time().unwrap())
+        });
+
+        let start_time = if settings.newest {
+            proc_infos.first().cloned().unwrap().start_time().unwrap()
+        } else {
+            proc_infos.last().cloned().unwrap().start_time().unwrap()
+        };
+
+        // There might be some process start at same time, so need to be filtered.
+        let mut filtered = proc_infos
+            .iter()
+            .filter(|it| (*it).clone().start_time().unwrap() == start_time)
+            .collect::<Vec<_>>();
+
+        if settings.newest {
+            filtered.sort_by(|a, b| b.pid.cmp(&a.pid))
+        } else {
+            filtered.sort_by(|a, b| a.pid.cmp(&b.pid))
+        }
+
+        vec![filtered.first().cloned().unwrap().clone()]
+    } else {
+        proc_infos
+    };
 
     proc_infos
 }
