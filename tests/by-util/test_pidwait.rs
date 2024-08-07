@@ -17,6 +17,8 @@ fn test_non_matching_pattern() {
         .fails()
         .code_is(1)
         .stderr_contains("pidwait: pattern that searches for process name longer than 15 characters will result in zero matches");
+
+    new_ucmd!().arg("DOES_NOT_MATCH").fails().code_is(1);
 }
 
 #[test]

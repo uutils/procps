@@ -70,6 +70,11 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     let mut proc_infos = collect_proc_infos(&settings);
 
+    // For empty result
+    if proc_infos.is_empty() {
+        uucore::error::set_exit_code(1);
+    }
+
     // Process outputs
     if settings.count {
         println!("{}", proc_infos.len())
