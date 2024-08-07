@@ -53,7 +53,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             .collect(),
         exact: matches.get_flag("exact"),
         runstates: matches
-            .get_many("terminal")
+            .get_many("runstates")
             .unwrap_or_default()
             .cloned()
             .collect(),
