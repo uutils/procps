@@ -64,10 +64,17 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         .set(Regex::new(&pattern).map_err(|e| USimpleError::new(2, e.to_string()))?)
         .unwrap();
 
-    let proc_infos = collect_proc_infos(&settings);
+    let mut proc_infos = collect_proc_infos(&settings);
 
+    // Process outputting
     if settings.count {
         println!("{}", proc_infos.len())
+    }
+
+    if settings.echo {
+        for ele in proc_infos.iter_mut() {
+            println!("waiting for {} (pid {})", ele.status()["Name"], ele.pid)
+        }
     }
 
     Ok(())
