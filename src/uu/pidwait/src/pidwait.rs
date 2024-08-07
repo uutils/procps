@@ -123,16 +123,46 @@ fn pattern_initialize(matches: &ArgMatches, settings: &Settings) -> UResult<Stri
 }
 
 fn collect_proc_infos(settings: &Settings) -> Vec<ProcessInformation> {
-    // Process `-O`
-    let mut proc_infos: Vec<_> = {
-        let mut proc_infos = Vec::new();
-        let older = settings.older.unwrap_or_default();
-        for mut proc_info in walk_process() {
-            if proc_info.start_time().unwrap() >= older {
-                proc_infos.push(proc_info)
+    // Process pattern
+    let proc_infos = {
+        let mut temp = Vec::new();
+        for mut it in walk_process() {
+            let matched = {
+                let binding = it.status();
+                let name = binding.get("Name").unwrap();
+                let name = if settings.ignore_case {
+                    name.to_lowercase()
+                } else {
+                    name.into()
+                };
+
+                let want = if settings.exact {
+                    &name
+                } else if settings.full {
+                    &it.cmdline
+                } else {
+                    &it.proc_stat()[..15]
+                };
+
+                REGEX.get().unwrap().is_match(want)
+            };
+            if matched {
+                temp.push(it)
             }
         }
-        proc_infos
+        temp
+    };
+
+    // Process `-O`
+    let mut proc_infos = {
+        let mut temp: Vec<ProcessInformation> = Vec::new();
+        let older = settings.older.unwrap_or_default();
+        for mut proc_info in proc_infos {
+            if proc_info.start_time().unwrap() >= older {
+                temp.push(proc_info)
+            }
+        }
+        temp
     };
 
     if proc_infos.is_empty() {
