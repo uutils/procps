@@ -64,7 +64,11 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         .set(Regex::new(&pattern).map_err(|e| USimpleError::new(2, e.to_string()))?)
         .unwrap();
 
-    collect_proc_infos(settings);
+    let proc_infos = collect_proc_infos(&settings);
+
+    if settings.count {
+        println!("{}", proc_infos.len())
+    }
 
     Ok(())
 }
@@ -96,7 +100,7 @@ fn try_get_pattern_from(matches: &ArgMatches, settings: &Settings) -> UResult<St
     Ok(pattern.to_string())
 }
 
-fn collect_proc_infos(settings: Settings) -> Vec<ProcessInformation> {
+fn collect_proc_infos(settings: &Settings) -> Vec<ProcessInformation> {
     let proc_infos: Vec<_> = walk_process().collect();
 
     proc_infos
