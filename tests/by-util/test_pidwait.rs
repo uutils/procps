@@ -9,3 +9,12 @@ use crate::common::util::TestScenario;
 fn test_invalid_arg() {
     new_ucmd!().arg("--definitely-invalid").fails().code_is(1);
 }
+
+#[test]
+fn test_no_args() {
+    new_ucmd!()
+        .fails()
+        .code_is(2)
+        .no_stdout()
+        .stderr_contains("no matching criteria specified");
+}

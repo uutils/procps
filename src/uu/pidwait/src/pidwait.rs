@@ -25,10 +25,10 @@ struct Settings {
     ignore_case: bool,
     newest: bool,
     oldest: bool,
-    older: usize,
-    terminal: HashSet<Teletype>,
+    older: Option<u64>,
+    terminal: Option<HashSet<Teletype>>,
     exact: bool,
-    runstates: HashSet<RunState>,
+    runstates: Option<RunState>,
 }
 
 #[uucore::main]
@@ -42,22 +42,25 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         ignore_case: matches.get_flag("ignore-case"),
         newest: matches.get_flag("newest"),
         oldest: matches.get_flag("oldest"),
-        older: matches
-            .get_one::<usize>("older")
-            .copied()
-            .unwrap_or_default(),
+        older: matches.get_one::<u64>("older").copied(),
         terminal: matches
-            .get_many("terminal")
-            .unwrap_or_default()
-            .cloned()
-            .collect(),
+            .get_many::<Teletype>("terminal")
+            .map(|it| it.cloned().collect()),
         exact: matches.get_flag("exact"),
-        runstates: matches
-            .get_many("runstates")
-            .unwrap_or_default()
-            .cloned()
-            .collect(),
+        runstates: matches.get_one::<RunState>("runstates").cloned(),
     };
+
+    if !settings.newest
+        && !settings.oldest
+        && settings.runstates.is_none()
+        && settings.older.is_none()
+        && settings.terminal.is_none()
+    {
+        return Err(USimpleError::new(
+            2,
+            "no matching criteria specified\nTry `pidwait --help' for more information.",
+        ));
+    }
 
     let pattern = try_get_pattern_from(&matches, &settings)?;
     REGEX
@@ -109,6 +112,11 @@ fn try_get_pattern_from(matches: &ArgMatches, settings: &Settings) -> UResult<St
 
 fn collect_proc_infos(settings: &Settings) -> Vec<ProcessInformation> {
     let proc_infos: Vec<_> = walk_process().collect();
+    if settings.oldest || settings.newest {
+        if settings.oldest {
+        } else if settings.newest {
+        }
+    }
 
     proc_infos
 }
