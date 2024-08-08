@@ -6,6 +6,15 @@
 use crate::common::util::TestScenario;
 
 #[test]
+#[cfg(target_os = "linux")]
+fn test_select_all_processes() {
+    for arg in ["-A", "-e"] {
+        // TODO ensure the output format is correct
+        new_ucmd!().arg(arg).succeeds();
+    }
+}
+
+#[test]
 fn test_invalid_arg() {
     new_ucmd!().arg("--definitely-invalid").fails().code_is(1);
 }
