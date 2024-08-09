@@ -3,10 +3,8 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-#[cfg(target_os = "linux")]
 use std::process;
 
-#[cfg(target_os = "linux")]
 use regex::Regex;
 
 use crate::common::util::TestScenario;
@@ -17,7 +15,6 @@ fn test_no_args() {
 }
 
 #[test]
-#[cfg(target_os = "linux")]
 fn test_valid_pid() {
     let pid = process::id();
 
@@ -28,7 +25,6 @@ fn test_valid_pid() {
 }
 
 #[test]
-#[cfg(target_os = "linux")]
 fn test_multiple_valid_pids() {
     let pid = process::id();
 
@@ -38,6 +34,40 @@ fn test_multiple_valid_pids() {
         .succeeds()
         // (?m) enables multi-line mode
         .stdout_matches(&Regex::new(&format!("(?m)^{pid}: .+$")).unwrap());
+}
+
+#[test]
+fn test_non_existing_pid() {
+    let non_existing_pid = "999999";
+
+    new_ucmd!()
+        .arg(non_existing_pid)
+        .fails()
+        .code_is(1)
+        .no_stdout()
+        .stderr_is(format!("{non_existing_pid}: No such process\n"));
+}
+
+#[test]
+fn test_non_existing_and_existing_pid() {
+    let pid = process::id();
+    let non_existing_pid = "999999";
+
+    new_ucmd!()
+        .arg(non_existing_pid)
+        .arg(pid.to_string())
+        .fails()
+        .code_is(1)
+        .stdout_matches(&Regex::new(&format!("^{pid}: .+\n$")).unwrap())
+        .stderr_is(format!("{non_existing_pid}: No such process\n"));
+
+    new_ucmd!()
+        .arg(pid.to_string())
+        .arg(non_existing_pid)
+        .fails()
+        .code_is(1)
+        .stdout_matches(&Regex::new(&format!("^{pid}: .+\n$")).unwrap())
+        .stderr_is(format!("{non_existing_pid}: No such process\n"));
 }
 
 #[test]
@@ -53,7 +83,6 @@ fn test_invalid_pid() {
 }
 
 #[test]
-#[cfg(target_os = "linux")]
 fn test_invalid_and_valid_pid() {
     let pid = process::id();
     let invalid_pid = "invalid";
