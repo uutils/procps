@@ -59,17 +59,16 @@ fn time(proc_info: RefCell<ProcessInformation>) -> String {
     format_time(cumulative_cpu_time)
 }
 
-// The unit is second
-fn format_time(time: i64) -> String {
-    let days = time / (3600 * 24);
-    let hours = (time % (3600 * 24)) / 3600;
-    let minutes = (time % 3600) / 60;
-    let seconds = time % 60;
+fn format_time(seconds: i64) -> String {
+    let day = seconds / (3600 * 24);
+    let hour = (seconds % (3600 * 24)) / 3600;
+    let minute = (seconds % 3600) / 60;
+    let second = seconds % 60;
 
-    if days != 0 {
-        format!("{:02}-{:02}:{:02}:{:02}", days, hours, minutes, seconds)
+    if day != 0 {
+        format!("{:02}-{:02}:{:02}:{:02}", day, hour, minute, second)
     } else {
-        format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
+        format!("{:02}:{:02}:{:02}", hour, minute, second)
     }
 }
 
@@ -83,19 +82,23 @@ fn ucmd(proc_info: RefCell<ProcessInformation>) -> String {
 
 #[test]
 fn test_time() {
-    assert!(
-        format_time({
+    let formatted = {
+        let time = {
             let utime = 29i64;
             let stime = 18439i64;
             (utime + stime) / 100
-        }) == "00:03:04"
-    );
+        };
+        format_time(time)
+    };
+    assert_eq!(formatted, "00:03:04");
 
-    assert!(
-        format_time({
-            let utime = 1145141919i64;
-            let stime = 810i64;
+    let formatted = {
+        let time = {
+            let utime = 12345678i64;
+            let stime = 90i64;
             (utime + stime) / 100
-        }) == "132-12:57:07"
-    );
+        };
+        format_time(time)
+    };
+    assert_eq!(formatted, "01-10:17:37");
 }
