@@ -128,7 +128,7 @@ pub fn uu_app() -> Command {
             Arg::new("A")
                 .short('A')
                 .help("all processes")
-                .visible_alias("e")
+                .visible_short_alias('e')
                 .action(ArgAction::SetTrue),
             Arg::new("a")
                 .short('a')
