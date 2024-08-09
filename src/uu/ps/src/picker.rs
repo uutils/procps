@@ -83,5 +83,5 @@ fn test_time() {
     let minutes = (&cumulative_cpu_time % 3600) / 60;
     let seconds = &cumulative_cpu_time % 60;
 
-    println!("{:02}:{:02}:{:02}", hours, minutes, seconds);
+    assert!(format!("{:02}:{:02}:{:02}", hours, minutes, seconds) == "00:03:04");
 }
