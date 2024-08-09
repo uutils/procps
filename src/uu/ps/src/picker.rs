@@ -56,10 +56,10 @@ fn time(proc_info: RefCell<ProcessInformation>) -> String {
         (utime + stime) / 100
     };
 
-    let days = &cumulative_cpu_time / (3600 * 24);
-    let hours = (&cumulative_cpu_time % (3600 * 24)) / 3600;
-    let minutes = (&cumulative_cpu_time % 3600) / 60;
-    let seconds = &cumulative_cpu_time % 60;
+    let days = cumulative_cpu_time / (3600 * 24);
+    let hours = (cumulative_cpu_time % (3600 * 24)) / 3600;
+    let minutes = (cumulative_cpu_time % 3600) / 60;
+    let seconds = cumulative_cpu_time % 60;
 
     if days != 0 {
         format!("{:02}-{:02}:{:02}:{:02}", days, hours, minutes, seconds)
@@ -85,10 +85,10 @@ fn test_time() {
             (utime + stime) / 100
         };
 
-        let days = &cumulative_cpu_time / (3600 * 24);
-        let hours = (&cumulative_cpu_time % (3600 * 24)) / 3600;
-        let minutes = (&cumulative_cpu_time % 3600) / 60;
-        let seconds = &cumulative_cpu_time % 60;
+        let days = cumulative_cpu_time / (3600 * 24);
+        let hours = (cumulative_cpu_time % (3600 * 24)) / 3600;
+        let minutes = (cumulative_cpu_time % 3600) / 60;
+        let seconds = cumulative_cpu_time % 60;
 
         let result = if days != 0 {
             format!("{:02}-{:02}:{:02}:{:02}", days, hours, minutes, seconds)
@@ -105,10 +105,10 @@ fn test_time() {
             (utime + stime) / 100
         };
 
-        let days = &cumulative_cpu_time / (3600 * 24);
-        let hours = (&cumulative_cpu_time % (3600 * 24)) / 3600;
-        let minutes = (&cumulative_cpu_time % 3600) / 60;
-        let seconds = &cumulative_cpu_time % 60;
+        let days = cumulative_cpu_time / (3600 * 24);
+        let hours = (cumulative_cpu_time % (3600 * 24)) / 3600;
+        let minutes = (cumulative_cpu_time % 3600) / 60;
+        let seconds = cumulative_cpu_time % 60;
 
         let result = if days != 0 {
             format!("{:02}-{:02}:{:02}:{:02}", days, hours, minutes, seconds)
