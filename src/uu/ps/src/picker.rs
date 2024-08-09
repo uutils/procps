@@ -56,10 +56,15 @@ fn time(proc_info: RefCell<ProcessInformation>) -> String {
         (utime + stime) / 100
     };
 
-    let days = cumulative_cpu_time / (3600 * 24);
-    let hours = (cumulative_cpu_time % (3600 * 24)) / 3600;
-    let minutes = (cumulative_cpu_time % 3600) / 60;
-    let seconds = cumulative_cpu_time % 60;
+    format_time(cumulative_cpu_time)
+}
+
+// The unit is second
+fn format_time(time: i64) -> String {
+    let days = time / (3600 * 24);
+    let hours = (time % (3600 * 24)) / 3600;
+    let minutes = (time % 3600) / 60;
+    let seconds = time % 60;
 
     if days != 0 {
         format!("{:02}-{:02}:{:02}:{:02}", days, hours, minutes, seconds)
@@ -78,21 +83,8 @@ fn ucmd(proc_info: RefCell<ProcessInformation>) -> String {
 
 #[test]
 fn test_time() {
-    let time = |t: i64| {
-        let days = t / (3600 * 24);
-        let hours = (t % (3600 * 24)) / 3600;
-        let minutes = (t % 3600) / 60;
-        let seconds = t % 60;
-
-        if days != 0 {
-            format!("{:02}-{:02}:{:02}:{:02}", days, hours, minutes, seconds)
-        } else {
-            format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
-        }
-    };
-
     assert!(
-        time({
+        format_time({
             let utime = 29i64;
             let stime = 18439i64;
             (utime + stime) / 100
@@ -100,7 +92,7 @@ fn test_time() {
     );
 
     assert!(
-        time({
+        format_time({
             let utime = 1145141919i64;
             let stime = 810i64;
             (utime + stime) / 100
