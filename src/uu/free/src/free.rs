@@ -164,6 +164,12 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         }
         match parse_meminfo() {
             Ok(mem_info) => {
+                let buff_cache = if wide {
+                    mem_info.buffers
+                } else {
+                    mem_info.buffers + mem_info.cached
+                };
+                let cache = if wide { mem_info.cached } else { 0 };
                 let used = mem_info.total - mem_info.available;
 
                 // function that converts the number to the correct string
@@ -180,7 +186,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                         "SwapUse",
                         n2s(mem_info.swap_used),
                         "CachUse",
-                        n2s(mem_info.buffers + mem_info.cached + mem_info.reclaimable),
+                        n2s(buff_cache + mem_info.reclaimable),
                         "MemUse",
                         n2s(used),
                         "MemFree",
@@ -196,8 +202,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                             n2s(used),
                             n2s(mem_info.free),
                             n2s(mem_info.shared),
-                            n2s(mem_info.buffers),
-                            n2s(mem_info.cached + mem_info.reclaimable),
+                            n2s(buff_cache),
+                            n2s(cache + mem_info.reclaimable),
                             n2s(mem_info.available),
                         );
                     } else {
@@ -209,7 +215,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                             n2s(used),
                             n2s(mem_info.free),
                             n2s(mem_info.shared),
-                            n2s(mem_info.buffers + mem_info.cached + mem_info.reclaimable),
+                            n2s(buff_cache + mem_info.reclaimable),
                             n2s(mem_info.available),
                         )
                     }
