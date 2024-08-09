@@ -57,8 +57,9 @@ bytesize = "1.3.0"
 chrono = { version = "0.4.38", default-features = false, features = ["clock"] }
 walkdir = "2.5.0"
 prettytable-rs = "0.10.0"
-nix = { version = "0.29", default-features = false }
-polling = "3.7.2"
+nix = { version = "0.29", default-features = false, features = ["process"] }
+smol = "2.0.0"
+inotify = "0.10.2"
 
 [dependencies]
 clap = { workspace = true }

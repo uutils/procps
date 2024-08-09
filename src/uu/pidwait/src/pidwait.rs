@@ -11,6 +11,9 @@ use uucore::{
     error::{UResult, USimpleError},
     format_usage, help_about, help_usage,
 };
+use wait::waiting;
+
+mod wait;
 
 const ABOUT: &str = help_about!("pidwait.md");
 const USAGE: &str = help_usage!("pidwait.md");
@@ -85,6 +88,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             println!("waiting for {} (pid {})", ele.status()["Name"], ele.pid)
         }
     }
+
+    waiting(&proc_infos);
 
     Ok(())
 }
