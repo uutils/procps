@@ -97,7 +97,7 @@ impl TryFrom<PathBuf> for Teletype {
 }
 
 /// State or process
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RunState {
     ///`R`, running
     Running,
