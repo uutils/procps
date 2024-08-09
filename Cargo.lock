@@ -1065,6 +1065,7 @@ name = "uu_pwdx"
 version = "0.0.1"
 dependencies = [
  "clap",
+ "sysinfo",
  "uucore",
 ]
 
