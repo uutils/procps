@@ -18,27 +18,31 @@ const USAGE: &str = help_usage!("pwdx.md");
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
 
-    let pid_str = matches.get_one::<String>("pid").unwrap();
-    let pid = match pid_str.parse::<i32>() {
-        // PIDs start at 1, hence 0 is invalid
-        Ok(0) | Err(_) => {
-            return Err(USimpleError::new(
-                1,
-                format!("invalid process id: {pid_str}"),
-            ))
-        }
-        Ok(pid) => pid,
-    };
+    let pids = matches.get_many::<String>("pid").unwrap();
 
-    let cwd_link = format!("/proc/{}/cwd", pid);
+    for pid_str in pids {
+        let pid = match pid_str.parse::<i32>() {
+            // PIDs start at 1, hence 0 is invalid
+            Ok(0) | Err(_) => {
+                return Err(USimpleError::new(
+                    1,
+                    format!("invalid process id: {pid_str}"),
+                ))
+            }
+            Ok(pid) => pid,
+        };
 
-    match fs::read_link(Path::new(&cwd_link)) {
-        Ok(path) => println!("{}: {}", pid, path.display()),
-        Err(e) => {
-            eprintln!("pwdx: failed to read link for PID {}: {}", pid, e);
-            process::exit(1);
+        let cwd_link = format!("/proc/{}/cwd", pid);
+
+        match fs::read_link(Path::new(&cwd_link)) {
+            Ok(path) => println!("{}: {}", pid, path.display()),
+            Err(e) => {
+                eprintln!("pwdx: failed to read link for PID {}: {}", pid, e);
+                process::exit(1);
+            }
         }
     }
+
     Ok(())
 }
 
@@ -53,6 +57,7 @@ pub fn uu_app() -> Command {
                 .value_name("PID")
                 .help("Process ID")
                 .required(true)
+                .num_args(1..)
                 .index(1),
         )
 }
