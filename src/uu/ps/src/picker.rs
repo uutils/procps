@@ -91,15 +91,19 @@ fn test_time() {
         }
     };
 
-    assert!(time({
-        let utime = 29i64;
-        let stime = 18439i64;
-        (utime + stime) / 100
-    }) == "00:03:04");
+    assert!(
+        time({
+            let utime = 29i64;
+            let stime = 18439i64;
+            (utime + stime) / 100
+        }) == "00:03:04"
+    );
 
-    assert!(time({
-        let utime = 1145141919i64;
-        let stime = 810i64;
-        (utime + stime) / 100
-    }) == "132-12:57:07");
+    assert!(
+        time({
+            let utime = 1145141919i64;
+            let stime = 810i64;
+            (utime + stime) / 100
+        }) == "132-12:57:07"
+    );
 }
