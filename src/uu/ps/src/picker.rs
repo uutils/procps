@@ -5,7 +5,6 @@
 
 use std::cell::RefCell;
 
-use chrono::DateTime;
 use uu_pgrep::process::{ProcessInformation, Teletype};
 
 pub(crate) fn collect_pickers(
@@ -54,13 +53,14 @@ fn time(proc_info: RefCell<ProcessInformation>) -> String {
     let cumulative_cpu_time = {
         let utime = proc_info.borrow_mut().stat()[13].parse::<i64>().unwrap();
         let stime = proc_info.borrow_mut().stat()[14].parse::<i64>().unwrap();
-        utime + stime
+        (utime + stime) / 100
     };
 
-    DateTime::from_timestamp_millis(cumulative_cpu_time)
-        .unwrap()
-        .format("%H:%M:%S")
-        .to_string()
+    let hours = &cumulative_cpu_time / 3600;
+    let minutes = (&cumulative_cpu_time % 3600) / 60;
+    let seconds = &cumulative_cpu_time % 60;
+
+    format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
 }
 
 fn cmd(proc_info: RefCell<ProcessInformation>) -> String {
@@ -69,4 +69,19 @@ fn cmd(proc_info: RefCell<ProcessInformation>) -> String {
 
 fn ucmd(proc_info: RefCell<ProcessInformation>) -> String {
     proc_info.borrow_mut().status().get("Name").unwrap().into()
+}
+
+#[test]
+fn test_time() {
+    let cumulative_cpu_time = {
+        let utime = 29i64;
+        let stime = 18439i64;
+        (utime + stime) / 100
+    };
+
+    let hours = &cumulative_cpu_time / 3600;
+    let minutes = (&cumulative_cpu_time % 3600) / 60;
+    let seconds = &cumulative_cpu_time % 60;
+
+    println!("{:02}:{:02}:{:02}", hours, minutes, seconds);
 }
