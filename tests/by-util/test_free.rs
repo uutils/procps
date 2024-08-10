@@ -66,6 +66,16 @@ fn test_wide() {
 }
 
 #[test]
+fn test_line_wide() {
+    let result_without_wide = new_ucmd!().args(&["--line"]).succeeds();
+    let result_with_wide = new_ucmd!().args(&["--line", "--wide"]).succeeds();
+    assert_eq!(
+        result_without_wide.stdout_str(),
+        result_with_wide.stdout_str()
+    );
+}
+
+#[test]
 fn test_total() {
     for arg in ["-t", "--total"] {
         let result = new_ucmd!().arg(arg).succeeds();
