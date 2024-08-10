@@ -6,6 +6,7 @@
 use bytesize::{ByteSize, GB, GIB, KB, KIB, MB, MIB, PB, PIB, TB, TIB};
 use clap::{arg, crate_version, ArgAction, ArgGroup, ArgMatches, Command};
 use std::env;
+use std::ffi::OsString;
 #[cfg(target_os = "linux")]
 use std::fs;
 #[cfg(target_os = "linux")]
@@ -386,4 +387,12 @@ fn header() {
         "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
         " ", "total", "used", "free", "shared", "buff/cache", "available",
     )
+}
+
+#[test]
+fn test_arg_line_with_wide() {
+    let args = vec![OsString::from("--line"), OsString::from("--wide")]
+        .into_iter()
+        .map(OsString::from);
+    uumain(args);
 }
