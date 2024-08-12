@@ -44,4 +44,4 @@ fn is_running(pid: usize) -> bool {
 
 // Just for passing compile on other system.
 #[cfg(not(target_os = "linux"))]
-pub(crate) fn waiting(procs: &[ProcessInformation]) {}
+pub(crate) fn waiting(_procs: &[ProcessInformation]) {}
