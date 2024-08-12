@@ -4,9 +4,6 @@
 // file that was distributed with this source code.
 
 use crate::common::util::TestScenario;
-use std::process::Command;
-use std::thread::spawn;
-use std::{thread, time::Duration};
 
 #[test]
 fn test_invalid_arg() {

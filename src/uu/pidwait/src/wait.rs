@@ -3,9 +3,7 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use std::{path::PathBuf, str::FromStr};
 use uu_pgrep::process::ProcessInformation;
-use uu_pgrep::process::RunState;
 
 // Dirty, but it works.
 // TODO: Use better implementation instead
@@ -28,6 +26,10 @@ pub(crate) fn waiting(procs: &[ProcessInformation]) {
 }
 #[cfg(target_os = "linux")]
 fn is_running(pid: usize) -> bool {
+    use std::{path::PathBuf, str::FromStr};
+    use uu_pgrep::process::ProcessInformation;
+    use uu_pgrep::process::RunState;
+
     let proc = PathBuf::from_str(&format!("/proc/{}", pid)).unwrap();
 
     if !proc.exists() {
@@ -39,3 +41,7 @@ fn is_running(pid: usize) -> bool {
         Err(_) => false,
     }
 }
+
+// Just for passing compile on other system.
+#[cfg(not(target_os = "linux"))]
+pub(crate) fn waiting(procs: &[ProcessInformation]) {}
