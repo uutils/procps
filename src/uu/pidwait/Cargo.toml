@@ -16,8 +16,6 @@ categories = ["command-line-utilities"]
 nix = { workspace = true }
 uucore = { workspace = true }
 clap = { workspace = true }
-smol = { workspace = true }
-inotify = { workspace = true }
 regex = { workspace = true }
 uu_pgrep = { path = "../pgrep" }
 
