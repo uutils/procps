@@ -5,6 +5,7 @@
 
 use crate::common::util::TestScenario;
 use std::process::Command;
+use std::thread::spawn;
 use std::{thread, time::Duration};
 
 #[test]
@@ -42,25 +43,3 @@ fn test_too_many_patterns() {
         .no_stdout()
         .stderr_contains("only one pattern can be provided");
 }
-
-// #[test]
-// #[cfg(target_os = "linux")]
-// fn test_waiting() {
-//     for _ in 0..3 {
-//         let _ = Command::new("sleep").arg("3").spawn().unwrap();
-//     }
-
-//     thread::sleep(Duration::from_secs(1));
-
-//     let binding = new_ucmd!().arg("sleep").arg("-c").succeeds();
-//     let output = binding.stdout_str();
-
-//     let output = dbg!(output);
-
-//     let count = output.lines().collect::<Vec<_>>()[0]
-//         .trim()
-//         .parse::<usize>()
-//         .unwrap();
-
-//     assert_eq!(count, 3)
-// }

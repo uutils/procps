@@ -3,6 +3,7 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use std::{path::PathBuf, str::FromStr};
 use uu_pgrep::process::ProcessInformation;
 use uu_pgrep::process::RunState;
 
@@ -10,28 +11,31 @@ use uu_pgrep::process::RunState;
 // TODO: Use better implementation instead
 #[cfg(target_os = "linux")]
 pub(crate) fn waiting(procs: &[ProcessInformation]) {
-    use std::{path::PathBuf, str::FromStr};
-
     let mut list = procs.to_vec();
 
     loop {
-        for proc in procs.iter().cloned() {
-            let proc_path = PathBuf::from_str(&format!("/proc/{}", proc.pid)).unwrap();
-            if !proc_path.exists() {
-                list.retain(|it| it.pid != proc.pid);
+        for proc in &list.clone() {
+            // Check is running
+            if !is_running(proc.pid) {
+                list.retain(|it| it.pid != proc.pid)
             }
-
-            if let Ok(mut proc) = ProcessInformation::try_new(proc_path) {
-                if proc.run_state().unwrap() == RunState::Stopped {
-                    list.retain(|it| it.pid != proc.pid);
-                }
-            } else {
-                list.retain(|it| it.pid != proc.pid);
-            };
         }
 
         if list.is_empty() {
             return;
         }
+    }
+}
+#[cfg(target_os = "linux")]
+fn is_running(pid: usize) -> bool {
+    let proc = PathBuf::from_str(&format!("/proc/{}", pid)).unwrap();
+
+    if !proc.exists() {
+        return false;
+    }
+
+    match ProcessInformation::try_new(proc) {
+        Ok(mut proc) => proc.run_state().unwrap() != RunState::Stopped,
+        Err(_) => false,
     }
 }
