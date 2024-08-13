@@ -5,7 +5,6 @@
 
 use std::cell::RefCell;
 
-use chrono::DateTime;
 use uu_pgrep::process::{ProcessInformation, Teletype};
 
 pub(crate) fn collect_pickers(
@@ -54,13 +53,23 @@ fn time(proc_info: RefCell<ProcessInformation>) -> String {
     let cumulative_cpu_time = {
         let utime = proc_info.borrow_mut().stat()[13].parse::<i64>().unwrap();
         let stime = proc_info.borrow_mut().stat()[14].parse::<i64>().unwrap();
-        utime + stime
+        (utime + stime) / 100
     };
 
-    DateTime::from_timestamp_millis(cumulative_cpu_time)
-        .unwrap()
-        .format("%H:%M:%S")
-        .to_string()
+    format_time(cumulative_cpu_time)
+}
+
+fn format_time(seconds: i64) -> String {
+    let day = seconds / (3600 * 24);
+    let hour = (seconds % (3600 * 24)) / 3600;
+    let minute = (seconds % 3600) / 60;
+    let second = seconds % 60;
+
+    if day != 0 {
+        format!("{:02}-{:02}:{:02}:{:02}", day, hour, minute, second)
+    } else {
+        format!("{:02}:{:02}:{:02}", hour, minute, second)
+    }
 }
 
 fn cmd(proc_info: RefCell<ProcessInformation>) -> String {
@@ -69,4 +78,27 @@ fn cmd(proc_info: RefCell<ProcessInformation>) -> String {
 
 fn ucmd(proc_info: RefCell<ProcessInformation>) -> String {
     proc_info.borrow_mut().status().get("Name").unwrap().into()
+}
+
+#[test]
+fn test_time() {
+    let formatted = {
+        let time = {
+            let utime = 29i64;
+            let stime = 18439i64;
+            (utime + stime) / 100
+        };
+        format_time(time)
+    };
+    assert_eq!(formatted, "00:03:04");
+
+    let formatted = {
+        let time = {
+            let utime = 12345678i64;
+            let stime = 90i64;
+            (utime + stime) / 100
+        };
+        format_time(time)
+    };
+    assert_eq!(formatted, "01-10:17:37");
 }
