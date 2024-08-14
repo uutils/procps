@@ -632,6 +632,7 @@ dependencies = [
  "uu_free",
  "uu_pgrep",
  "uu_pidof",
+ "uu_pidwait",
  "uu_pmap",
  "uu_ps",
  "uu_pwdx",
@@ -1035,6 +1036,17 @@ name = "uu_pidof"
 version = "0.0.1"
 dependencies = [
  "clap",
+ "uu_pgrep",
+ "uucore",
+]
+
+[[package]]
+name = "uu_pidwait"
+version = "0.0.1"
+dependencies = [
+ "clap",
+ "nix 0.29.0",
+ "regex",
  "uu_pgrep",
  "uucore",
 ]
