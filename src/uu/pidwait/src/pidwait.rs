@@ -169,7 +169,7 @@ fn collect_proc_infos(settings: &Settings) -> Vec<ProcessInformation> {
     };
 
     // Process `-O`
-    let mut proc_infos = {
+    let proc_infos = {
         let mut temp: Vec<ProcessInformation> = Vec::new();
         let older = settings.older.unwrap_or_default();
         for mut proc_info in proc_infos {
@@ -178,6 +178,17 @@ fn collect_proc_infos(settings: &Settings) -> Vec<ProcessInformation> {
             }
         }
         temp
+    };
+
+    let mut proc_infos = {
+        if let Some(terminals) = &settings.terminal {
+            proc_infos
+                .into_iter()
+                .filter(|it| terminals.contains(&it.tty()))
+                .collect()
+        } else {
+            proc_infos
+        }
     };
 
     if proc_infos.is_empty() {
