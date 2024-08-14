@@ -3,6 +3,7 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+#[cfg(target_os = "linux")]
 use uu_pgrep::process::ProcessInformation;
 
 // Dirty, but it works.
@@ -27,7 +28,6 @@ pub(crate) fn waiting(procs: &[ProcessInformation]) {
 #[cfg(target_os = "linux")]
 fn is_running(pid: usize) -> bool {
     use std::{path::PathBuf, str::FromStr};
-    use uu_pgrep::process::ProcessInformation;
     use uu_pgrep::process::RunState;
 
     let proc = PathBuf::from_str(&format!("/proc/{}", pid)).unwrap();
