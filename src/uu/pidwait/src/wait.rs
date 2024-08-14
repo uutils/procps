@@ -40,7 +40,10 @@ fn is_running(pid: usize) -> bool {
     }
 
     match ProcessInformation::try_new(proc) {
-        Ok(mut proc) => proc.run_state().unwrap() != RunState::Stopped,
+        Ok(mut proc) => proc
+            .run_state()
+            .map(|it| it != RunState::Stopped)
+            .unwrap_or(false),
         Err(_) => false,
     }
 }

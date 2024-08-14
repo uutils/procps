@@ -31,7 +31,7 @@ struct Settings {
     older: Option<u64>,
     terminal: Option<HashSet<Teletype>>,
     exact: bool,
-    runstates: Option<RunState>,
+    runstates: Option<HashSet<RunState>>,
 }
 
 #[uucore::main]
@@ -50,7 +50,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             .get_many::<Teletype>("terminal")
             .map(|it| it.cloned().collect()),
         exact: matches.get_flag("exact"),
-        runstates: matches.get_one::<RunState>("runstates").cloned(),
+        runstates: matches
+            .get_many::<String>("runstates")
+            .map(|it| it.cloned().flat_map(RunState::try_from).collect()),
     };
 
     let pattern = initialize_pattern(&matches, &settings)?;
