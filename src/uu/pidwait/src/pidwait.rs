@@ -3,7 +3,7 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use clap::{arg, crate_version, Arg, ArgAction, ArgMatches, Command};
+use clap::{arg, crate_version, value_parser, Arg, ArgAction, ArgMatches, Command};
 use regex::Regex;
 use std::{collections::HashSet, env, sync::OnceLock};
 use uu_pgrep::process::{walk_process, ProcessInformation, RunState, Teletype};
@@ -46,9 +46,11 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         newest: matches.get_flag("newest"),
         oldest: matches.get_flag("oldest"),
         older: matches.get_one::<u64>("older").copied(),
-        terminal: matches
-            .get_many::<Teletype>("terminal")
-            .map(|it| it.cloned().collect()),
+        terminal: matches.get_many::<String>("terminal").map(|ttys| {
+            ttys.cloned()
+                .flat_map(Teletype::try_from)
+                .collect::<HashSet<_>>()
+        }),
         exact: matches.get_flag("exact"),
         runstates: matches
             .get_many::<String>("runstates")
@@ -233,7 +235,8 @@ pub fn uu_app() -> Command {
             arg!(-i --"ignore-case"             "match case insensitively"),
             arg!(-n --newest                    "select most recently started"),
             arg!(-o --oldest                    "select least recently started"),
-            arg!(-O --older         <seconds>   "select where older than seconds"),
+            arg!(-O --older         <seconds>   "select where older than seconds")
+                .value_parser(value_parser!(u64)),
             // arg!(-P --parent        <PPID>      "match only child processes of the given parent"),
             // arg!(-s --session       <SID>       "match session IDs"),
             arg!(-t --terminal      <tty>       "match by controlling terminal"),
