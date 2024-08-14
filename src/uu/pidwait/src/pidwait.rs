@@ -86,8 +86,14 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     }
 
     if settings.echo {
-        for ele in proc_infos.iter_mut() {
-            println!("waiting for {} (pid {})", ele.status()["Name"], ele.pid)
+        if settings.newest || settings.oldest {
+            for ele in proc_infos.iter_mut() {
+                println!("waiting for  (pid {})", ele.pid)
+            }
+        } else {
+            for ele in proc_infos.iter_mut() {
+                println!("waiting for {} (pid {})", ele.status()["Name"], ele.pid)
+            }
         }
     }
 
