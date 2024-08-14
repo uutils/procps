@@ -53,7 +53,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         runstates: matches.get_one::<RunState>("runstates").cloned(),
     };
 
-    let pattern = pattern_initialize(&matches, &settings)?;
+    let pattern = initialize_pattern(&matches, &settings)?;
     REGEX
         .set(Regex::new(&pattern).map_err(|e| USimpleError::new(2, e.to_string()))?)
         .unwrap();
@@ -94,7 +94,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     Ok(())
 }
 
-fn pattern_initialize(matches: &ArgMatches, settings: &Settings) -> UResult<String> {
+fn initialize_pattern(matches: &ArgMatches, settings: &Settings) -> UResult<String> {
     let pattern = match matches.get_many::<String>("pattern") {
         Some(patterns) if patterns.len() > 1 => {
             return Err(USimpleError::new(
