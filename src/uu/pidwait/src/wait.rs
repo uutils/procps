@@ -9,7 +9,7 @@ use uu_pgrep::process::ProcessInformation;
 // Dirty, but it works.
 // TODO: Use better implementation instead
 #[cfg(target_os = "linux")]
-pub(crate) fn waiting(procs: &[ProcessInformation]) {
+pub(crate) fn wait(procs: &[ProcessInformation]) {
     let mut list = procs.to_vec();
 
     loop {
@@ -44,4 +44,4 @@ fn is_running(pid: usize) -> bool {
 
 // Just for passing compile on other system.
 #[cfg(not(target_os = "linux"))]
-pub(crate) fn waiting(_procs: &[ProcessInformation]) {}
+pub(crate) fn wait(_procs: &[ProcessInformation]) {}

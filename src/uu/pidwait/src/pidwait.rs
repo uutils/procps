@@ -11,7 +11,7 @@ use uucore::{
     error::{UResult, USimpleError},
     format_usage, help_about, help_usage,
 };
-use wait::waiting;
+use wait::wait;
 
 mod wait;
 
@@ -89,7 +89,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         }
     }
 
-    waiting(&proc_infos);
+    wait(&proc_infos);
 
     Ok(())
 }
