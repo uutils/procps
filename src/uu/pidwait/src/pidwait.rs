@@ -89,7 +89,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     if settings.echo {
         if settings.newest || settings.oldest {
-            for ele in proc_infos.iter_mut() {
+            for ele in &proc_infos {
                 println!("waiting for  (pid {})", ele.pid)
             }
         } else {
