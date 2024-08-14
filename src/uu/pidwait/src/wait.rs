@@ -3,13 +3,14 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-#[cfg(target_os = "linux")]
 use uu_pgrep::process::ProcessInformation;
 
 // Dirty, but it works.
 // TODO: Use better implementation instead
 #[cfg(target_os = "linux")]
 pub(crate) fn wait(procs: &[ProcessInformation]) {
+    use std::{thread::sleep, time::Duration};
+
     let mut list = procs.to_vec();
 
     loop {
@@ -23,6 +24,8 @@ pub(crate) fn wait(procs: &[ProcessInformation]) {
         if list.is_empty() {
             return;
         }
+
+        sleep(Duration::from_millis(50));
     }
 }
 #[cfg(target_os = "linux")]
