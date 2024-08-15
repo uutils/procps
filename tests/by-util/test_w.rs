@@ -88,6 +88,6 @@ fn test_output_format() {
         );
         // Assert that there is something in the JCPU and PCPU slots,
         // this will need to be changed when IDLE is implemented
-        assert!(!line_vec[3].is_empty() && !line_vec[4].is_empty())
+        assert!(!line_vec[3].is_empty() && !line_vec[4].is_empty());
     }
 }

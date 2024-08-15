@@ -48,7 +48,7 @@ pub(crate) fn basic_collector(
         let proc_ttys = proc_info.borrow().tty();
 
         if proc_ttys == current_tty {
-            result.push(proc_info.clone())
+            result.push(proc_info.clone());
         }
     }
 
@@ -66,7 +66,7 @@ pub(crate) fn process_collector(
 
     // flag `-A`
     if matches.get_flag("A") {
-        result.extend(proc_snapshot.iter().map(Rc::clone))
+        result.extend(proc_snapshot.iter().map(Rc::clone));
     }
 
     result
@@ -99,7 +99,7 @@ pub(crate) fn session_collector(
             if let Some(sid) = getsid(pid as i32) {
                 // Check is session leader
                 if sid != (pid as i32) && tty(it) != Teletype::Unknown {
-                    result.push(it.clone())
+                    result.push(it.clone());
                 }
             }
         });

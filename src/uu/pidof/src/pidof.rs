@@ -84,7 +84,7 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<ProcessInformation> {
                 let should_omit = arg_omit_pid.contains(&process.pid);
 
                 if contains && !should_omit {
-                    processed.push(process)
+                    processed.push(process);
                 }
             }
 

@@ -217,7 +217,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                             n2s(mem_info.shared),
                             n2s(buff_cache + mem_info.reclaimable),
                             n2s(mem_info.available),
-                        )
+                        );
                     }
 
                     if lohi {
@@ -391,5 +391,5 @@ fn header() {
     println!(
         "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
         " ", "total", "used", "free", "shared", "buff/cache", "available",
-    )
+    );
 }

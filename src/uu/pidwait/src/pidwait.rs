@@ -84,17 +84,17 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     // Process outputs
     if settings.count {
-        println!("{}", proc_infos.len())
+        println!("{}", proc_infos.len());
     }
 
     if settings.echo {
         if settings.newest || settings.oldest {
             for ele in &proc_infos {
-                println!("waiting for  (pid {})", ele.pid)
+                println!("waiting for  (pid {})", ele.pid);
             }
         } else {
             for ele in proc_infos.iter_mut() {
-                println!("waiting for {} (pid {})", ele.status()["Name"], ele.pid)
+                println!("waiting for {} (pid {})", ele.status()["Name"], ele.pid);
             }
         }
     }
@@ -162,7 +162,7 @@ fn collect_proc_infos(settings: &Settings) -> Vec<ProcessInformation> {
                 REGEX.get().unwrap().is_match(want)
             };
             if matched {
-                temp.push(it)
+                temp.push(it);
             }
         }
         temp
@@ -174,7 +174,7 @@ fn collect_proc_infos(settings: &Settings) -> Vec<ProcessInformation> {
         let older = settings.older.unwrap_or_default();
         for mut proc_info in proc_infos {
             if proc_info.start_time().unwrap() >= older {
-                temp.push(proc_info)
+                temp.push(proc_info);
             }
         }
         temp
@@ -217,9 +217,9 @@ fn collect_proc_infos(settings: &Settings) -> Vec<ProcessInformation> {
             .collect::<Vec<_>>();
 
         if settings.newest {
-            filtered.sort_by(|a, b| b.pid.cmp(&a.pid))
+            filtered.sort_by(|a, b| b.pid.cmp(&a.pid));
         } else {
-            filtered.sort_by(|a, b| a.pid.cmp(&b.pid))
+            filtered.sort_by(|a, b| a.pid.cmp(&b.pid));
         }
 
         vec![filtered.first().cloned().unwrap().clone()]

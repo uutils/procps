@@ -227,7 +227,7 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
                 && parent_matched)
                 ^ settings.inverse
             {
-                tmp_vec.push(pid)
+                tmp_vec.push(pid);
             }
         }
         tmp_vec
@@ -264,9 +264,9 @@ fn process_flag_o_n(
             .collect::<Vec<_>>();
 
         if settings.newest {
-            filtered.sort_by(|a, b| b.pid.cmp(&a.pid))
+            filtered.sort_by(|a, b| b.pid.cmp(&a.pid));
         } else {
-            filtered.sort_by(|a, b| a.pid.cmp(&b.pid))
+            filtered.sort_by(|a, b| a.pid.cmp(&b.pid));
         }
 
         vec![filtered.first().cloned().unwrap().clone()]
