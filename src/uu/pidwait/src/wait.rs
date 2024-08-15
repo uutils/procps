@@ -17,7 +17,7 @@ pub(crate) fn wait(procs: &[ProcessInformation]) {
         for proc in &list.clone() {
             // Check is running
             if !is_running(proc.pid) {
-                list.retain(|it| it.pid != proc.pid)
+                list.retain(|it| it.pid != proc.pid);
             }
         }
 

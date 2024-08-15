@@ -123,7 +123,7 @@ impl SlabInfo {
                         } else {
                             Ordering::Equal
                         }
-                    })
+                    });
                 }
             }
 
