@@ -54,7 +54,6 @@ fn parse_maps(pid: &str) -> Result<(), Error> {
     let path = format!("/proc/{}/maps", pid);
     let contents = fs::read_to_string(path)?;
 
-    println!("Address           Perms Offset  Dev   Inode   Path");
     for line in contents.lines() {
         println!("{}", line);
     }
