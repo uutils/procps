@@ -28,7 +28,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     }
 
     match parse_maps(pid) {
-        Ok(_) => println!("Memory map displayed successfully."),
+        // TODO calculate total
+        Ok(_) => println!(" total"),
         Err(_) => {
             process::exit(1);
         }
@@ -55,7 +56,11 @@ fn parse_maps(pid: &str) -> Result<(), Error> {
     let contents = fs::read_to_string(path)?;
 
     for line in contents.lines() {
-        println!("{}", line);
+        let (memory_range, rest) = line.split_once(' ').expect("line should contain ' '");
+        let (start, _) = memory_range
+            .split_once('-')
+            .expect("memory range should contain '-'");
+        println!("{start:0>16} {rest}");
     }
 
     Ok(())
