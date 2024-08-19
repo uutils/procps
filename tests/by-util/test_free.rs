@@ -85,7 +85,7 @@ fn test_total() {
             .lines()
             .last()
             .unwrap()
-            .starts_with("Total:"))
+            .starts_with("Total:"));
     }
 }
 
@@ -116,7 +116,7 @@ fn test_committed() {
             .lines()
             .last()
             .unwrap()
-            .starts_with("Comm:"))
+            .starts_with("Comm:"));
     }
 }
 

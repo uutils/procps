@@ -13,6 +13,30 @@ use uucore::{error::UResult, format_usage, help_about, help_usage};
 const ABOUT: &str = help_about!("pmap.md");
 const USAGE: &str = help_usage!("pmap.md");
 
+#[uucore::main]
+pub fn uumain(args: impl uucore::Args) -> UResult<()> {
+    let matches = uu_app().try_get_matches_from(args)?;
+    let pid = matches.get_one::<String>("pid").expect("PID required");
+
+    match parse_cmdline(pid) {
+        Ok(cmdline) => {
+            println!("{}: {}", pid, cmdline);
+        }
+        Err(_) => {
+            process::exit(42);
+        }
+    }
+
+    match parse_maps(pid) {
+        Ok(_) => println!("Memory map displayed successfully."),
+        Err(_) => {
+            process::exit(1);
+        }
+    }
+
+    Ok(())
+}
+
 fn parse_cmdline(pid: &str) -> Result<String, Error> {
     let path = format!("/proc/{}/cmdline", pid);
     let contents = fs::read(path)?;
@@ -118,28 +142,4 @@ pub fn uu_app() -> Command {
                 .num_args(1..=2)
                 .help("limit results to the given range"),
         )
-}
-
-#[uucore::main]
-pub fn uumain(args: impl uucore::Args) -> UResult<()> {
-    let matches = uu_app().try_get_matches_from(args)?;
-    let pid = matches.get_one::<String>("pid").expect("PID required");
-
-    match parse_cmdline(pid) {
-        Ok(cmdline) => {
-            println!("{}: {}", pid, cmdline);
-        }
-        Err(_) => {
-            process::exit(42);
-        }
-    }
-
-    match parse_maps(pid) {
-        Ok(_) => println!("Memory map displayed successfully."),
-        Err(_) => {
-            process::exit(1);
-        }
-    }
-
-    Ok(())
 }
