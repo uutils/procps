@@ -20,7 +20,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     match parse_cmdline(pid) {
         Ok(cmdline) => {
-            println!("{}: {}", pid, cmdline);
+            println!("{}:   {}", pid, cmdline);
         }
         Err(_) => {
             process::exit(42);
