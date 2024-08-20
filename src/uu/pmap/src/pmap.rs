@@ -57,13 +57,29 @@ fn parse_maps(pid: &str) -> Result<(), Error> {
 
     for line in contents.lines() {
         let (memory_range, rest) = line.split_once(' ').expect("line should contain ' '");
-        let (start, _) = memory_range
-            .split_once('-')
-            .expect("memory range should contain '-'");
-        println!("{start:0>16} {rest}");
+        let (start_address, size_in_kb) = parse_memory_range(memory_range);
+
+        println!("{start_address} {size_in_kb:>6}K {rest}");
     }
 
     Ok(())
+}
+
+// Returns the start address and the size of the provided memory range. The start address is always
+// 16-digits and padded with 0, if necessary. The size is in KB.
+//
+// This function assumes the provided `memory_range` comes from /proc/<PID>/maps and thus its
+// format is correct.
+fn parse_memory_range(memory_range: &str) -> (String, u64) {
+    let (start, end) = memory_range
+        .split_once('-')
+        .expect("memory range should contain '-'");
+
+    let low = u64::from_str_radix(start, 16).expect("should be a hex value");
+    let high = u64::from_str_radix(end, 16).expect("should be a hex value");
+    let size_in_kb = (high - low) / 1024;
+
+    (format!("{start:0>16}"), size_in_kb)
 }
 
 pub fn uu_app() -> Command {
@@ -146,4 +162,20 @@ pub fn uu_app() -> Command {
                 .num_args(1..=2)
                 .help("limit results to the given range"),
         )
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_parse_memory_range() {
+        let (start, size) = parse_memory_range("ffffffffff600000-ffffffffff601000");
+        assert_eq!(start, "ffffffffff600000");
+        assert_eq!(size, 4);
+
+        let (start, size) = parse_memory_range("7ffc4f0c2000-7ffc4f0e3000");
+        assert_eq!(start, "00007ffc4f0c2000");
+        assert_eq!(size, 132);
+    }
 }
