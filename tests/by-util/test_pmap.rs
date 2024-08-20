@@ -30,7 +30,7 @@ fn test_existing_pid() {
 
     let rest = rest.trim_end();
     let (memory_map, last_line) = rest.rsplit_once('\n').unwrap();
-    let re = Regex::new("(?m)^[0-9a-f]{16} ").unwrap();
+    let re = Regex::new("(?m)^[0-9a-f]{16} +[1-9][0-9]*K ").unwrap();
     assert!(re.is_match(memory_map));
     // TODO ensure that "total" is followed by a total amount
     assert!(last_line.starts_with(" total"));
