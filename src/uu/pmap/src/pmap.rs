@@ -59,7 +59,10 @@ fn parse_maps(pid: &str) -> Result<(), Error> {
         let (memory_range, rest) = line.split_once(' ').expect("line should contain ' '");
         let (start_address, size_in_kb) = parse_memory_range(memory_range);
 
-        println!("{start_address} {size_in_kb:>6}K {rest}");
+        let (perms, rest) = rest.split_once(' ').expect("line should contain 2nd ' '");
+        let perms = parse_perms(perms);
+
+        println!("{start_address} {size_in_kb:>6}K {perms} {rest}");
     }
 
     Ok(())
@@ -80,6 +83,15 @@ fn parse_memory_range(memory_range: &str) -> (String, u64) {
     let size_in_kb = (high - low) / 1024;
 
     (format!("{start:0>16}"), size_in_kb)
+}
+
+// Turns a 4-char perms string from /proc/<PID>/maps into a 5-char perms string. The first three
+// chars are left untouched.
+fn parse_perms(perms: &str) -> String {
+    let perms = perms.replace("p", "-");
+
+    // the fifth char seems to be always '-' in the original pmap
+    format!("{perms}-")
 }
 
 pub fn uu_app() -> Command {
@@ -177,5 +189,12 @@ mod test {
         let (start, size) = parse_memory_range("7ffc4f0c2000-7ffc4f0e3000");
         assert_eq!(start, "00007ffc4f0c2000");
         assert_eq!(size, 132);
+    }
+
+    #[test]
+    fn test_parse_perms() {
+        assert_eq!("-----", parse_perms("---p"));
+        assert_eq!("---s-", parse_perms("---s"));
+        assert_eq!("rwx--", parse_perms("rwxp"));
     }
 }
