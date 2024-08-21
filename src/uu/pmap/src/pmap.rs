@@ -62,7 +62,9 @@ fn parse_maps(pid: &str) -> Result<(), Error> {
         let (perms, rest) = rest.split_once(' ').expect("line should contain 2nd ' '");
         let perms = parse_perms(perms);
 
-        println!("{start_address} {size_in_kb:>6}K {perms} {rest}");
+        let cmd: String = rest.split_whitespace().skip(3).collect();
+
+        println!("{start_address} {size_in_kb:>6}K {perms} {cmd}");
     }
 
     Ok(())
