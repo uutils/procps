@@ -89,9 +89,10 @@ fn pr(pid: u32) -> String {
     format!("{}", result)
 }
 
+// TODO: Implement this function for Windows
 #[cfg(target_os = "windows")]
 fn pr(_pid: u32) -> String {
-    return "0".into();
+    "0".into()
 }
 
 fn res(_pid: u32) -> String {
