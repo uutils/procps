@@ -170,6 +170,7 @@ fn construct_filter(settings: &Settings) -> Box<dyn Fn(usize) -> bool> {
     }
 }
 
+#[allow(clippy::cognitive_complexity)]
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
