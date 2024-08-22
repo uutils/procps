@@ -8,7 +8,11 @@ use std::{thread::sleep, time::Duration};
 use clap::{arg, crate_version, ArgAction, ArgGroup, ArgMatches, Command};
 use picker::sysinfo;
 use prettytable::{format::consts::FORMAT_CLEAN, Row, Table};
-use uucore::{error::UResult, format_usage, help_about, help_usage};
+use sysinfo::{Pid, Users};
+use uucore::{
+    error::{UResult, USimpleError},
+    format_usage, help_about, help_usage,
+};
 
 const ABOUT: &str = help_about!("top.md");
 const USAGE: &str = help_usage!("top.md");
@@ -21,7 +25,7 @@ mod picker;
 enum Filter {
     Pid(Vec<u32>),
     User(String),
-    EUser(u32),
+    EUser(String),
 }
 
 #[derive(Debug)]
@@ -33,14 +37,14 @@ struct Settings {
 
 impl Settings {
     fn new(matches: &ArgMatches) -> Self {
-        let filter = if let Ok(Some(pidlist)) = matches.try_get_many::<u32>("PIDLIST") {
+        let filter = if let Some(pidlist) = matches.get_many::<u32>("pid") {
             Some(Filter::Pid(pidlist.cloned().collect::<Vec<_>>()))
-        } else if let Ok(Some(user)) = matches.try_get_one::<String>("USER") {
+        } else if let Some(user) = matches.get_one::<String>("filter-any-user") {
             Some(Filter::User(user.clone()))
-        } else if let Ok(Some(euser)) = matches.try_get_one::<u32>("EUSER") {
-            Some(Filter::EUser(*euser))
         } else {
-            None
+            matches
+                .get_one::<String>("filter-only-euser")
+                .map(|euser| Filter::EUser(euser.clone()))
         };
 
         let width = matches.get_one::<usize>("width").cloned();
@@ -60,8 +64,17 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     let settings = Settings::new(&matches);
 
+    if let Some(Filter::User(user)) = &settings.filter {
+        if Users::new_with_refreshed_list()
+            .iter()
+            .all(|it| it.name() != user)
+        {
+            return Err(USimpleError::new(1, "top: Invalid user"));
+        }
+    }
+
     let fields = selected_fields();
-    let collected = platform_impl(&settings, &fields);
+    let collected = collect(&settings, &fields);
 
     let table = {
         let mut table = Table::new();
@@ -129,7 +142,7 @@ fn selected_fields() -> Vec<String> {
     .collect()
 }
 
-fn platform_impl(settings: &Settings, fields: &[String]) -> Vec<Vec<String>> {
+fn collect(settings: &Settings, fields: &[String]) -> Vec<Vec<String>> {
     use picker::pickers;
 
     let pickers = pickers(fields);
@@ -171,7 +184,25 @@ fn construct_filter(settings: &Settings) -> Box<dyn Fn(u32) -> bool> {
             helper(move |pid: u32| pids.contains(&pid))
         }
 
-        Filter::User(_) => helper(|_| true),
+        Filter::User(user) => {
+            let user = user.to_owned();
+            helper(move |pid| {
+                let binding = sysinfo().read().unwrap();
+                let Some(proc) = binding.process(Pid::from_u32(pid)) else {
+                    return false;
+                };
+
+                let Some(uid) = proc.user_id() else {
+                    return false;
+                };
+
+                Users::new_with_refreshed_list()
+                    .get_user_by_id(uid)
+                    .map(|it| it.name())
+                    .unwrap_or("?")
+                    == user
+            })
+        }
         // TODO: Implemented
         Filter::EUser(_) => helper(|_| true),
     }
