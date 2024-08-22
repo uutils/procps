@@ -140,10 +140,18 @@ fn mem(pid: u32) -> String {
 
 fn command(pid: u32) -> String {
     let f = |cmd: &[OsString]| -> String {
-        cmd.iter()
+        let binding = cmd
+            .iter()
             .map(|os_str| os_str.to_string_lossy().into_owned())
             .collect::<Vec<_>>()
-            .join(" ")
+            .join(" ");
+        let trimmed = binding.trim();
+
+        if trimmed.is_empty() {
+            "[kthreadd]".into()
+        } else {
+            trimmed.into()
+        }
     };
 
     let binding = sysinfo().read().unwrap();
