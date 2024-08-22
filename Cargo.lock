@@ -1096,6 +1096,9 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "libc",
+ "nix 0.29.0",
+ "prettytable-rs",
+ "uu_pgrep",
  "uucore",
 ]
 
