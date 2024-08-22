@@ -3,6 +3,8 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use std::{thread::sleep, time::Duration};
+
 use clap::{arg, crate_version, ArgAction, ArgGroup, ArgMatches, Command};
 use prettytable::{format::consts::FORMAT_CLEAN, Row, Table};
 use uucore::{error::UResult, format_usage, help_about, help_usage};
@@ -49,6 +51,11 @@ impl Settings {
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
+
+    // Must refresh twice.
+    picker::sysinfo().write().unwrap().refresh_all();
+    sleep(Duration::from_millis(200));
+    picker::sysinfo().write().unwrap().refresh_all();
 
     let settings = Settings::new(&matches);
 

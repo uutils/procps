@@ -3,7 +3,15 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use std::sync::{OnceLock, RwLock};
+use sysinfo::{Pid, System};
 use uu_pgrep::process::{ProcessInformation, RunState};
+
+static SYSINFO: OnceLock<RwLock<System>> = OnceLock::new();
+
+pub fn sysinfo() -> &'static RwLock<System> {
+    SYSINFO.get_or_init(|| RwLock::new(System::new_all()))
+}
 
 pub(crate) fn pickers(fields: &[String]) -> Vec<Box<dyn Fn(usize) -> String>> {
     fields
@@ -33,8 +41,17 @@ fn todo(_pid: usize) -> String {
     "TODO".into()
 }
 
-fn cpu(_pid: usize) -> String {
-    "TODO".into()
+fn cpu(pid: usize) -> String {
+    let sysinfo = sysinfo().read().unwrap();
+
+    let process = sysinfo.process(Pid::from_u32(pid as u32));
+
+    let usage = match process {
+        Some(usage) => usage.cpu_usage(),
+        None => 0.0,
+    };
+
+    format!("{:.2}", usage)
 }
 
 fn pid(pid: usize) -> String {

@@ -17,6 +17,7 @@ clap = { workspace = true }
 libc = { workspace = true }
 nix = { workspace = true }
 prettytable-rs = { workspace = true }
+sysinfo = { workspace = true }
 
 uu_pgrep = { path = "../pgrep" }
 
