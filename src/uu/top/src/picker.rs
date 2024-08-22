@@ -3,7 +3,10 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use std::sync::{OnceLock, RwLock};
+use std::{
+    ffi::OsString,
+    sync::{OnceLock, RwLock},
+};
 use sysinfo::{Pid, System};
 
 static SYSINFO: OnceLock<RwLock<System>> = OnceLock::new();
@@ -79,7 +82,13 @@ fn s(pid: u32) -> String {
         return "?".into();
     };
 
-    proc.status().to_string()
+    proc.status()
+        .to_string()
+        .chars()
+        .collect::<Vec<_>>()
+        .first()
+        .unwrap()
+        .to_string()
 }
 
 fn time_plus(_pid: u32) -> String {
@@ -91,14 +100,21 @@ fn mem(_pid: u32) -> String {
 }
 
 fn command(pid: u32) -> String {
+    let f = |cmd: &[OsString]| -> String {
+        cmd.iter()
+            .map(|os_str| os_str.to_string_lossy().into_owned())
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
+
     let binding = sysinfo().read().unwrap();
     let Some(proc) = binding.process(Pid::from_u32(pid)) else {
         return "?".into();
     };
 
-    proc.cmd()
-        .iter()
-        .flat_map(|it| it.to_str())
-        .collect::<Vec<_>>()
-        .join(" ")
+    proc.exe()
+        .and_then(|it| it.iter().last())
+        .map(|it| it.to_str().unwrap())
+        .unwrap_or(&f(proc.cmd()))
+        .into()
 }
