@@ -66,23 +66,23 @@ fn user(_pid: u32) -> String {
     "TODO".into()
 }
 
+#[cfg(not(target_os = "windows"))]
 fn pr(pid: u32) -> String {
-    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
-    return {
-        let result = unsafe { getpriority(PRIO_PROCESS, pid) };
+    let result = unsafe { getpriority(PRIO_PROCESS, pid) };
 
-        let result = if Errno::last() != Errno::UnknownErrno {
-            Errno::clear();
-            0
-        } else {
-            result
-        };
-
-        format!("{}", result)
+    let result = if Errno::last() != Errno::UnknownErrno {
+        Errno::clear();
+        0
+    } else {
+        result
     };
 
-    #[cfg(not(any(target_os = "linux", target_os = "freebsd")))]
-    return { "0".into() };
+    format!("{}", result)
+}
+
+#[cfg(target_os = "windows")]
+fn pr(_pid: u32) -> String {
+    return "0".into();
 }
 
 fn res(_pid: u32) -> String {
