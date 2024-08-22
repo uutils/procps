@@ -18,6 +18,7 @@ libc = { workspace = true }
 nix = { workspace = true }
 prettytable-rs = { workspace = true }
 sysinfo = { workspace = true }
+chrono = { workspace = true }
 
 [lib]
 path = "src/top.rs"

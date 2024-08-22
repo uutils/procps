@@ -3,6 +3,7 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime};
 use std::{
     ffi::OsString,
     sync::{OnceLock, RwLock},
@@ -91,12 +92,34 @@ fn s(pid: u32) -> String {
         .to_string()
 }
 
-fn time_plus(_pid: u32) -> String {
-    "TODO".into()
+fn time_plus(pid: u32) -> String {
+    let binding = sysinfo().read().unwrap();
+    let Some(proc) = binding.process(Pid::from_u32(pid)) else {
+        return "0:00.00".into();
+    };
+
+    let (hour, min, sec) = {
+        let total = proc.run_time();
+        let hour = total / 3600;
+        let minute = (total % 3600) / 60;
+        let second = total % 60;
+
+        (hour, minute, second)
+    };
+
+    format!("{}:{:0>2}.{:0>2}", hour, min, sec)
 }
 
-fn mem(_pid: u32) -> String {
-    "TODO".into()
+fn mem(pid: u32) -> String {
+    let binding = sysinfo().read().unwrap();
+    let Some(proc) = binding.process(Pid::from_u32(pid)) else {
+        return "0.0".into();
+    };
+
+    format!(
+        "{:.1}",
+        proc.memory() as f32 / sysinfo().read().unwrap().total_memory() as f32
+    )
 }
 
 fn command(pid: u32) -> String {

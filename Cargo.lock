@@ -1094,6 +1094,7 @@ dependencies = [
 name = "uu_top"
 version = "0.0.1"
 dependencies = [
+ "chrono",
  "clap",
  "libc",
  "nix 0.29.0",
