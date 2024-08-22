@@ -62,9 +62,10 @@ fn parse_maps(pid: &str) -> Result<(), Error> {
         let (perms, rest) = rest.split_once(' ').expect("line should contain 2nd ' '");
         let perms = parse_perms(perms);
 
-        let cmd: String = rest.split_whitespace().skip(3).collect();
+        let filename: String = rest.split_whitespace().skip(3).collect();
+        let filename = parse_filename(&filename);
 
-        println!("{start_address} {size_in_kb:>6}K {perms} {cmd}");
+        println!("{start_address} {size_in_kb:>6}K {perms} {filename}");
     }
 
     Ok(())
@@ -94,6 +95,21 @@ fn parse_perms(perms: &str) -> String {
 
     // the fifth char seems to be always '-' in the original pmap
     format!("{perms}-")
+}
+
+fn parse_filename(filename: &str) -> String {
+    if filename == "[stack]" {
+        return "  [ stack ]".into();
+    }
+
+    if filename.is_empty() || filename.starts_with('[') || filename.starts_with("anon") {
+        return "  [ anon ]".into();
+    }
+
+    match filename.rsplit_once('/') {
+        Some((_, name)) => name.into(),
+        None => filename.into(),
+    }
 }
 
 pub fn uu_app() -> Command {
@@ -198,5 +214,18 @@ mod test {
         assert_eq!("-----", parse_perms("---p"));
         assert_eq!("---s-", parse_perms("---s"));
         assert_eq!("rwx--", parse_perms("rwxp"));
+    }
+
+    #[test]
+    fn test_parse_filename() {
+        assert_eq!("  [ anon ]", parse_filename(""));
+        assert_eq!("  [ anon ]", parse_filename("[vvar]"));
+        assert_eq!("  [ anon ]", parse_filename("[vdso]"));
+        assert_eq!("  [ anon ]", parse_filename("anon_inode:i915.gem"));
+        assert_eq!("  [ stack ]", parse_filename("[stack]"));
+        assert_eq!(
+            "ld-linux-x86-64.so.2",
+            parse_filename("/usr/lib/ld-linux-x86-64.so.2")
+        );
     }
 }
