@@ -6,6 +6,7 @@
 use std::{thread::sleep, time::Duration};
 
 use clap::{arg, crate_version, ArgAction, ArgGroup, ArgMatches, Command};
+use picker::sysinfo;
 use prettytable::{format::consts::FORMAT_CLEAN, Row, Table};
 use uucore::{error::UResult, format_usage, help_about, help_usage};
 
@@ -18,9 +19,9 @@ mod picker;
 #[allow(unused)]
 #[derive(Debug)]
 enum Filter {
-    Pid(Vec<usize>),
+    Pid(Vec<u32>),
     User(String),
-    EUser(usize),
+    EUser(u32),
 }
 
 #[derive(Debug)]
@@ -32,11 +33,11 @@ struct Settings {
 
 impl Settings {
     fn new(matches: &ArgMatches) -> Self {
-        let filter = if let Ok(Some(pidlist)) = matches.try_get_many::<usize>("PIDLIST") {
+        let filter = if let Ok(Some(pidlist)) = matches.try_get_many::<u32>("PIDLIST") {
             Some(Filter::Pid(pidlist.cloned().collect::<Vec<_>>()))
         } else if let Ok(Some(user)) = matches.try_get_one::<String>("USER") {
             Some(Filter::User(user.clone()))
-        } else if let Ok(Some(euser)) = matches.try_get_one::<usize>("EUSER") {
+        } else if let Ok(Some(euser)) = matches.try_get_one::<u32>("EUSER") {
             Some(Filter::EUser(*euser))
         } else {
             None
@@ -128,14 +129,18 @@ fn selected_fields() -> Vec<String> {
     .collect()
 }
 
-#[cfg(target_os = "linux")]
 fn platform_impl(settings: &Settings, fields: &[String]) -> Vec<Vec<String>> {
     use picker::pickers;
-    use uu_pgrep::process::walk_process;
 
     let pickers = pickers(fields);
 
-    let pids = walk_process().map(|it| it.pid).collect::<Vec<_>>();
+    let pids = sysinfo()
+        .read()
+        .unwrap()
+        .processes()
+        .iter()
+        .map(|(it, _)| it.as_u32())
+        .collect::<Vec<_>>();
 
     let filter = construct_filter(settings);
 
@@ -150,25 +155,20 @@ fn platform_impl(settings: &Settings, fields: &[String]) -> Vec<Vec<String>> {
         .collect()
 }
 
-#[cfg(not(target_os = "linux"))]
-fn platform_impl(_settings: &Settings, _fields: &[String]) -> Vec<Vec<String>> {
-    Vec::new()
-}
-
 /// Constructing filter from `Settings`
-fn construct_filter(settings: &Settings) -> Box<dyn Fn(usize) -> bool> {
+fn construct_filter(settings: &Settings) -> Box<dyn Fn(u32) -> bool> {
     let Some(ref filter) = settings.filter else {
-        return Box::new(|_: usize| true);
+        return Box::new(|_: u32| true);
     };
 
-    fn helper(f: impl Fn(usize) -> bool + 'static) -> Box<dyn Fn(usize) -> bool> {
+    fn helper(f: impl Fn(u32) -> bool + 'static) -> Box<dyn Fn(u32) -> bool> {
         Box::new(f)
     }
 
     match filter {
         Filter::Pid(pids) => {
             let pids = pids.clone();
-            helper(move |pid: usize| pids.contains(&pid))
+            helper(move |pid: u32| pids.contains(&pid))
         }
 
         Filter::User(_) => helper(|_| true),

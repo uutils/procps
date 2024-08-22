@@ -5,7 +5,6 @@
 
 use std::sync::{OnceLock, RwLock};
 use sysinfo::{Pid, System};
-use uu_pgrep::process::{ProcessInformation, RunState};
 
 static SYSINFO: OnceLock<RwLock<System>> = OnceLock::new();
 
@@ -13,7 +12,7 @@ pub fn sysinfo() -> &'static RwLock<System> {
     SYSINFO.get_or_init(|| RwLock::new(System::new_all()))
 }
 
-pub(crate) fn pickers(fields: &[String]) -> Vec<Box<dyn Fn(usize) -> String>> {
+pub(crate) fn pickers(fields: &[String]) -> Vec<Box<dyn Fn(u32) -> String>> {
     fields
         .iter()
         .map(|field| match field.as_str() {
@@ -33,18 +32,18 @@ pub(crate) fn pickers(fields: &[String]) -> Vec<Box<dyn Fn(usize) -> String>> {
 }
 
 #[inline]
-fn helper(f: impl Fn(usize) -> String + 'static) -> Box<dyn Fn(usize) -> String> {
+fn helper(f: impl Fn(u32) -> String + 'static) -> Box<dyn Fn(u32) -> String> {
     Box::new(f)
 }
 
-fn todo(_pid: usize) -> String {
+fn todo(_pid: u32) -> String {
     "TODO".into()
 }
 
-fn cpu(pid: usize) -> String {
+fn cpu(pid: u32) -> String {
     let sysinfo = sysinfo().read().unwrap();
 
-    let process = sysinfo.process(Pid::from_u32(pid as u32));
+    let process = sysinfo.process(Pid::from_u32(pid));
 
     let usage = match process {
         Some(usage) => usage.cpu_usage(),
@@ -54,51 +53,52 @@ fn cpu(pid: usize) -> String {
     format!("{:.2}", usage)
 }
 
-fn pid(pid: usize) -> String {
+fn pid(pid: u32) -> String {
     pid.to_string()
 }
 
-fn user(_pid: usize) -> String {
+fn user(_pid: u32) -> String {
     "TODO".into()
 }
 
-fn pr(_pid: usize) -> String {
+fn pr(_pid: u32) -> String {
     "TODO".into()
 }
 
-fn res(_pid: usize) -> String {
+fn res(_pid: u32) -> String {
     "TODO".into()
 }
 
-fn shr(_pid: usize) -> String {
+fn shr(_pid: u32) -> String {
     "TODO".into()
 }
 
-fn s(pid: usize) -> String {
-    extractor(pid, |mut proc| {
-        proc.run_state().unwrap_or(RunState::Stopped).to_string()
-    })
+fn s(pid: u32) -> String {
+    let binding = sysinfo().read().unwrap();
+    let Some(proc) = binding.process(Pid::from_u32(pid)) else {
+        return "?".into();
+    };
+
+    proc.status().to_string()
 }
 
-fn time_plus(_pid: usize) -> String {
+fn time_plus(_pid: u32) -> String {
     "TODO".into()
 }
 
-fn mem(_pid: usize) -> String {
+fn mem(_pid: u32) -> String {
     "TODO".into()
 }
 
-fn command(pid: usize) -> String {
-    extractor(pid, |mut proc| proc.status()["Name"].clone())
-}
+fn command(pid: u32) -> String {
+    let binding = sysinfo().read().unwrap();
+    let Some(proc) = binding.process(Pid::from_u32(pid)) else {
+        return "?".into();
+    };
 
-/// If cannot constructing [ProcessInformation], it will return "?"
-fn extractor<F>(pid: usize, mut f: F) -> String
-where
-    F: FnMut(ProcessInformation) -> String,
-{
-    match ProcessInformation::try_new(format!("/proc/{}/", pid).into()) {
-        Ok(proc) => f(proc),
-        Err(_) => "?".into(),
-    }
+    proc.cmd()
+        .iter()
+        .flat_map(|it| it.to_str())
+        .collect::<Vec<_>>()
+        .join(" ")
 }

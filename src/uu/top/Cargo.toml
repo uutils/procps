@@ -19,8 +19,6 @@ nix = { workspace = true }
 prettytable-rs = { workspace = true }
 sysinfo = { workspace = true }
 
-uu_pgrep = { path = "../pgrep" }
-
 [lib]
 path = "src/top.rs"
 

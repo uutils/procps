@@ -1099,7 +1099,6 @@ dependencies = [
  "nix 0.29.0",
  "prettytable-rs",
  "sysinfo",
- "uu_pgrep",
  "uucore",
 ]
 
