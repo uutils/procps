@@ -3,13 +3,11 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use libc::{getpriority, PRIO_PROCESS};
-use nix::errno::Errno;
 use std::{
     ffi::OsString,
     sync::{OnceLock, RwLock},
 };
-use sysinfo::{Pid, System};
+use sysinfo::{Pid, System, Users};
 
 static SYSINFO: OnceLock<RwLock<System>> = OnceLock::new();
 
@@ -46,14 +44,12 @@ fn todo(_pid: u32) -> String {
 }
 
 fn cpu(pid: u32) -> String {
-    let sysinfo = sysinfo().read().unwrap();
-
-    let process = sysinfo.process(Pid::from_u32(pid));
-
-    let usage = match process {
-        Some(usage) => usage.cpu_usage(),
-        None => 0.0,
+    let binding = sysinfo().read().unwrap();
+    let Some(proc) = binding.process(Pid::from_u32(pid)) else {
+        return "0.0".into();
     };
+
+    let usage = proc.cpu_usage();
 
     format!("{:.2}", usage)
 }
@@ -62,12 +58,25 @@ fn pid(pid: u32) -> String {
     pid.to_string()
 }
 
-fn user(_pid: u32) -> String {
-    "TODO".into()
+fn user(pid: u32) -> String {
+    let binding = sysinfo().read().unwrap();
+    let Some(proc) = binding.process(Pid::from_u32(pid)) else {
+        return "0.0".into();
+    };
+
+    let users = Users::new_with_refreshed_list();
+    match proc.user_id() {
+        Some(uid) => users.get_user_by_id(uid).map(|it| it.name()).unwrap_or("?"),
+        None => "?",
+    }
+    .to_string()
 }
 
 #[cfg(not(target_os = "windows"))]
 fn pr(pid: u32) -> String {
+    use libc::{getpriority, PRIO_PROCESS};
+    use nix::errno::Errno;
+
     let result = unsafe { getpriority(PRIO_PROCESS, pid) };
 
     let result = if Errno::last() != Errno::UnknownErrno {
