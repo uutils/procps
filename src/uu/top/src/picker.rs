@@ -3,7 +3,7 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use uu_pgrep::process::ProcessInformation;
+use uu_pgrep::process::{ProcessInformation, RunState};
 
 pub(crate) fn pickers(fields: &[String]) -> Vec<Box<dyn Fn(usize) -> String>> {
     fields
@@ -57,8 +57,10 @@ fn shr(_pid: usize) -> String {
     "TODO".into()
 }
 
-fn s(_pid: usize) -> String {
-    "TODO".into()
+fn s(pid: usize) -> String {
+    extractor(pid, |mut proc| {
+        proc.run_state().unwrap_or(RunState::Stopped).to_string()
+    })
 }
 
 fn time_plus(_pid: usize) -> String {
@@ -70,8 +72,16 @@ fn mem(_pid: usize) -> String {
 }
 
 fn command(pid: usize) -> String {
+    extractor(pid, |mut proc| proc.status()["Name"].clone())
+}
+
+/// If cannot constructing [ProcessInformation], it will return "?"
+fn extractor<F>(pid: usize, mut f: F) -> String
+where
+    F: FnMut(ProcessInformation) -> String,
+{
     match ProcessInformation::try_new(format!("/proc/{}/", pid).into()) {
-        Ok(mut proc) => proc.status()["Name"].clone(),
+        Ok(proc) => f(proc),
         Err(_) => "?".into(),
     }
 }
