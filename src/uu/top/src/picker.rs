@@ -3,7 +3,8 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime};
+use libc::{getpriority, PRIO_PROCESS};
+use nix::errno::Errno;
 use std::{
     ffi::OsString,
     sync::{OnceLock, RwLock},
@@ -65,8 +66,23 @@ fn user(_pid: u32) -> String {
     "TODO".into()
 }
 
-fn pr(_pid: u32) -> String {
-    "TODO".into()
+fn pr(pid: u32) -> String {
+    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+    return {
+        let result = unsafe { getpriority(PRIO_PROCESS, pid) };
+
+        let result = if Errno::last() != Errno::UnknownErrno {
+            Errno::clear();
+            0
+        } else {
+            result
+        };
+
+        format!("{}", result)
+    };
+
+    #[cfg(not(any(target_os = "linux", target_os = "freebsd")))]
+    return { "0".into() };
 }
 
 fn res(_pid: u32) -> String {
