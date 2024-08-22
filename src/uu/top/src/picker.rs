@@ -3,6 +3,8 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use uu_pgrep::process::ProcessInformation;
+
 pub(crate) fn pickers(fields: &[String]) -> Vec<Box<dyn Fn(usize) -> String>> {
     fields
         .iter()
@@ -67,6 +69,9 @@ fn mem(_pid: usize) -> String {
     "TODO".into()
 }
 
-fn command(_pid: usize) -> String {
-    "TODO".into()
+fn command(pid: usize) -> String {
+    match ProcessInformation::try_new(format!("/proc/{}/", pid).into()) {
+        Ok(mut proc) => proc.status()["Name"].clone(),
+        Err(_) => "?".into(),
+    }
 }
