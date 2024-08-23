@@ -37,15 +37,19 @@ struct Settings {
 
 impl Settings {
     fn new(matches: &ArgMatches) -> Self {
-        let filter = if let Some(pidlist) = matches.get_many::<u32>("pid") {
-            Some(Filter::Pid(pidlist.cloned().collect::<Vec<_>>()))
-        } else if let Some(user) = matches.get_one::<String>("filter-any-user") {
-            Some(Filter::User(user.clone()))
-        } else {
-            matches
-                .get_one::<String>("filter-only-euser")
-                .map(|euser| Filter::EUser(euser.clone()))
-        };
+        let filter = matches
+            .get_many::<u32>("pid")
+            .map(|pidlist| Filter::Pid(pidlist.cloned().collect()))
+            .or_else(|| {
+                matches
+                    .get_one::<String>("filter-any-user")
+                    .map(|user| Filter::User(user.clone()))
+            })
+            .or_else(|| {
+                matches
+                    .get_one::<String>("filter-only-euser")
+                    .map(|euser| Filter::EUser(euser.clone()))
+            });
 
         let width = matches.get_one::<usize>("width").cloned();
 
@@ -62,16 +66,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     sleep(Duration::from_millis(200));
     picker::sysinfo().write().unwrap().refresh_all();
 
-    let settings = Settings::new(&matches);
+    let mut settings = Settings::new(&matches);
 
-    if let Some(Filter::User(user)) = &settings.filter {
-        if Users::new_with_refreshed_list()
-            .iter()
-            .all(|it| it.name() != user)
-        {
-            return Err(USimpleError::new(1, "top: Invalid user"));
-        }
-    }
+    verify_user(&mut settings)?;
 
     let fields = selected_fields();
     let collected = collect(&settings, &fields);
@@ -110,6 +107,44 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         .for_each(|it| println!("{}", it));
 
     Ok(())
+}
+
+/// This function will verify that the user exists
+fn verify_user(settings: &mut Settings) -> UResult<()> {
+    let users = Users::new_with_refreshed_list();
+
+    let mut user = {
+        match &settings.filter {
+            Some(Filter::EUser(user)) => user,
+            Some(Filter::User(user)) => user,
+            _ => return Ok(()),
+        }
+    }
+    .to_owned();
+
+    if let Ok(id) = user.parse::<u32>() {
+        for ele in users.iter() {
+            // Compromises for Windows compatibility
+            if (**ele.id()).to_string() == id.to_string() {
+                user = ele.name().to_string();
+
+                match &settings.filter {
+                    Some(Filter::EUser(_)) => {
+                        settings.filter = Some(Filter::EUser(user.to_string()))
+                    }
+                    Some(Filter::User(_)) => settings.filter = Some(Filter::User(user.to_string())),
+                    _ => return Ok(()),
+                };
+
+                return Ok(());
+            }
+        }
+        Err(USimpleError::new(1, "Invalid user"))
+    } else if users.iter().all(|it| it.name() != user) {
+        Err(USimpleError::new(1, "Invalid user"))
+    } else {
+        Ok(())
+    }
 }
 
 fn apply_width<T>(input: T, width: usize) -> String
@@ -186,6 +221,7 @@ fn construct_filter(settings: &Settings) -> Box<dyn Fn(u32) -> bool> {
 
         Filter::User(user) => {
             let user = user.to_owned();
+
             helper(move |pid| {
                 let binding = sysinfo().read().unwrap();
                 let Some(proc) = binding.process(Pid::from_u32(pid)) else {

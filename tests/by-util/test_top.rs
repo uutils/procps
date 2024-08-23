@@ -16,13 +16,26 @@ fn test_conflict_arg() {
 }
 
 #[test]
+#[cfg(target_family = "unix")]
 fn test_flag_user() {
-    let binding = new_ucmd!().arg("-U=root").succeeds();
-    let output = binding.code_is(0).stderr_str();
+    let check = |output: &str| {
+        assert!(output
+            .lines()
+            .map(|it| it.split_whitespace().collect::<Vec<_>>())
+            .filter(|it| it.len() >= 2)
+            .filter(|it| it[0].parse::<u32>().is_ok())
+            .all(|it| it[1] == "root"))
+    };
 
-    assert!(output
-        .lines()
-        .map(|it| it.split_whitespace().collect::<Vec<_>>())
-        .filter(|it| it[0].parse::<u32>().is_ok())
-        .all(|it| it[1] == "root"));
+    check(
+        new_ucmd!()
+            .arg("-U=root")
+            .succeeds()
+            .code_is(0)
+            .stdout_str(),
+    );
+    check(new_ucmd!().arg("-U=0").succeeds().code_is(0).stdout_str());
+
+    new_ucmd!().arg("-U=NOT_EXIST").fails().code_is(1);
+    new_ucmd!().arg("-U=19999").fails().code_is(1);
 }
