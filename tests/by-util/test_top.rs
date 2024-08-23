@@ -24,7 +24,7 @@ fn test_flag_user() {
             .map(|it| it.split_whitespace().collect::<Vec<_>>())
             .filter(|it| it.len() >= 2)
             .filter(|it| it[0].parse::<u32>().is_ok())
-            .all(|it| it[1] == "root"))
+            .all(|it| it[1] == "root"));
     };
 
     check(

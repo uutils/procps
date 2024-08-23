@@ -130,7 +130,7 @@ fn verify_user(settings: &mut Settings) -> UResult<()> {
 
                 match &settings.filter {
                     Some(Filter::EUser(_)) => {
-                        settings.filter = Some(Filter::EUser(user.to_string()))
+                        settings.filter = Some(Filter::EUser(user.to_string()));
                     }
                     Some(Filter::User(_)) => settings.filter = Some(Filter::User(user.to_string())),
                     _ => return Ok(()),
