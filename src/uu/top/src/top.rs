@@ -62,6 +62,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
 
     // Must refresh twice.
+    // https://docs.rs/sysinfo/0.31.2/sysinfo/struct.System.html#method.refresh_cpu_usage
     picker::sysinfo().write().unwrap().refresh_all();
     sleep(Duration::from_millis(200));
     picker::sysinfo().write().unwrap().refresh_all();
