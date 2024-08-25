@@ -12,11 +12,10 @@ fn test_invalid_arg() {
 
 #[test]
 fn test_conflict_arg() {
-    new_ucmd!().arg("-p 0").arg("-U 0").fails().code_is(1);
+    new_ucmd!().arg("-p=0").arg("-U=0").fails().code_is(1);
 }
 
 #[test]
-#[cfg(target_family = "unix")]
 fn test_flag_user() {
     let check = |output: &str| {
         assert!(output
@@ -36,6 +35,19 @@ fn test_flag_user() {
     );
     check(new_ucmd!().arg("-U=0").succeeds().code_is(0).stdout_str());
 
+    new_ucmd!().arg("-U=19999").succeeds().code_is(0);
+
     new_ucmd!().arg("-U=NOT_EXIST").fails().code_is(1);
-    new_ucmd!().arg("-U=19999").fails().code_is(1);
+}
+
+#[test]
+fn test_agr_p() {
+    new_ucmd!().arg("-p=1").succeeds().code_is(0);
+    new_ucmd!().arg("-p=1,2,3").succeeds().code_is(0);
+    new_ucmd!()
+        .arg("-p=1")
+        .arg("-p=2")
+        .arg("-p=3")
+        .succeeds()
+        .code_is(0);
 }

@@ -5,7 +5,7 @@
 
 use std::{thread::sleep, time::Duration};
 
-use clap::{arg, crate_version, ArgAction, ArgGroup, ArgMatches, Command};
+use clap::{arg, crate_version, value_parser, ArgAction, ArgGroup, ArgMatches, Command};
 use picker::sysinfo;
 use prettytable::{format::consts::FORMAT_CLEAN, Row, Table};
 use sysinfo::{Pid, Users};
@@ -36,7 +36,29 @@ struct Settings {
 }
 
 impl Settings {
-    fn new(matches: &ArgMatches) -> Self {
+    fn new(matches: &ArgMatches) -> UResult<Self> {
+        let width = matches.get_one::<usize>("width").cloned();
+
+        Ok(Self {
+            width,
+            filter: None,
+        })
+    }
+}
+
+#[uucore::main]
+pub fn uumain(args: impl uucore::Args) -> UResult<()> {
+    let matches = uu_app().try_get_matches_from(args)?;
+
+    // Must refresh twice.
+    // https://docs.rs/sysinfo/0.31.2/sysinfo/struct.System.html#method.refresh_cpu_usage
+    picker::sysinfo().write().unwrap().refresh_all();
+    sleep(Duration::from_millis(200));
+    picker::sysinfo().write().unwrap().refresh_all();
+
+    let settings = Settings::new(&matches)?;
+
+    let settings = {
         let filter = matches
             .get_many::<u32>("pid")
             .map(|pidlist| Filter::Pid(pidlist.cloned().collect()))
@@ -51,25 +73,15 @@ impl Settings {
                     .map(|euser| Filter::EUser(euser.clone()))
             });
 
-        let width = matches.get_one::<usize>("width").cloned();
+        let filter = match filter {
+            Some(Filter::User(data)) => Some(Filter::User(try_into_uid(data)?)),
+            // TODO: Make sure this working
+            Some(Filter::EUser(data)) => Some(Filter::User(try_into_uid(data)?)),
+            _ => filter,
+        };
 
-        Self { filter, width }
-    }
-}
-
-#[uucore::main]
-pub fn uumain(args: impl uucore::Args) -> UResult<()> {
-    let matches = uu_app().try_get_matches_from(args)?;
-
-    // Must refresh twice.
-    // https://docs.rs/sysinfo/0.31.2/sysinfo/struct.System.html#method.refresh_cpu_usage
-    picker::sysinfo().write().unwrap().refresh_all();
-    sleep(Duration::from_millis(200));
-    picker::sysinfo().write().unwrap().refresh_all();
-
-    let mut settings = Settings::new(&matches);
-
-    verify_user(&mut settings)?;
+        Settings { filter, ..settings }
+    };
 
     let fields = selected_fields();
     let collected = collect(&settings, &fields);
@@ -110,42 +122,24 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     Ok(())
 }
 
-/// This function will verify that the user exists
-fn verify_user(settings: &mut Settings) -> UResult<()> {
+fn try_into_uid<T>(input: T) -> UResult<String>
+where
+    T: Into<String>,
+{
+    let into: String = input.into();
+
+    if into.parse::<u32>().is_ok() {
+        return Ok(into);
+    }
+
+    let user_name = into;
     let users = Users::new_with_refreshed_list();
 
-    let mut user = {
-        match &settings.filter {
-            Some(Filter::EUser(user)) => user,
-            Some(Filter::User(user)) => user,
-            _ => return Ok(()),
-        }
-    }
-    .to_owned();
-
-    if let Ok(id) = user.parse::<u32>() {
-        for ele in users.iter() {
-            // Compromises for Windows compatibility
-            if (**ele.id()).to_string() == id.to_string() {
-                user = ele.name().to_string();
-
-                match &settings.filter {
-                    Some(Filter::EUser(_)) => {
-                        settings.filter = Some(Filter::EUser(user.to_string()));
-                    }
-                    Some(Filter::User(_)) => settings.filter = Some(Filter::User(user.to_string())),
-                    _ => return Ok(()),
-                };
-
-                return Ok(());
-            }
-        }
-        Err(USimpleError::new(1, "Invalid user"))
-    } else if users.iter().all(|it| it.name() != user) {
-        Err(USimpleError::new(1, "Invalid user"))
-    } else {
-        Ok(())
-    }
+    users
+        .iter()
+        .find(|it| it.name() == user_name)
+        .map(|it| it.id().to_string())
+        .ok_or(USimpleError::new(1, "Invalid user"))
 }
 
 fn apply_width<T>(input: T, width: usize) -> String
@@ -264,7 +258,9 @@ pub fn uu_app() -> Command {
             arg!(-O  --"list-fields"                        "output all field names, then exit"),
             // arg!(-o  --"sort-override"      <FIELD>         "force sorting on this named FIELD"),
             arg!(-p  --pid                  <PIDLIST>       "monitor only the tasks in PIDLIST")
-                .action(ArgAction::Append),
+                .action(ArgAction::Append)
+                .value_parser(value_parser!(u32))
+                .value_delimiter(','),
             // arg!(-S  --"accum-time-toggle"                  "reverse last remembered 'S' state"),
             // arg!(-s  --"secure-mode"                        "run with secure mode restrictions"),
             arg!(-U  --"filter-any-user"    <USER>          "show only processes owned by USER"),

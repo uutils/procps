@@ -179,7 +179,7 @@ fn command(pid: u32) -> String {
 
                         line[1].trim().to_owned()
                     }
-                    Err(_) => "".into(),
+                    Err(_) => String::new(),
                 }
             }
         } else {
