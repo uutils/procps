@@ -5,6 +5,10 @@
 
 use std::{
     ffi::OsString,
+    fs::File,
+    io::read_to_string,
+    path::PathBuf,
+    str::FromStr,
     sync::{OnceLock, RwLock},
 };
 use sysinfo::{Pid, System, Users};
@@ -157,10 +161,29 @@ fn command(pid: u32) -> String {
             .join(" ");
         let trimmed = binding.trim();
 
-        if trimmed.is_empty() {
-            "[kthreadd]".into()
+        let result: String = trimmed.into();
+
+        if cfg!(target_os = "linux") && result.is_empty() {
+            {
+                match PathBuf::from_str(&format!("/proc/{}/status", pid)) {
+                    Ok(path) => {
+                        let file = File::open(path).unwrap();
+                        let content = read_to_string(file).unwrap();
+                        let line = content
+                            .lines()
+                            .collect::<Vec<_>>()
+                            .first()
+                            .unwrap()
+                            .split(":")
+                            .collect::<Vec<_>>();
+
+                        line[1].trim().to_owned()
+                    }
+                    Err(_) => "".into(),
+                }
+            }
         } else {
-            trimmed.into()
+            result
         }
     };
 
