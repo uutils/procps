@@ -26,6 +26,7 @@ fn test_flag_user() {
             .all(|it| it[1] == "root"));
     };
 
+    #[cfg(target_family = "unix")]
     check(
         new_ucmd!()
             .arg("-U=root")
@@ -33,6 +34,7 @@ fn test_flag_user() {
             .code_is(0)
             .stdout_str(),
     );
+
     check(new_ucmd!().arg("-U=0").succeeds().code_is(0).stdout_str());
 
     new_ucmd!().arg("-U=19999").succeeds().code_is(0);
