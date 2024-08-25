@@ -18,7 +18,7 @@ fn test_existing_pid() {
     use regex::Regex;
 
     let pid = process::id();
-    // TODO ensure that the output format is correct, which is not the case currently
+
     let result = new_ucmd!()
         .arg(pid.to_string())
         .succeeds()
@@ -30,7 +30,7 @@ fn test_existing_pid() {
 
     let rest = rest.trim_end();
     let (memory_map, last_line) = rest.rsplit_once('\n').unwrap();
-    let re = Regex::new("(?m)^[0-9a-f]{16} +[1-9][0-9]*K (-|r)(-|w)(-|x)(-|s)- ").unwrap();
+    let re = Regex::new("(?m)^[0-9a-f]{16} +[1-9][0-9]*K (-|r)(-|w)(-|x)(-|s)- (  $$[ (anon|stack) $$]|[a-zA-Z0-9._-]+)$").unwrap();
     assert!(re.is_match(memory_map));
     // TODO ensure that "total" is followed by a total amount
     assert!(last_line.starts_with(" total"));
