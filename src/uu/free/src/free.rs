@@ -275,7 +275,7 @@ fn parse_output_format(matches: ArgMatches) -> impl Fn(&MemInfo) -> String {
         if one_line {
             gen_one_line_str(mem_info, &n2s)
         } else {
-            let mut str = "".to_string();
+            let mut str = String::new();
             if wide {
                 str += &gen_wide_str(mem_info, &n2s);
             } else {
