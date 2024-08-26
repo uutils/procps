@@ -56,13 +56,25 @@ fn parse_maps(pid: &str) -> Result<(), Error> {
     let contents = fs::read_to_string(path)?;
 
     for line in contents.lines() {
-        let (memory_range, rest) = line.split_once(' ').expect("line should contain ' '");
-        let (start_address, size_in_kb) = parse_memory_range(memory_range);
-
-        println!("{start_address} {size_in_kb:>6}K {rest}");
+        println!("{}", parse_map_line(line));
     }
 
     Ok(())
+}
+
+// Parses a single line from /proc/<PID>/maps.
+fn parse_map_line(line: &str) -> String {
+    let (memory_range, rest) = line.split_once(' ').expect("line should contain ' '");
+    let (start_address, size_in_kb) = parse_memory_range(memory_range);
+
+    let (perms, rest) = rest.split_once(' ').expect("line should contain 2nd ' '");
+    let perms = parse_perms(perms);
+
+    let filename: String = rest.splitn(4, " ").skip(3).collect();
+    let filename = filename.trim_ascii_start();
+    let filename = parse_filename(filename);
+
+    format!("{start_address} {size_in_kb:>6}K {perms} {filename}")
 }
 
 // Returns the start address and the size of the provided memory range. The start address is always
@@ -80,6 +92,30 @@ fn parse_memory_range(memory_range: &str) -> (String, u64) {
     let size_in_kb = (high - low) / 1024;
 
     (format!("{start:0>16}"), size_in_kb)
+}
+
+// Turns a 4-char perms string from /proc/<PID>/maps into a 5-char perms string. The first three
+// chars are left untouched.
+fn parse_perms(perms: &str) -> String {
+    let perms = perms.replace("p", "-");
+
+    // the fifth char seems to be always '-' in the original pmap
+    format!("{perms}-")
+}
+
+fn parse_filename(filename: &str) -> String {
+    if filename == "[stack]" {
+        return "  [ stack ]".into();
+    }
+
+    if filename.is_empty() || filename.starts_with('[') || filename.starts_with("anon") {
+        return "  [ anon ]".into();
+    }
+
+    match filename.rsplit_once('/') {
+        Some((_, name)) => name.into(),
+        None => filename.into(),
+    }
 }
 
 pub fn uu_app() -> Command {
@@ -169,6 +205,44 @@ mod test {
     use super::*;
 
     #[test]
+    fn test_parse_map_line() {
+        let data = [
+            (
+                "000062442eb9e000     16K r---- konsole",
+                "62442eb9e000-62442eba2000 r--p 00000000 08:08 10813151                   /usr/bin/konsole"
+            ),
+            (
+                "000071af50000000    132K rw---   [ anon ]",
+                "71af50000000-71af50021000 rw-p 00000000 00:00 0 "
+            ),
+            (
+                "00007ffc3f8df000    132K rw---   [ stack ]",
+                "7ffc3f8df000-7ffc3f900000 rw-p 00000000 00:00 0                          [stack]"
+            ),
+            (
+                "000071af8c9e6000     16K rw-s-   [ anon ]",
+                "71af8c9e6000-71af8c9ea000 rw-s 105830000 00:10 1075                      anon_inode:i915.gem"
+            ),
+            (
+                "000071af6cf0c000   3560K rw-s- memfd:wayland-shm (deleted)",
+                "71af6cf0c000-71af6d286000 rw-s 00000000 00:01 256481                     /memfd:wayland-shm (deleted)"
+            ),
+            (
+                "ffffffffff600000      4K --x--   [ anon ]",
+                "ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]"
+            ),
+            (
+                "00005e8187da8000     24K r---- hello   world",
+                "5e8187da8000-5e8187dae000 r--p 00000000 08:08 9524160                    /usr/bin/hello   world"
+            ),
+        ];
+
+        for (expected, line) in data {
+            assert_eq!(expected, parse_map_line(line));
+        }
+    }
+
+    #[test]
     fn test_parse_memory_range() {
         let (start, size) = parse_memory_range("ffffffffff600000-ffffffffff601000");
         assert_eq!(start, "ffffffffff600000");
@@ -177,5 +251,25 @@ mod test {
         let (start, size) = parse_memory_range("7ffc4f0c2000-7ffc4f0e3000");
         assert_eq!(start, "00007ffc4f0c2000");
         assert_eq!(size, 132);
+    }
+
+    #[test]
+    fn test_parse_perms() {
+        assert_eq!("-----", parse_perms("---p"));
+        assert_eq!("---s-", parse_perms("---s"));
+        assert_eq!("rwx--", parse_perms("rwxp"));
+    }
+
+    #[test]
+    fn test_parse_filename() {
+        assert_eq!("  [ anon ]", parse_filename(""));
+        assert_eq!("  [ anon ]", parse_filename("[vvar]"));
+        assert_eq!("  [ anon ]", parse_filename("[vdso]"));
+        assert_eq!("  [ anon ]", parse_filename("anon_inode:i915.gem"));
+        assert_eq!("  [ stack ]", parse_filename("[stack]"));
+        assert_eq!(
+            "ld-linux-x86-64.so.2",
+            parse_filename("/usr/lib/ld-linux-x86-64.so.2")
+        );
     }
 }
