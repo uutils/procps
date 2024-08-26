@@ -22,11 +22,11 @@ Ongoing:
 * `slabtop`: Displays detailed kernel slab cache information in real time.
 * `w`: Shows who is logged on and what they are doing.
 * `watch`: Executes a program periodically, showing output fullscreen.
+* `snice`: Changes the scheduling priority of a running process.
 
 TODO:
 * `pkill`: Kills processes based on name and other attributes.
 * `skill`: Sends a signal to processes based on criteria like user, terminal, etc.
-* `snice`: Changes the scheduling priority of a running process.
 * `tload`: Prints a graphical representation of system load average to the terminal.
 * `top`: Displays real-time information about system processes.
 * `vmstat`: Reports information about processes, memory, paging, block IO, traps, and CPU activity.

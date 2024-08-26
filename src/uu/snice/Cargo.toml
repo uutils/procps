@@ -1,0 +1,27 @@
+[package]
+name = "uu_snice"
+version = "0.0.1"
+edition = "2021"
+authors = ["uutils developers"]
+license = "MIT"
+description = "snice - (uutils) send a signal or report process status"
+
+homepage = "https://github.com/uutils/procps"
+repository = "https://github.com/uutils/procps/tree/main/src/uu/w"
+keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
+categories = ["command-line-utilities"]
+
+[dependencies]
+uucore = { workspace = true }
+clap = { workspace = true }
+libc = { workspace = true }
+prettytable-rs = { workspace = true }
+
+uu_pgrep = { path = "../pgrep" }
+
+[lib]
+path = "src/snice.rs"
+
+[[bin]]
+name = "snice"
+path = "src/main.rs"

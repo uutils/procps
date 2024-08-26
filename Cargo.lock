@@ -637,6 +637,7 @@ dependencies = [
  "uu_ps",
  "uu_pwdx",
  "uu_slabtop",
+ "uu_snice",
  "uu_w",
  "uu_watch",
  "uucore",
@@ -1086,6 +1087,17 @@ name = "uu_slabtop"
 version = "0.0.1"
 dependencies = [
  "clap",
+ "uucore",
+]
+
+[[package]]
+name = "uu_snice"
+version = "0.0.1"
+dependencies = [
+ "clap",
+ "libc",
+ "prettytable-rs",
+ "uu_pgrep",
  "uucore",
 ]
 
