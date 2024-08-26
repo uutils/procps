@@ -43,7 +43,7 @@ fn test_flag_user() {
 }
 
 #[test]
-fn test_agr_p() {
+fn test_arg_p() {
     new_ucmd!().arg("-p=1").succeeds().code_is(0);
     new_ucmd!().arg("-p=1,2,3").succeeds().code_is(0);
     new_ucmd!()
