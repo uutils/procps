@@ -36,13 +36,13 @@ struct Settings {
 }
 
 impl Settings {
-    fn new(matches: &ArgMatches) -> UResult<Self> {
+    fn new(matches: &ArgMatches) -> Self {
         let width = matches.get_one::<usize>("width").cloned();
 
-        Ok(Self {
+        Self {
             width,
             filter: None,
-        })
+        }
     }
 }
 
@@ -56,7 +56,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     sleep(Duration::from_millis(200));
     picker::sysinfo().write().unwrap().refresh_all();
 
-    let settings = Settings::new(&matches)?;
+    let settings = Settings::new(&matches);
 
     let settings = {
         let filter = matches
@@ -76,7 +76,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         let filter = match filter {
             Some(Filter::User(data)) => Some(Filter::User(try_into_uid(data)?)),
             // TODO: Make sure this working
-            Some(Filter::EUser(data)) => Some(Filter::User(try_into_uid(data)?)),
+            Some(Filter::EUser(data)) => Some(Filter::EUser(try_into_uid(data)?)),
             _ => filter,
         };
 
