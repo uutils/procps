@@ -36,6 +36,7 @@ feat_common_core = [
     "pidof",
     "ps",
     "pidwait",
+    "top",
 ]
 
 [workspace.dependencies]
@@ -80,6 +81,7 @@ pgrep = { optional = true, version = "0.0.1", package = "uu_pgrep", path = "src/
 pidof = { optional = true, version = "0.0.1", package = "uu_pidof", path = "src/uu/pidof" }
 ps = { optional = true, version = "0.0.1", package = "uu_ps", path = "src/uu/ps" }
 pidwait = { optional = true, version = "0.0.1", package = "uu_pidwait", path = "src/uu/pidwait" }
+top = { optional = true, version = "0.0.1", package = "uu_top", path = "src/uu/top" }
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"
