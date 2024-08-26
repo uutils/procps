@@ -227,11 +227,7 @@ fn construct_filter(settings: &Settings) -> Box<dyn Fn(u32) -> bool> {
                     return false;
                 };
 
-                Users::new_with_refreshed_list()
-                    .get_user_by_id(uid)
-                    .map(|it| it.name())
-                    .unwrap_or("?")
-                    == user
+                uid.to_string() == user
             })
         }
         // TODO: Implemented
