@@ -44,3 +44,7 @@ mod test_ps;
 #[cfg(feature = "pidwait")]
 #[path = "by-util/test_pidwait.rs"]
 mod test_pidwait;
+
+#[cfg(feature = "top")]
+#[path = "by-util/test_top.rs"]
+mod test_top;
