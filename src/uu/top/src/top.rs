@@ -3,11 +3,11 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use std::{thread::sleep, time::Duration};
-
 use clap::{arg, crate_version, value_parser, ArgAction, ArgGroup, ArgMatches, Command};
+use picker::pickers;
 use picker::sysinfo;
 use prettytable::{format::consts::FORMAT_CLEAN, Row, Table};
+use std::{thread::sleep, time::Duration};
 use sysinfo::{Pid, Users};
 use uucore::{
     error::{UResult, USimpleError},
@@ -173,8 +173,6 @@ fn selected_fields() -> Vec<String> {
 }
 
 fn collect(settings: &Settings, fields: &[String]) -> Vec<Vec<String>> {
-    use picker::pickers;
-
     let pickers = pickers(fields);
 
     let pids = sysinfo()
@@ -230,8 +228,25 @@ fn construct_filter(settings: &Settings) -> Box<dyn Fn(u32) -> bool> {
                 uid.to_string() == user
             })
         }
-        // TODO: Implemented
-        Filter::EUser(_) => helper(|_| true),
+
+        // Doesn't work on Windows.
+        // https://docs.rs/sysinfo/0.31.3/sysinfo/struct.Process.html#method.effective_user_id
+        Filter::EUser(euser) => {
+            let euser = euser.to_owned();
+
+            helper(move |pid| {
+                let binding = sysinfo().read().unwrap();
+                let Some(proc) = binding.process(Pid::from_u32(pid)) else {
+                    return false;
+                };
+
+                let Some(euid) = proc.effective_user_id() else {
+                    return false;
+                };
+
+                euid.to_string() == euser
+            })
+        }
     }
 }
 
