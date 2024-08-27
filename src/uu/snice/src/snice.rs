@@ -106,10 +106,10 @@ pub fn uu_app() -> Command {
             // Options
             // arg!(-f --fast          "fast mode (not implemented)"),
             // arg!(-i --interactive   "interactive"),
-            arg!(-l --list          "list all signal names"),
-            arg!(-L --table         "list all signal names in a nice table"),
+            arg!(-l --list                  "list all signal names"),
+            arg!(-L --table                 "list all signal names in a nice table"),
             // arg!(-n --"no-action"   "do not actually kill processes; just print what would happen"),
-            arg!(-v --verbose       "explain what is being done"),
+            // arg!(-v --verbose               "explain what is being done"),
             // arg!(-w --warnings      "enable warnings (not implemented)"),
             // Expressions
             arg!(-c --command   <command>   "expression is a command name"),
