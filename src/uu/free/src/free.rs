@@ -439,7 +439,10 @@ fn test_line_wide() {
     let construct_line_wide_str = parse_output_format(matches_with_line_wide);
     match parse_meminfo() {
         Ok(mem_info) => {
-            assert_eq!(construct_line_str(&mem_info), construct_line_wide_str(&mem_info));
+            assert_eq!(
+                construct_line_str(&mem_info),
+                construct_line_wide_str(&mem_info)
+            );
         }
         Err(e) => {
             eprintln!("free: failed to read memory info: {}", e);
