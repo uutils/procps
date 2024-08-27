@@ -20,10 +20,10 @@ Ongoing:
 * `ps`: Displays information about active processes.
 * `pwdx`: Shows the current working directory of a process.
 * `slabtop`: Displays detailed kernel slab cache information in real time.
+* `snice`: Changes the scheduling priority of a running process.
 * `top`: Displays real-time information about system processes.
 * `w`: Shows who is logged on and what they are doing.
 * `watch`: Executes a program periodically, showing output fullscreen.
-* `snice`: Changes the scheduling priority of a running process.
 
 TODO:
 * `pkill`: Kills processes based on name and other attributes.
