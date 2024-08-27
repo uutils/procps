@@ -123,7 +123,7 @@ fn parse_meminfo() -> Result<MemInfo, Box<dyn std::error::Error>> {
 
 // print total - used - free combo that is used for everything except memory for now
 // free can be negative if the memory is overcommitted so it has to be signed
-fn gen_tuf_combo_str<F>(name: &str, total: u64, used: u64, free: i128, f: F) -> String
+fn construct_tuf_combo_str<F>(name: &str, total: u64, used: u64, free: i128, f: F) -> String
 where
     F: Fn(u64) -> String,
 {
@@ -156,7 +156,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     let infinite: bool = count_flag.is_none() && seconds_flag.is_some();
 
-    let gen_str = parse_output_format(matches);
+    let construct_str = parse_output_format(matches);
 
     while count > 0 || infinite {
         // prevent underflow
@@ -166,7 +166,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
         match parse_meminfo() {
             Ok(mem_info) => {
-                print!("{}", gen_str(&mem_info));
+                print!("{}", construct_str(&mem_info));
             }
             Err(e) => {
                 eprintln!("free: failed to read memory info: {}", e);
@@ -273,27 +273,27 @@ fn parse_output_format(matches: ArgMatches) -> impl Fn(&MemInfo) -> String {
 
     move |mem_info: &MemInfo| {
         if one_line {
-            gen_one_line_str(mem_info, &n2s)
+            construct_one_line_str(mem_info, &n2s)
         } else {
             let mut str = String::new();
             if wide {
-                str += &gen_wide_str(mem_info, &n2s);
+                str += &construct_wide_str(mem_info, &n2s);
             } else {
-                str += &gen_str(mem_info, &n2s);
+                str += &construct_str(mem_info, &n2s);
             }
 
             if lohi {
-                str += &gen_lohi_str(mem_info, &n2s);
+                str += &construct_lohi_str(mem_info, &n2s);
             }
 
-            str += &gen_swap_str(mem_info, &n2s);
+            str += &construct_swap_str(mem_info, &n2s);
 
             if total {
-                str += &gen_total_str(mem_info, &n2s);
+                str += &construct_total_str(mem_info, &n2s);
             }
 
             if committed {
-                str += &gen_committed_str(mem_info, &n2s);
+                str += &construct_committed_str(mem_info, &n2s);
             }
 
             str
@@ -301,7 +301,7 @@ fn parse_output_format(matches: ArgMatches) -> impl Fn(&MemInfo) -> String {
     }
 }
 
-fn gen_one_line_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
+fn construct_one_line_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
     format!(
         "{:8}{:>11} {:8}{:>11}  {:8}{:>10} {:8}{:>11}\n",
         "SwapUse",
@@ -315,7 +315,7 @@ fn gen_one_line_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
     )
 }
 
-fn gen_wide_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
+fn construct_wide_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
     format!(
         "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}\n",
         " ", "total", "used", "free", "shared", "buffers", "cache", "available",
@@ -332,7 +332,7 @@ fn gen_wide_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
     )
 }
 
-fn gen_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
+fn construct_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
     format!(
         "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}\n",
         " ", "total", "used", "free", "shared", "buff/cache", "available",
@@ -348,14 +348,14 @@ fn gen_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
     )
 }
 
-fn gen_lohi_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
-    gen_tuf_combo_str(
+fn construct_lohi_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
+    construct_tuf_combo_str(
         "Low:",
         mem_info.low_total,
         mem_info.low_total - mem_info.low_free,
         mem_info.low_free.into(),
         n2s,
-    ) + &gen_tuf_combo_str(
+    ) + &construct_tuf_combo_str(
         "High:",
         mem_info.high_total,
         mem_info.high_total - mem_info.high_free,
@@ -364,8 +364,8 @@ fn gen_lohi_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
     )
 }
 
-fn gen_swap_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
-    gen_tuf_combo_str(
+fn construct_swap_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
+    construct_tuf_combo_str(
         "Swap:",
         mem_info.swap_total,
         mem_info.swap_used,
@@ -374,8 +374,8 @@ fn gen_swap_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
     )
 }
 
-fn gen_total_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
-    gen_tuf_combo_str(
+fn construct_total_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
+    construct_tuf_combo_str(
         "Total:",
         mem_info.total + mem_info.swap_total,
         mem_info.total - mem_info.available + mem_info.swap_used,
@@ -384,8 +384,8 @@ fn gen_total_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
     )
 }
 
-fn gen_committed_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
-    gen_tuf_combo_str(
+fn construct_committed_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
+    construct_tuf_combo_str(
         "Comm:",
         mem_info.commit_limit,
         mem_info.committed,
@@ -435,11 +435,11 @@ fn test_line_wide() {
     let matches_with_line_wide = uu_app()
         .try_get_matches_from(vec!["free", "--line", "--wide"])
         .unwrap();
-    let gen_line_str = parse_output_format(matches_with_line);
-    let gen_line_wide_str = parse_output_format(matches_with_line_wide);
+    let construct_line_str = parse_output_format(matches_with_line);
+    let construct_line_wide_str = parse_output_format(matches_with_line_wide);
     match parse_meminfo() {
         Ok(mem_info) => {
-            assert_eq!(gen_line_str(&mem_info), gen_line_wide_str(&mem_info));
+            assert_eq!(construct_line_str(&mem_info), construct_line_wide_str(&mem_info));
         }
         Err(e) => {
             eprintln!("free: failed to read memory info: {}", e);
