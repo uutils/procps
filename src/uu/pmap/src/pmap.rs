@@ -48,7 +48,8 @@ fn parse_cmdline(pid: &str) -> Result<String, Error> {
         .filter_map(|c| std::str::from_utf8(c).ok())
         .collect::<Vec<&str>>()
         .join(" ");
-    Ok(cmdline)
+    let cmdline = cmdline.trim_end();
+    Ok(cmdline.into())
 }
 
 fn parse_maps(pid: &str) -> Result<(), Error> {

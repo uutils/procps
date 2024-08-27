@@ -25,7 +25,7 @@ fn test_existing_pid() {
         .stdout_move_str();
 
     let (first_line, rest) = result.split_once('\n').unwrap();
-    let re = Regex::new(&format!("^{pid}:   .+$")).unwrap();
+    let re = Regex::new(&format!("^{pid}:   .+[^ ]$")).unwrap();
     assert!(re.is_match(first_line));
 
     let rest = rest.trim_end();
