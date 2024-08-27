@@ -3,9 +3,15 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use clap::{arg, crate_version, Arg, ArgMatches, Command};
+use clap::{arg, crate_version, value_parser, Arg, ArgMatches, Command};
+use expression::Expression;
+use libc::user;
 use uu_pgrep::process::Teletype;
-use uucore::{error::UResult, format_usage, help_about, help_usage, signals::ALL_SIGNALS};
+use uucore::{
+    error::{UResult, USimpleError},
+    format_usage, help_about, help_usage,
+    signals::ALL_SIGNALS,
+};
 
 const ABOUT: &str = help_about!("snice.md");
 const USAGE: &str = help_usage!("snice.md");
@@ -15,7 +21,7 @@ mod expression;
 #[derive(Debug)]
 enum SelectedTarget {
     Command(String),
-    Pid(usize),
+    Pid(u32),
     Tty(Teletype),
     User(String),
 }
@@ -79,15 +85,72 @@ impl SignalDisplay {
 #[derive(Debug)]
 struct Settings {
     display: Option<SignalDisplay>,
-    expression: Option<SelectedTarget>,
+    selected: Option<Vec<SelectedTarget>>,
+    expression: Expression,
 }
 
 impl Settings {
     fn try_new(matches: &ArgMatches) -> UResult<Self> {
+        let expr = matches
+            .try_get_one::<String>("expression")
+            .unwrap_or(Some(&"".to_string()))
+            .cloned();
+
+        let expression = match expr {
+            Some(expr) => {
+                Expression::try_from(expr).map_err(|err| USimpleError::new(1, err.to_string()))?
+            }
+            None => Expression::default(),
+        };
+
         Ok(Self {
             display: SignalDisplay::try_new(matches),
-            expression: todo!(),
+            selected: Self::targets(matches),
+            expression,
         })
+    }
+
+    fn targets(matches: &ArgMatches) -> Option<Vec<SelectedTarget>> {
+        let cmd = matches
+            .get_many::<String>("command")
+            .unwrap_or_default()
+            .map(Into::into)
+            .map(SelectedTarget::Command)
+            .collect::<Vec<_>>();
+
+        let pid = matches
+            .get_many::<u32>("pid")
+            .unwrap_or_default()
+            .map(Clone::clone)
+            .map(SelectedTarget::Pid)
+            .collect::<Vec<_>>();
+
+        let tty = matches
+            .get_many::<String>("tty")
+            .unwrap_or_default()
+            .flat_map(|it| Teletype::try_from(it.as_str()))
+            .map(SelectedTarget::Tty)
+            .collect::<Vec<_>>();
+
+        let user = matches
+            .get_many::<String>("user")
+            .unwrap_or_default()
+            .map(Into::into)
+            .map(SelectedTarget::User)
+            .collect::<Vec<_>>();
+
+        let collected = cmd
+            .into_iter()
+            .chain(pid)
+            .chain(tty)
+            .chain(user)
+            .collect::<Vec<_>>();
+
+        if collected.is_empty() {
+            None
+        } else {
+            Some(collected)
+        }
     }
 }
 
@@ -105,7 +168,6 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     }
 
     // Case1: Perform priority
-    if let Some(expression) = settings.expression {}
 
     Ok(())
 }
@@ -128,10 +190,11 @@ pub fn uu_app() -> Command {
             // arg!(-v --verbose               "explain what is being done"),
             // arg!(-w --warnings      "enable warnings (not implemented)"),
             // Expressions
-            arg!(-c --command   <command>   "expression is a command name"),
-            arg!(-p --pid       <pid>       "expression is a process id number"),
-            arg!(-t --tty       <tty>       "expression is a terminal"),
-            arg!(-u --user      <username>  "expression is a username"),
+            arg!(-c --command   <command>   ...   "expression is a command name"),
+            arg!(-p --pid       <pid>       ...   "expression is a process id number")
+                .value_parser(value_parser!(u32)),
+            arg!(-t --tty       <tty>       ...   "expression is a terminal"),
+            arg!(-u --user      <username>  ...   "expression is a username"),
         ])
 }
 
