@@ -3,28 +3,26 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use clap::{arg, crate_version, ArgMatches, Command};
+use clap::{arg, crate_version, Arg, ArgMatches, Command};
 use uu_pgrep::process::Teletype;
-use uucore::{
-    error::{UResult, USimpleError},
-    format_usage, help_about, help_usage,
-};
+use uucore::{error::UResult, format_usage, help_about, help_usage, signals::ALL_SIGNALS};
 
 const ABOUT: &str = help_about!("snice.md");
 const USAGE: &str = help_usage!("snice.md");
 
+mod expression;
+
 #[derive(Debug)]
-enum ExpressionType {
+enum SelectedTarget {
     Command(String),
     Pid(usize),
     Tty(Teletype),
     User(String),
 }
 
-impl ExpressionType {
-    fn try_new(matches: &ArgMatches) -> UResult<Option<Self>> {
-        todo!()
-    }
+impl SelectedTarget {
+    /// Perform
+    fn perform_actions() {}
 }
 
 #[derive(Debug)]
@@ -34,14 +32,20 @@ enum SignalDisplay {
 }
 
 impl SignalDisplay {
-    fn try_new(matches: &ArgMatches) -> UResult<Option<SignalDisplay>> {
-        todo!()
+    fn try_new(matches: &ArgMatches) -> Option<SignalDisplay> {
+        if matches.get_flag("table") {
+            Some(SignalDisplay::Table)
+        } else if matches.get_flag("list") {
+            Some(SignalDisplay::List)
+        } else {
+            None
+        }
     }
 
     fn display(&self, signals: &[&str]) -> String {
         match self {
             SignalDisplay::List => Self::list(signals),
-            SignalDisplay::Table => Self::list(signals),
+            SignalDisplay::Table => Self::table(signals),
         }
     }
 
@@ -75,14 +79,14 @@ impl SignalDisplay {
 #[derive(Debug)]
 struct Settings {
     display: Option<SignalDisplay>,
-    expression: Option<ExpressionType>,
+    expression: Option<SelectedTarget>,
 }
 
 impl Settings {
     fn try_new(matches: &ArgMatches) -> UResult<Self> {
         Ok(Self {
-            display: SignalDisplay::try_new(matches)?,
-            expression: ExpressionType::try_new(matches)?,
+            display: SignalDisplay::try_new(matches),
+            expression: todo!(),
         })
     }
 }
@@ -93,6 +97,16 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     let settings = Settings::try_new(&matches)?;
 
+    // Case0: Print SIGNALS
+    if let Some(display) = settings.display {
+        let result = display.display(&ALL_SIGNALS);
+        println!("{result}");
+        return Ok(());
+    }
+
+    // Case1: Perform priority
+    if let Some(expression) = settings.expression {}
+
     Ok(())
 }
 
@@ -102,6 +116,8 @@ pub fn uu_app() -> Command {
         .about(ABOUT)
         .override_usage(format_usage(USAGE))
         .infer_long_args(true)
+        .arg_required_else_help(true)
+        .arg(Arg::new("expression"))
         .args([
             // Options
             // arg!(-f --fast          "fast mode (not implemented)"),

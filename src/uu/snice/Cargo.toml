@@ -12,10 +12,11 @@ keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
 categories = ["command-line-utilities"]
 
 [dependencies]
-uucore = { workspace = true }
+uucore = { workspace = true, features = ["signals"] }
 clap = { workspace = true }
 libc = { workspace = true }
 prettytable-rs = { workspace = true }
+thiserror = { workspace = true }
 
 uu_pgrep = { path = "../pgrep" }
 
