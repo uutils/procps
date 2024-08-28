@@ -156,6 +156,7 @@ pub fn uu_app() -> Command {
         .arg(
             Arg::new("s")
                 .short('s')
+                .long("single-shot")
                 .help("Only return one PID")
                 .action(ArgAction::SetTrue),
         )
