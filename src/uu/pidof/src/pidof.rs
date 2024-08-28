@@ -17,7 +17,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
 
     let arg_program_name = matches.get_many::<String>("program-name");
-    let arg_separator = matches.get_one::<String>("d").unwrap();
+    let arg_separator = matches.get_one::<String>("S").unwrap();
 
     if arg_program_name.is_none() {
         uucore::error::set_exit_code(1);
@@ -124,11 +124,14 @@ pub fn uu_app() -> Command {
         //         .action(ArgAction::SetTrue),
         // )
         .arg(
-            Arg::new("d")
-                .short('d')
-                .help("Use the provided character as output separator")
+            Arg::new("S")
+                .short('S')
+                // the pidof bundled with Debian uses -d instead of -S
+                .visible_short_alias('d')
+                .long("separator")
+                .help("Use SEP as separator between PIDs")
                 .action(ArgAction::Set)
-                .value_name("sep")
+                .value_name("SEP")
                 .default_value(" ")
                 .hide_default_value(true),
         )

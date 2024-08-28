@@ -66,3 +66,16 @@ fn test_omit_pid() {
         new_ucmd!().arg(arg).arg("kthreadd").succeeds();
     }
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_separator() {
+    use regex::Regex;
+
+    for arg in ["-S", "-d", "--separator"] {
+        new_ucmd!()
+            .args(&[arg, "separator", "kthreadd", "kthreadd"])
+            .succeeds()
+            .stdout_matches(&Regex::new("^[1-9][0-9]*separator[1-9][0-9]*\n$").unwrap());
+    }
+}
