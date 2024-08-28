@@ -160,7 +160,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     // Case1: Perform priority
     if let Some(targets) = settings.expressions {
         let pids = collect_pids(&targets);
-        let result = perform_action(&pids, &settings.priority);
+        perform_action(&pids, &settings.priority);
     }
 
     Ok(())

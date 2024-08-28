@@ -68,7 +68,7 @@ impl SelectedTarget {
             .collect()
     }
 
-    // TODO: issues:#179 https://github.com/uutils/procps/issues/179 
+    // TODO: issues:#179 https://github.com/uutils/procps/issues/179
     #[cfg(not(target_os = "linux"))]
     fn from_tty(_tty: &Teletype) -> Vec<u32> {
         Vec::new()
@@ -107,6 +107,64 @@ impl Display for ActionResult {
     }
 }
 
+/// Set priority of process.
+///
+/// But we don't know if the process of pid are exist, if [None], the process doesn't exist
+#[cfg(target_os = "linux")]
+fn set_priority(pid: u32, prio: &Priority) -> Option<ActionResult> {
+    use libc::{getpriority, setpriority, PRIO_PROCESS};
+    use nix::errno::Errno;
+
+    // Very dirty.
+    let current_priority = {
+        // Clear errno
+        Errno::clear();
+
+        let prio = unsafe { getpriority(PRIO_PROCESS, pid) };
+        // prio == -1 might be error.
+        if prio == -1 && Errno::last() != Errno::UnknownErrno {
+            // Must clear errno.
+            Errno::clear();
+
+            // I don't know but, just considering it just caused by permission.
+            // https://manpages.debian.org/bookworm/manpages-dev/getpriority.2.en.html#ERRORS
+            return match Errno::last() {
+                Errno::ESRCH => Some(ActionResult::PermissionDenied),
+                _ => None,
+            };
+        } else {
+            prio
+        }
+    };
+
+    let prio = match prio {
+        Priority::Increase(prio) => current_priority + *prio as i32,
+        Priority::Decrease(prio) => current_priority - *prio as i32,
+        Priority::To(prio) => *prio as i32,
+    };
+
+    // result only 0, -1
+    Errno::clear();
+    let result = unsafe { setpriority(PRIO_PROCESS, pid, prio) };
+
+    // https://manpages.debian.org/bookworm/manpages-dev/setpriority.2.en.html#ERRORS
+    if result == -1 {
+        match Errno::last() {
+            Errno::ESRCH => Some(ActionResult::PermissionDenied),
+            _ => None,
+        }
+    } else {
+        Some(ActionResult::Success)
+    }
+}
+
+// TODO: Implemented this on other platform
+#[cfg(not(target_os = "linux"))]
+fn set_priority(_pid: u32, _prio: &Priority) -> Option<ActionResult> {
+    None
+}
+
 pub(crate) fn perform_action(pids: &[u32], prio: &Priority) -> Vec<Option<ActionResult>> {
-    todo!()
+    let f = |pid: &u32| set_priority(*pid, prio);
+    pids.iter().map(f).collect()
 }

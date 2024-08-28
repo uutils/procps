@@ -15,6 +15,7 @@ categories = ["command-line-utilities"]
 uucore = { workspace = true, features = ["signals"] }
 clap = { workspace = true }
 libc = { workspace = true }
+nix = { workspace = true }
 prettytable-rs = { workspace = true }
 thiserror = { workspace = true }
 sysinfo = { workspace = true }
