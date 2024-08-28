@@ -58,3 +58,11 @@ fn test_single_shot() {
         assert_eq!(pids.len(), 3);
     }
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_omit_pid() {
+    for arg in ["-o=1000", "--omit-pid=1000"] {
+        new_ucmd!().arg(arg).arg("kthreadd").succeeds();
+    }
+}
