@@ -13,14 +13,14 @@ pub enum Error {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) enum Expression {
+pub(crate) enum Priority {
     // The default priority is +4. (snice +4 ...)
     Increase(u32),
     Decrease(u32),
     To(u32),
 }
 
-impl TryFrom<String> for Expression {
+impl TryFrom<String> for Priority {
     type Error = Error;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
@@ -28,7 +28,7 @@ impl TryFrom<String> for Expression {
     }
 }
 
-impl TryFrom<&str> for Expression {
+impl TryFrom<&str> for Priority {
     type Error = Error;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
@@ -36,28 +36,28 @@ impl TryFrom<&str> for Expression {
             stripped_value
                 .parse::<u32>()
                 .map_err(|_| Error::ParsingFailed(value.into()))
-                .map(Expression::Decrease)
+                .map(Priority::Decrease)
         } else if let Some(stripped_value) = value.strip_prefix("+") {
             stripped_value
                 .parse::<u32>()
                 .map_err(|_| Error::ParsingFailed(value.into()))
-                .map(Expression::Increase)
+                .map(Priority::Increase)
         } else {
             value
                 .parse::<u32>()
                 .map_err(|_| Error::ParsingFailed(value.into()))
-                .map(Expression::To)
+                .map(Priority::To)
         }
     }
 }
 
-impl Default for Expression {
+impl Default for Priority {
     fn default() -> Self {
-        Expression::Increase(4)
+        Priority::Increase(4)
     }
 }
 
-impl Display for Expression {
+impl Display for Priority {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Increase(prio) => write!(f, "+{prio}"),
@@ -73,27 +73,27 @@ mod tests {
 
     #[test]
     fn test_try_from() {
-        assert!(Expression::try_from("4").is_ok());
-        assert!(Expression::try_from(String::from("4")).is_ok());
+        assert!(Priority::try_from("4").is_ok());
+        assert!(Priority::try_from(String::from("4")).is_ok());
 
-        assert_eq!(Expression::try_from("-4"), Ok(Expression::Decrease(4)));
-        assert_eq!(Expression::try_from("+4"), Ok(Expression::Increase(4)));
-        assert_eq!(Expression::try_from("4"), Ok(Expression::To(4)));
+        assert_eq!(Priority::try_from("-4"), Ok(Priority::Decrease(4)));
+        assert_eq!(Priority::try_from("+4"), Ok(Priority::Increase(4)));
+        assert_eq!(Priority::try_from("4"), Ok(Priority::To(4)));
 
         assert_eq!(
-            Expression::try_from("-4-"),
+            Priority::try_from("-4-"),
             Err(Error::ParsingFailed("-4-".into()))
         );
         assert_eq!(
-            Expression::try_from("+4+"),
+            Priority::try_from("+4+"),
             Err(Error::ParsingFailed("+4+".into()))
         );
     }
 
     #[test]
     fn test_to_string() {
-        assert_eq!(Expression::Decrease(4).to_string(), "-4");
-        assert_eq!(Expression::Increase(4).to_string(), "+4");
-        assert_eq!(Expression::To(4).to_string(), "4");
+        assert_eq!(Priority::Decrease(4).to_string(), "-4");
+        assert_eq!(Priority::Increase(4).to_string(), "+4");
+        assert_eq!(Priority::To(4).to_string(), "4");
     }
 }

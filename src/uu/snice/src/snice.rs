@@ -3,9 +3,11 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use std::collections::HashSet;
+
+use action::{perform_action, SelectedTarget};
 use clap::{arg, crate_version, value_parser, Arg, ArgMatches, Command};
-use expression::Expression;
-use libc::user;
+use priority::Priority;
 use uu_pgrep::process::Teletype;
 use uucore::{
     error::{UResult, USimpleError},
@@ -16,20 +18,8 @@ use uucore::{
 const ABOUT: &str = help_about!("snice.md");
 const USAGE: &str = help_usage!("snice.md");
 
-mod expression;
-
-#[derive(Debug)]
-enum SelectedTarget {
-    Command(String),
-    Pid(u32),
-    Tty(Teletype),
-    User(String),
-}
-
-impl SelectedTarget {
-    /// Perform
-    fn perform_actions() {}
-}
+mod action;
+mod priority;
 
 #[derive(Debug)]
 enum SignalDisplay {
@@ -85,28 +75,28 @@ impl SignalDisplay {
 #[derive(Debug)]
 struct Settings {
     display: Option<SignalDisplay>,
-    selected: Option<Vec<SelectedTarget>>,
-    expression: Expression,
+    expressions: Option<Vec<SelectedTarget>>,
+    priority: Priority,
 }
 
 impl Settings {
     fn try_new(matches: &ArgMatches) -> UResult<Self> {
-        let expr = matches
-            .try_get_one::<String>("expression")
+        let priority = matches
+            .try_get_one::<String>("priority")
             .unwrap_or(Some(&"".to_string()))
             .cloned();
 
-        let expression = match expr {
+        let expression = match priority {
             Some(expr) => {
-                Expression::try_from(expr).map_err(|err| USimpleError::new(1, err.to_string()))?
+                Priority::try_from(expr).map_err(|err| USimpleError::new(1, err.to_string()))?
             }
-            None => Expression::default(),
+            None => Priority::default(),
         };
 
         Ok(Self {
             display: SignalDisplay::try_new(matches),
-            selected: Self::targets(matches),
-            expression,
+            expressions: Self::targets(matches),
+            priority: expression,
         })
     }
 
@@ -168,8 +158,24 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     }
 
     // Case1: Perform priority
+    if let Some(targets) = settings.expressions {
+        let pids = collect_pids(&targets);
+        let result = perform_action(&pids, &settings.priority);
+    }
 
     Ok(())
+}
+
+/// Map and sort `SelectedTarget` to pids.
+fn collect_pids(targets: &[SelectedTarget]) -> Vec<u32> {
+    let collected = targets
+        .iter()
+        .flat_map(SelectedTarget::to_pids)
+        .collect::<HashSet<_>>();
+
+    let mut collected = collected.into_iter().collect::<Vec<_>>();
+    collected.sort();
+    collected
 }
 
 pub fn uu_app() -> Command {
@@ -179,7 +185,7 @@ pub fn uu_app() -> Command {
         .override_usage(format_usage(USAGE))
         .infer_long_args(true)
         .arg_required_else_help(true)
-        .arg(Arg::new("expression"))
+        .arg(Arg::new("priority"))
         .args([
             // Options
             // arg!(-f --fast          "fast mode (not implemented)"),

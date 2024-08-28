@@ -1098,6 +1098,7 @@ dependencies = [
  "clap",
  "libc",
  "prettytable-rs",
+ "sysinfo",
  "thiserror",
  "uu_pgrep",
  "uucore",
