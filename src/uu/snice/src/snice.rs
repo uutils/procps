@@ -32,16 +32,6 @@ enum SignalDisplay {
 
 #[allow(unused)]
 impl SignalDisplay {
-    fn try_new(matches: &ArgMatches) -> Option<SignalDisplay> {
-        if matches.get_flag("table") {
-            Some(SignalDisplay::Table)
-        } else if matches.get_flag("list") {
-            Some(SignalDisplay::List)
-        } else {
-            None
-        }
-    }
-
     fn display(&self, signals: &[&str]) -> String {
         match self {
             SignalDisplay::List => Self::list(signals),
@@ -98,8 +88,16 @@ impl Settings {
             None => Priority::default(),
         };
 
+        let display = if matches.get_flag("table") {
+            Some(SignalDisplay::Table)
+        } else if matches.get_flag("list") {
+            Some(SignalDisplay::List)
+        } else {
+            None
+        };
+
         Ok(Self {
-            display: SignalDisplay::try_new(matches),
+            display,
             expressions: Self::targets(matches),
             priority: expression,
             verbose: matches.get_flag("verbose"),
