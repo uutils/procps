@@ -7,7 +7,7 @@ license = "MIT"
 description = "snice - (uutils) send a signal or report process status"
 
 homepage = "https://github.com/uutils/procps"
-repository = "https://github.com/uutils/procps/tree/main/src/uu/w"
+repository = "https://github.com/uutils/procps/tree/main/src/uu/snice"
 keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
 categories = ["command-line-utilities"]
 
