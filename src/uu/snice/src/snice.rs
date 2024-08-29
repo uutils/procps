@@ -3,12 +3,14 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use std::collections::HashSet;
+use std::{collections::HashSet, path::PathBuf, str::FromStr};
 
-use action::{perform_action, SelectedTarget};
-use clap::{arg, crate_version, value_parser, Arg, ArgMatches, Command};
+use action::{perform_action, process_snapshot, users, ActionResult, SelectedTarget};
+use clap::{arg, builder::Str, crate_version, value_parser, Arg, ArgMatches, Command};
+use prettytable::{format::consts::FORMAT_CLEAN, row, Row, Table};
 use priority::Priority;
-use uu_pgrep::process::Teletype;
+use sysinfo::Pid;
+use uu_pgrep::process::{ProcessInformation, Teletype};
 #[cfg(target_family = "unix")]
 use uucore::signals::ALL_SIGNALS;
 use uucore::{
@@ -79,6 +81,7 @@ struct Settings {
     display: Option<SignalDisplay>,
     expressions: Option<Vec<SelectedTarget>>,
     priority: Priority,
+    verbose: bool,
 }
 
 impl Settings {
@@ -99,6 +102,7 @@ impl Settings {
             display: SignalDisplay::try_new(matches),
             expressions: Self::targets(matches),
             priority: expression,
+            verbose: matches.get_flag("verbose"),
         })
     }
 
@@ -173,10 +177,50 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     // Case1: Perform priority
     if let Some(targets) = settings.expressions {
         let pids = collect_pids(&targets);
-        perform_action(&pids, &settings.priority);
+        let results = perform_action(&pids, &settings.priority);
+
+        if settings.verbose {
+            println!("{}", construct_verbose_result(&pids, &results));
+        }
     }
 
     Ok(())
+}
+
+#[allow(unused)]
+fn construct_verbose_result(pids: &[u32], action_results: &[Option<ActionResult>]) -> String {
+    let mut table = action_results
+        .iter()
+        .enumerate()
+        .map(|(index, it)| (pids[index], it))
+        .filter(|(_, it)| it.is_some())
+        .map(|(pid, action)| (pid, action.clone().unwrap()))
+        .map(|(pid, action)| {
+            let process = process_snapshot().process(Pid::from_u32(pid)).unwrap();
+
+            let tty =
+                ProcessInformation::try_new(PathBuf::from_str(&format!("/proc/{}", pid)).unwrap())
+                    .unwrap()
+                    .tty()
+                    .to_string();
+
+            let user = process
+                .user_id()
+                .and_then(|uid| users().iter().find(|it| it.id() == uid))
+                .map(|it| it.name())
+                .unwrap_or("?")
+                .to_owned();
+
+            let mut cmd = format!("{:?}", process.cmd());
+            cmd.shrink_to(15);
+
+            row![tty, user, pid, cmd, action]
+        })
+        .collect::<Table>();
+
+    table.set_format(*FORMAT_CLEAN);
+
+    table.to_string()
 }
 
 /// Map and sort `SelectedTarget` to pids.
@@ -207,7 +251,7 @@ pub fn uu_app() -> Command {
             arg!(-l --list                  "list all signal names"),
             arg!(-L --table                 "list all signal names in a nice table"),
             // arg!(-n --"no-action"   "do not actually kill processes; just print what would happen"),
-            // arg!(-v --verbose               "explain what is being done"),
+            arg!(-v --verbose               "explain what is being done"),
             // arg!(-w --warnings      "enable warnings (not implemented)"),
             // Expressions
             arg!(-c --command   <command>   ...   "expression is a command name"),

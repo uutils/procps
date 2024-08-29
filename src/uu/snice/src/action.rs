@@ -11,13 +11,13 @@ use std::{
 use sysinfo::{System, Users};
 use uu_pgrep::process::Teletype;
 
-fn process_snapshot() -> &'static sysinfo::System {
+pub(crate)   fn process_snapshot() -> &'static sysinfo::System {
     static SNAPSHOT: OnceLock<System> = OnceLock::new();
 
     SNAPSHOT.get_or_init(System::new_all)
 }
 
-fn users() -> &'static Users {
+pub(crate)  fn users() -> &'static Users {
     static SNAPSHOT: OnceLock<Users> = OnceLock::new();
 
     SNAPSHOT.get_or_init(Users::new_with_refreshed_list)
@@ -92,7 +92,7 @@ impl SelectedTarget {
 }
 
 #[allow(unused)]
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub(crate) enum ActionResult {
     PermissionDenied,
     Success,
