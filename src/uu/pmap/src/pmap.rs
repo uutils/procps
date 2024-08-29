@@ -28,8 +28,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     }
 
     match parse_maps(pid) {
-        // TODO calculate total
-        Ok(_) => println!(" total"),
+        Ok(total) => println!(" total {total:>16}K"),
         Err(_) => {
             process::exit(1);
         }
@@ -48,22 +47,26 @@ fn parse_cmdline(pid: &str) -> Result<String, Error> {
         .filter_map(|c| std::str::from_utf8(c).ok())
         .collect::<Vec<&str>>()
         .join(" ");
-    Ok(cmdline)
+    let cmdline = cmdline.trim_end();
+    Ok(cmdline.into())
 }
 
-fn parse_maps(pid: &str) -> Result<(), Error> {
+fn parse_maps(pid: &str) -> Result<u64, Error> {
     let path = format!("/proc/{}/maps", pid);
     let contents = fs::read_to_string(path)?;
+    let mut total = 0;
 
     for line in contents.lines() {
-        println!("{}", parse_map_line(line));
+        let (generated_line, size) = parse_map_line(line);
+        println!("{generated_line}");
+        total += size;
     }
 
-    Ok(())
+    Ok(total)
 }
 
 // Parses a single line from /proc/<PID>/maps.
-fn parse_map_line(line: &str) -> String {
+fn parse_map_line(line: &str) -> (String, u64) {
     let (memory_range, rest) = line.split_once(' ').expect("line should contain ' '");
     let (start_address, size_in_kb) = parse_memory_range(memory_range);
 
@@ -74,7 +77,10 @@ fn parse_map_line(line: &str) -> String {
     let filename = filename.trim_ascii_start();
     let filename = parse_filename(filename);
 
-    format!("{start_address} {size_in_kb:>6}K {perms} {filename}")
+    (
+        format!("{start_address} {size_in_kb:>6}K {perms} {filename}"),
+        size_in_kb,
+    )
 }
 
 // Returns the start address and the size of the provided memory range. The start address is always
@@ -208,37 +214,39 @@ mod test {
     fn test_parse_map_line() {
         let data = [
             (
-                "000062442eb9e000     16K r---- konsole",
+                ("000062442eb9e000     16K r---- konsole", 16),
                 "62442eb9e000-62442eba2000 r--p 00000000 08:08 10813151                   /usr/bin/konsole"
             ),
             (
-                "000071af50000000    132K rw---   [ anon ]",
+                ("000071af50000000    132K rw---   [ anon ]", 132),
                 "71af50000000-71af50021000 rw-p 00000000 00:00 0 "
             ),
             (
-                "00007ffc3f8df000    132K rw---   [ stack ]",
+                ("00007ffc3f8df000    132K rw---   [ stack ]", 132),
                 "7ffc3f8df000-7ffc3f900000 rw-p 00000000 00:00 0                          [stack]"
             ),
             (
-                "000071af8c9e6000     16K rw-s-   [ anon ]",
+                ("000071af8c9e6000     16K rw-s-   [ anon ]", 16),
                 "71af8c9e6000-71af8c9ea000 rw-s 105830000 00:10 1075                      anon_inode:i915.gem"
             ),
             (
-                "000071af6cf0c000   3560K rw-s- memfd:wayland-shm (deleted)",
+                ("000071af6cf0c000   3560K rw-s- memfd:wayland-shm (deleted)", 3560),
                 "71af6cf0c000-71af6d286000 rw-s 00000000 00:01 256481                     /memfd:wayland-shm (deleted)"
             ),
             (
-                "ffffffffff600000      4K --x--   [ anon ]",
+                ("ffffffffff600000      4K --x--   [ anon ]", 4),
                 "ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]"
             ),
             (
-                "00005e8187da8000     24K r---- hello   world",
+                ("00005e8187da8000     24K r---- hello   world", 24),
                 "5e8187da8000-5e8187dae000 r--p 00000000 08:08 9524160                    /usr/bin/hello   world"
             ),
         ];
 
-        for (expected, line) in data {
-            assert_eq!(expected, parse_map_line(line));
+        for ((expected_line, expected_size), line) in data {
+            let (generated_line, size) = parse_map_line(line);
+            assert_eq!(expected_line, generated_line);
+            assert_eq!(expected_size, size);
         }
     }
 
