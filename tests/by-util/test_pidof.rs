@@ -42,17 +42,40 @@ fn test_quiet() {
 
 #[test]
 #[cfg(target_os = "linux")]
-fn test_s_flag() {
-    let binding = new_ucmd!()
-        .args(&["-s", "kthreadd", "kthreadd", "kthreadd"])
-        .succeeds();
-    let output = binding.stdout_str().trim_end();
+fn test_single_shot() {
+    for arg in ["-s", "--single-shot"] {
+        let binding = new_ucmd!()
+            .args(&[arg, "kthreadd", "kthreadd", "kthreadd"])
+            .succeeds();
+        let output = binding.stdout_str().trim_end();
 
-    let pids = output.split(' ').collect::<Vec<_>>();
-    let first = pids[0];
+        let pids = output.split(' ').collect::<Vec<_>>();
+        let first = pids[0];
 
-    let result = pids.iter().all(|it| *it == first);
+        let result = pids.iter().all(|it| *it == first);
 
-    assert!(result);
-    assert_eq!(pids.len(), 3);
+        assert!(result);
+        assert_eq!(pids.len(), 3);
+    }
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_omit_pid() {
+    for arg in ["-o=1000", "--omit-pid=1000"] {
+        new_ucmd!().arg(arg).arg("kthreadd").succeeds();
+    }
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_separator() {
+    use regex::Regex;
+
+    for arg in ["-S", "-d", "--separator"] {
+        new_ucmd!()
+            .args(&[arg, "separator", "kthreadd", "kthreadd"])
+            .succeeds()
+            .stdout_matches(&Regex::new("^[1-9][0-9]*separator[1-9][0-9]*\n$").unwrap());
+    }
 }
