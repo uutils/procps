@@ -25,15 +25,16 @@ fn test_existing_pid() {
         .stdout_move_str();
 
     let (first_line, rest) = result.split_once('\n').unwrap();
-    let re = Regex::new(&format!("^{pid}:   .+$")).unwrap();
+    let re = Regex::new(&format!("^{pid}:   .+[^ ]$")).unwrap();
     assert!(re.is_match(first_line));
 
     let rest = rest.trim_end();
     let (memory_map, last_line) = rest.rsplit_once('\n').unwrap();
     let re = Regex::new("(?m)^[0-9a-f]{16} +[1-9][0-9]*K (-|r)(-|w)(-|x)(-|s)- (  $$[ (anon|stack) $$]|[a-zA-Z0-9._-]+)$").unwrap();
     assert!(re.is_match(memory_map));
-    // TODO ensure that "total" is followed by a total amount
-    assert!(last_line.starts_with(" total"));
+
+    let re = Regex::new("^ total +[1-9][0-9]*K$").unwrap();
+    assert!(re.is_match(last_line));
 }
 
 #[test]
