@@ -5,9 +5,7 @@
 
 use crate::priority::Priority;
 use std::{
-    ffi::OsStr,
     fmt::{self, Display, Formatter},
-    os::unix::ffi::OsStrExt,
     sync::OnceLock,
 };
 use sysinfo::{System, Users};
@@ -33,6 +31,7 @@ pub(crate) enum SelectedTarget {
     User(String),
 }
 
+#[allow(unused)]
 impl SelectedTarget {
     pub(crate) fn to_pids(&self) -> Vec<u32> {
         match self {
@@ -45,7 +44,7 @@ impl SelectedTarget {
 
     fn from_cmd(cmd: &str) -> Vec<u32> {
         process_snapshot()
-            .processes_by_name(OsStr::from_bytes(cmd.as_bytes()))
+            .processes_by_name(cmd.as_ref())
             .map(|it| it.pid().as_u32())
             .collect()
     }
@@ -92,6 +91,7 @@ impl SelectedTarget {
     }
 }
 
+#[allow(unused)]
 #[derive(Debug)]
 pub(crate) enum ActionResult {
     PermissionDenied,

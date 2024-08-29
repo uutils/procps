@@ -9,10 +9,11 @@ use action::{perform_action, SelectedTarget};
 use clap::{arg, crate_version, value_parser, Arg, ArgMatches, Command};
 use priority::Priority;
 use uu_pgrep::process::Teletype;
+#[cfg(target_family = "unix")]
+use uucore::signals::ALL_SIGNALS;
 use uucore::{
     error::{UResult, USimpleError},
     format_usage, help_about, help_usage,
-    signals::ALL_SIGNALS,
 };
 
 const ABOUT: &str = help_about!("snice.md");
@@ -27,6 +28,7 @@ enum SignalDisplay {
     Table,
 }
 
+#[allow(unused)]
 impl SignalDisplay {
     fn try_new(matches: &ArgMatches) -> Option<SignalDisplay> {
         if matches.get_flag("table") {
@@ -83,7 +85,7 @@ impl Settings {
     fn try_new(matches: &ArgMatches) -> UResult<Self> {
         let priority = matches
             .try_get_one::<String>("priority")
-            .unwrap_or(Some(&"".to_string()))
+            .unwrap_or(Some(&String::new()))
             .cloned();
 
         let expression = match priority {
@@ -151,10 +153,21 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let settings = Settings::try_new(&matches)?;
 
     // Case0: Print SIGNALS
-    if let Some(display) = settings.display {
-        let result = display.display(&ALL_SIGNALS);
-        println!("{result}");
-        return Ok(());
+    #[cfg(target_family = "unix")]
+    {
+        if let Some(display) = settings.display {
+            let result = display.display(&ALL_SIGNALS);
+
+            println!("{result}");
+            return Ok(());
+        }
+    }
+
+    #[cfg(not(target_family = "unix"))]
+    {
+        if let Some(_display) = settings.display {
+            return Ok(());
+        }
     }
 
     // Case1: Perform priority
@@ -178,6 +191,7 @@ fn collect_pids(targets: &[SelectedTarget]) -> Vec<u32> {
     collected
 }
 
+#[allow(clippy::cognitive_complexity)]
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
