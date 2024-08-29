@@ -6,8 +6,8 @@
 use std::{collections::HashSet, path::PathBuf, str::FromStr};
 
 use action::{perform_action, process_snapshot, users, ActionResult, SelectedTarget};
-use clap::{arg, builder::Str, crate_version, value_parser, Arg, ArgMatches, Command};
-use prettytable::{format::consts::FORMAT_CLEAN, row, Row, Table};
+use clap::{arg, crate_version, value_parser, Arg, ArgMatches, Command};
+use prettytable::{format::consts::FORMAT_CLEAN, row, Table};
 use priority::Priority;
 use sysinfo::Pid;
 use uu_pgrep::process::{ProcessInformation, Teletype};
@@ -199,10 +199,7 @@ fn construct_verbose_result(pids: &[u32], action_results: &[Option<ActionResult>
             let process = process_snapshot().process(Pid::from_u32(pid)).unwrap();
 
             let tty =
-                ProcessInformation::try_new(PathBuf::from_str(&format!("/proc/{}", pid)).unwrap())
-                    .unwrap()
-                    .tty()
-                    .to_string();
+                ProcessInformation::try_new(PathBuf::from_str(&format!("/proc/{}", pid)).unwrap());
 
             let user = process
                 .user_id()
@@ -211,11 +208,16 @@ fn construct_verbose_result(pids: &[u32], action_results: &[Option<ActionResult>
                 .unwrap_or("?")
                 .to_owned();
 
-            let mut cmd = format!("{:?}", process.cmd());
-            cmd.shrink_to(15);
+            let mut cmd = process
+                .exe()
+                .and_then(|it| it.iter().last())
+                .unwrap_or("?".as_ref());
+            let cmd = cmd.to_str().unwrap();
 
-            row![tty, user, pid, cmd, action]
+            (tty, user, pid, cmd, action)
         })
+        .filter(|(tty, _, _, _, _)| tty.is_ok())
+        .map(|(tty, user, pid, cmd, action)| row![tty.unwrap().tty(), user, pid, cmd, action])
         .collect::<Table>();
 
     table.set_format(*FORMAT_CLEAN);
