@@ -6,6 +6,7 @@
 use bytesize::{ByteSize, GB, GIB, KB, KIB, MB, MIB, PB, PIB, TB, TIB};
 use clap::{arg, crate_version, ArgAction, ArgGroup, ArgMatches, Command};
 use std::env;
+
 #[cfg(target_os = "linux")]
 use std::fs;
 #[cfg(target_os = "linux")]
@@ -122,7 +123,7 @@ fn parse_meminfo() -> Result<MemInfo, Box<dyn std::error::Error>> {
 
 // print total - used - free combo that is used for everything except memory for now
 // free can be negative if the memory is overcommitted so it has to be signed
-fn tuf_combo<F>(name: &str, total: u64, used: u64, free: i128, f: F)
+fn construct_tuf_combo_str<F>(name: &str, total: u64, used: u64, free: i128, f: F) -> String
 where
     F: Fn(u64) -> String,
 {
@@ -133,143 +134,46 @@ where
         f(free as u64)
     };
 
-    println!("{:8}{:>12}{:>12}{:>12}", name, f(total), f(used), free_str);
+    format!(
+        "{:8}{:>12}{:>12}{:>12}\n",
+        name,
+        f(total),
+        f(used),
+        free_str
+    )
 }
 
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
 
-    let wide = matches.get_flag("wide");
-    let human = matches.get_flag("human");
-    let si = matches.get_flag("si");
-    let total = matches.get_flag("total");
-    let lohi = matches.get_flag("lohi");
     let count_flag = matches.get_one("count");
     let mut count: u64 = count_flag.unwrap_or(&1_u64).to_owned();
     let seconds_flag = matches.get_one("seconds");
     let seconds: f64 = seconds_flag.unwrap_or(&1.0_f64).to_owned();
-    let committed = matches.get_flag("committed");
-    let one_line = matches.get_flag("line");
 
     let dur = Duration::from_nanos(seconds.mul(1_000_000_000.0).round() as u64);
-    let convert = detect_unit(&matches);
 
     let infinite: bool = count_flag.is_none() && seconds_flag.is_some();
+
+    let construct_str = parse_output_format(matches);
 
     while count > 0 || infinite {
         // prevent underflow
         if !infinite {
             count -= 1;
         }
+
         match parse_meminfo() {
             Ok(mem_info) => {
-                let buff_cache = if wide {
-                    mem_info.buffers
-                } else {
-                    mem_info.buffers + mem_info.cached
-                };
-                let cache = if wide { mem_info.cached } else { 0 };
-                let used = mem_info.total - mem_info.available;
-
-                // function that converts the number to the correct string
-                let n2s = |x| {
-                    if human {
-                        humanized(x, si)
-                    } else {
-                        convert(x).to_string()
-                    }
-                };
-                if one_line {
-                    println!(
-                        "{:8}{:>11} {:8}{:>11}  {:8}{:>10} {:8}{:>11}",
-                        "SwapUse",
-                        n2s(mem_info.swap_used),
-                        "CachUse",
-                        n2s(buff_cache + mem_info.reclaimable),
-                        "MemUse",
-                        n2s(used),
-                        "MemFree",
-                        n2s(mem_info.free)
-                    );
-                } else {
-                    if wide {
-                        wide_header();
-                        println!(
-                            "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
-                            "Mem:",
-                            n2s(mem_info.total),
-                            n2s(used),
-                            n2s(mem_info.free),
-                            n2s(mem_info.shared),
-                            n2s(buff_cache),
-                            n2s(cache + mem_info.reclaimable),
-                            n2s(mem_info.available),
-                        );
-                    } else {
-                        header();
-                        println!(
-                            "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
-                            "Mem:",
-                            n2s(mem_info.total),
-                            n2s(used),
-                            n2s(mem_info.free),
-                            n2s(mem_info.shared),
-                            n2s(buff_cache + mem_info.reclaimable),
-                            n2s(mem_info.available),
-                        );
-                    }
-
-                    if lohi {
-                        tuf_combo(
-                            "Low:",
-                            mem_info.low_total,
-                            mem_info.low_total - mem_info.low_free,
-                            mem_info.low_free.into(),
-                            n2s,
-                        );
-                        tuf_combo(
-                            "High:",
-                            mem_info.high_total,
-                            mem_info.high_total - mem_info.high_free,
-                            mem_info.high_free.into(),
-                            n2s,
-                        );
-                    }
-
-                    tuf_combo(
-                        "Swap:",
-                        mem_info.swap_total,
-                        mem_info.swap_used,
-                        mem_info.swap_free.into(),
-                        n2s,
-                    );
-                    if total {
-                        tuf_combo(
-                            "Total:",
-                            mem_info.total + mem_info.swap_total,
-                            used + mem_info.swap_used,
-                            (mem_info.free + mem_info.swap_free).into(),
-                            n2s,
-                        );
-                    }
-
-                    if committed {
-                        tuf_combo(
-                            "Comm:",
-                            mem_info.commit_limit,
-                            mem_info.committed,
-                            (mem_info.commit_limit as i128) - (mem_info.committed as i128),
-                            n2s,
-                        );
-                    }
-                }
+                print!("{}", construct_str(&mem_info));
             }
             Err(e) => {
                 eprintln!("free: failed to read memory info: {}", e);
                 process::exit(1);
             }
         }
+
         if count > 0 || infinite {
             // the original free prints a newline everytime before waiting for the next round
             println!();
@@ -347,6 +251,149 @@ fn parse_meminfo_value(value: &str) -> Result<u64, std::io::Error> {
         })
 }
 
+fn parse_output_format(matches: ArgMatches) -> impl Fn(&MemInfo) -> String {
+    let wide = matches.get_flag("wide");
+    let human = matches.get_flag("human");
+    let si = matches.get_flag("si");
+    let total = matches.get_flag("total");
+    let lohi = matches.get_flag("lohi");
+    let committed = matches.get_flag("committed");
+    let one_line = matches.get_flag("line");
+
+    let convert = detect_unit(&matches);
+
+    // function that converts the number to the correct string
+    let n2s = move |x| {
+        if human {
+            humanized(x, si)
+        } else {
+            convert(x).to_string()
+        }
+    };
+
+    move |mem_info: &MemInfo| {
+        if one_line {
+            construct_one_line_str(mem_info, &n2s)
+        } else {
+            let mut str = String::new();
+            if wide {
+                str += &construct_wide_str(mem_info, &n2s);
+            } else {
+                str += &construct_str(mem_info, &n2s);
+            }
+
+            if lohi {
+                str += &construct_lohi_str(mem_info, &n2s);
+            }
+
+            str += &construct_swap_str(mem_info, &n2s);
+
+            if total {
+                str += &construct_total_str(mem_info, &n2s);
+            }
+
+            if committed {
+                str += &construct_committed_str(mem_info, &n2s);
+            }
+
+            str
+        }
+    }
+}
+
+fn construct_one_line_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
+    format!(
+        "{:8}{:>11} {:8}{:>11}  {:8}{:>10} {:8}{:>11}\n",
+        "SwapUse",
+        n2s(mem_info.swap_used),
+        "CachUse",
+        n2s(mem_info.buffers + mem_info.cached + mem_info.reclaimable),
+        "MemUse",
+        n2s(mem_info.total - mem_info.available),
+        "MemFree",
+        n2s(mem_info.free)
+    )
+}
+
+fn construct_wide_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
+    format!(
+        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}\n",
+        " ", "total", "used", "free", "shared", "buffers", "cache", "available",
+    ) + &format!(
+        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}\n",
+        "Mem:",
+        n2s(mem_info.total),
+        n2s(mem_info.total - mem_info.available),
+        n2s(mem_info.free),
+        n2s(mem_info.shared),
+        n2s(mem_info.buffers),
+        n2s(mem_info.cached + mem_info.reclaimable),
+        n2s(mem_info.available),
+    )
+}
+
+fn construct_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
+    format!(
+        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}\n",
+        " ", "total", "used", "free", "shared", "buff/cache", "available",
+    ) + &format!(
+        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}\n",
+        "Mem:",
+        n2s(mem_info.total),
+        n2s(mem_info.total - mem_info.available),
+        n2s(mem_info.free),
+        n2s(mem_info.shared),
+        n2s(mem_info.buffers + mem_info.cached + mem_info.reclaimable),
+        n2s(mem_info.available),
+    )
+}
+
+fn construct_lohi_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
+    construct_tuf_combo_str(
+        "Low:",
+        mem_info.low_total,
+        mem_info.low_total - mem_info.low_free,
+        mem_info.low_free.into(),
+        n2s,
+    ) + &construct_tuf_combo_str(
+        "High:",
+        mem_info.high_total,
+        mem_info.high_total - mem_info.high_free,
+        mem_info.high_free.into(),
+        n2s,
+    )
+}
+
+fn construct_swap_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
+    construct_tuf_combo_str(
+        "Swap:",
+        mem_info.swap_total,
+        mem_info.swap_used,
+        mem_info.swap_free.into(),
+        n2s,
+    )
+}
+
+fn construct_total_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
+    construct_tuf_combo_str(
+        "Total:",
+        mem_info.total + mem_info.swap_total,
+        mem_info.total - mem_info.available + mem_info.swap_used,
+        (mem_info.free + mem_info.swap_free).into(),
+        n2s,
+    )
+}
+
+fn construct_committed_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> String {
+    construct_tuf_combo_str(
+        "Comm:",
+        mem_info.commit_limit,
+        mem_info.committed,
+        (mem_info.commit_limit as i128) - (mem_info.committed as i128),
+        n2s,
+    )
+}
+
 // Here's the `-h` `--human` flag processing logic
 fn humanized(kib: u64, si: bool) -> String {
     let binding = ByteSize::kib(kib).to_string_as(si);
@@ -380,16 +427,25 @@ fn detect_unit(arg: &ArgMatches) -> fn(u64) -> u64 {
     }
 }
 
-fn wide_header() {
-    println!(
-        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
-        " ", "total", "used", "free", "shared", "buffers", "cache", "available",
-    );
-}
-
-fn header() {
-    println!(
-        "{:8}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
-        " ", "total", "used", "free", "shared", "buff/cache", "available",
-    );
+#[test]
+fn test_line_wide() {
+    let matches_with_line = uu_app()
+        .try_get_matches_from(vec!["free", "--line"])
+        .unwrap();
+    let matches_with_line_wide = uu_app()
+        .try_get_matches_from(vec!["free", "--line", "--wide"])
+        .unwrap();
+    let construct_line_str = parse_output_format(matches_with_line);
+    let construct_line_wide_str = parse_output_format(matches_with_line_wide);
+    match parse_meminfo() {
+        Ok(mem_info) => {
+            assert_eq!(
+                construct_line_str(&mem_info),
+                construct_line_wide_str(&mem_info)
+            );
+        }
+        Err(e) => {
+            eprintln!("free: failed to read memory info: {}", e);
+        }
+    }
 }
