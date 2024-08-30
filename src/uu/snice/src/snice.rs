@@ -177,8 +177,13 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         let pids = collect_pids(&targets);
         let results = perform_action(&pids, &settings.priority);
 
+        if results.iter().all(|it| it.is_none()) || results.is_empty() {
+            return Err(USimpleError::new(1, "no process selection criteria"));
+        }
+
+        let output = construct_verbose_result(&pids, &results).trim().to_owned();
         if settings.verbose {
-            println!("{}", construct_verbose_result(&pids, &results));
+            println!("{}", output);
         }
     }
 

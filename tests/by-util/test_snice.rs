@@ -9,3 +9,8 @@ use crate::common::util::TestScenario;
 fn test_no_args() {
     new_ucmd!().fails().code_is(1);
 }
+
+#[test]
+fn test_no_process_selected() {
+    new_ucmd!().arg("-u=invalid_user").fails().code_is(1);
+}
