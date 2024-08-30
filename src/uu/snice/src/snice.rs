@@ -181,8 +181,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             return Err(USimpleError::new(1, "no process selection criteria"));
         }
 
-        let output = construct_verbose_result(&pids, &results).trim().to_owned();
         if settings.verbose {
+            let output = construct_verbose_result(&pids, &results).trim().to_owned();
             println!("{}", output);
         }
     }
