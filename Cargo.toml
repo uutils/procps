@@ -37,6 +37,7 @@ feat_common_core = [
     "ps",
     "pidwait",
     "top",
+    "snice",
 ]
 
 [workspace.dependencies]
@@ -82,6 +83,7 @@ pidof = { optional = true, version = "0.0.1", package = "uu_pidof", path = "src/
 ps = { optional = true, version = "0.0.1", package = "uu_ps", path = "src/uu/ps" }
 pidwait = { optional = true, version = "0.0.1", package = "uu_pidwait", path = "src/uu/pidwait" }
 top = { optional = true, version = "0.0.1", package = "uu_top", path = "src/uu/top" }
+snice = { optional = true, version = "0.0.1", package = "uu_snice", path = "src/uu/snice" }
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"
