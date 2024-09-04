@@ -4,6 +4,12 @@
 // file that was distributed with this source code.
 
 use crate::common::util::TestScenario;
+#[cfg(target_os = "linux")]
+use regex::Regex;
+#[cfg(target_os = "linux")]
+use std::process;
+
+const NON_EXISTING_PID: &str = "999999";
 
 #[test]
 fn test_no_args() {
@@ -13,10 +19,6 @@ fn test_no_args() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_existing_pid() {
-    use std::process;
-
-    use regex::Regex;
-
     let pid = process::id();
 
     let result = new_ucmd!()
@@ -24,7 +26,66 @@ fn test_existing_pid() {
         .succeeds()
         .stdout_move_str();
 
-    let (first_line, rest) = result.split_once('\n').unwrap();
+    assert_format(pid, &result);
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_multiple_existing_pids() {
+    let pid = process::id();
+
+    let result = new_ucmd!()
+        .arg(pid.to_string())
+        .arg(pid.to_string())
+        .succeeds()
+        .stdout_move_str();
+
+    let result: Vec<_> = result.lines().collect();
+    let (left, right) = result.split_at(result.len() / 2);
+
+    assert_format(pid, &left.join("\n"));
+    assert_format(pid, &right.join("\n"));
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_non_existing_and_existing_pid() {
+    let pid = process::id();
+
+    let result = new_ucmd!()
+        .arg(NON_EXISTING_PID)
+        .arg(pid.to_string())
+        .fails();
+    let result = result.code_is(42).no_stderr().stdout_str();
+
+    assert_format(pid, result);
+}
+
+#[test]
+fn test_non_existing_pid() {
+    new_ucmd!()
+        .arg(NON_EXISTING_PID)
+        .fails()
+        .code_is(42)
+        .no_output();
+}
+
+#[test]
+fn test_invalid_arg() {
+    new_ucmd!().arg("--definitely-invalid").fails().code_is(1);
+}
+
+// Ensure `s` has the following format:
+//
+// 1234:   /some/path
+// 00007ff01c6aa000      8K rw--- ld-linux-x86-64.so.2
+// 00007fffa80a6000    132K rw---   [ stack ]
+// ffffffffff600000      4K --x--   [ anon ]
+// ...
+//  total          1040320K
+#[cfg(target_os = "linux")]
+fn assert_format(pid: u32, s: &str) {
+    let (first_line, rest) = s.split_once('\n').unwrap();
     let re = Regex::new(&format!("^{pid}:   .+[^ ]$")).unwrap();
     assert!(re.is_match(first_line));
 
@@ -35,14 +96,4 @@ fn test_existing_pid() {
 
     let re = Regex::new("^ total +[1-9][0-9]*K$").unwrap();
     assert!(re.is_match(last_line));
-}
-
-#[test]
-fn test_non_existing_pid() {
-    new_ucmd!().arg("999999").fails().code_is(42).no_output();
-}
-
-#[test]
-fn test_invalid_arg() {
-    new_ucmd!().arg("--definitely-invalid").fails().code_is(1);
 }
