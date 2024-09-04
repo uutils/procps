@@ -7,8 +7,8 @@ use clap::{crate_version, Arg, ArgAction, Command};
 use std::env;
 use std::fs;
 use std::io::Error;
-use std::process;
-use uucore::{error::UResult, format_usage, help_about, help_usage};
+use uucore::error::{set_exit_code, UResult};
+use uucore::{format_usage, help_about, help_usage};
 
 const ABOUT: &str = help_about!("pmap.md");
 const USAGE: &str = help_usage!("pmap.md");
@@ -16,21 +16,24 @@ const USAGE: &str = help_usage!("pmap.md");
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
-    let pid = matches.get_one::<String>("pid").expect("PID required");
+    let pids = matches.get_many::<String>("pid").expect("PID required");
 
-    match parse_cmdline(pid) {
-        Ok(cmdline) => {
-            println!("{}:   {}", pid, cmdline);
+    for pid in pids {
+        match parse_cmdline(pid) {
+            Ok(cmdline) => {
+                println!("{pid}:   {cmdline}");
+            }
+            Err(_) => {
+                set_exit_code(42);
+                continue;
+            }
         }
-        Err(_) => {
-            process::exit(42);
-        }
-    }
 
-    match parse_maps(pid) {
-        Ok(total) => println!(" total {total:>16}K"),
-        Err(_) => {
-            process::exit(1);
+        match parse_maps(pid) {
+            Ok(total) => println!(" total {total:>16}K"),
+            Err(_) => {
+                set_exit_code(1);
+            }
         }
     }
 
@@ -134,7 +137,7 @@ pub fn uu_app() -> Command {
             Arg::new("pid")
                 .help("Process ID")
                 .required_unless_present_any(["create-rc", "create-rc-to"]) // Adjusted for -n, -N note
-                .action(ArgAction::Set)
+                .action(ArgAction::Append)
                 .conflicts_with_all(["create-rc", "create-rc-to"]),
         ) // Ensure pid is not used with -n, -N
         .arg(
