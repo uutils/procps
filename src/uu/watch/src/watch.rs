@@ -17,12 +17,9 @@ const USAGE: &str = help_usage!("watch.md");
 
 fn parse_interval(input: &str) -> Result<Duration, ParseIntError> {
     // Find index where to split string into seconds and nanos
-    let index = match input.find([',', '.']) {
-        Some(index) => index,
-        None => {
-            let seconds: u64 = input.parse()?;
-            return Ok(Duration::new(seconds, 0));
-        }
+    let Some(index) = input.find([',', '.']) else {
+        let seconds: u64 = input.parse()?;
+        return Ok(Duration::new(seconds, 0));
     };
 
     // If the seconds string is empty, set seconds to 0

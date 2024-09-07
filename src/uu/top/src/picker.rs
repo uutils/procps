@@ -83,11 +83,11 @@ fn pr(pid: u32) -> String {
 
     let result = unsafe { getpriority(PRIO_PROCESS, pid) };
 
-    let result = if Errno::last() != Errno::UnknownErrno {
+    let result = if Errno::last() == Errno::UnknownErrno {
+        result
+    } else {
         Errno::clear();
         0
-    } else {
-        result
     };
 
     format!("{}", result)
@@ -174,7 +174,7 @@ fn command(pid: u32) -> String {
                             .collect::<Vec<_>>()
                             .first()
                             .unwrap()
-                            .split(":")
+                            .split(':')
                             .collect::<Vec<_>>();
 
                         line[1].trim().to_owned()

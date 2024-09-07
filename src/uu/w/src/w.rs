@@ -94,10 +94,10 @@ fn format_time(time: String) -> Result<String, chrono::format::ParseError> {
     let current_dt = chrono::Local::now().fixed_offset();
     let dt = chrono::DateTime::parse_from_str(&t, "%Y-%m-%d %H:%M:%S%.f %:z")?;
 
-    if current_dt.day() != dt.day() {
-        Ok(dt.format("%a%d").to_string())
-    } else {
+    if current_dt.day() == dt.day() {
         Ok(dt.format("%H:%M").to_string())
+    } else {
+        Ok(dt.format("%a%d").to_string())
     }
 }
 

@@ -93,7 +93,7 @@ pub(crate) fn session_collector(
     // flag `-a`
     // Guessing it pid=sid, and associated terminal.
     if matches.get_flag("a") {
-        proc_snapshot.iter().for_each(|it| {
+        for it in proc_snapshot {
             let pid = it.borrow().pid;
 
             if let Some(sid) = getsid(pid as i32) {
@@ -102,7 +102,7 @@ pub(crate) fn session_collector(
                     result.push(it.clone());
                 }
             }
-        });
+        }
     }
 
     result

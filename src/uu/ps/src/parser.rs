@@ -30,7 +30,7 @@ impl OptionalKeyValue {
     {
         let value: String = value.into();
 
-        if let Some((key, value)) = value.split_once("=") {
+        if let Some((key, value)) = value.split_once('=') {
             Self {
                 key: key.into(),
                 value: Some(value.into()),

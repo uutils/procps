@@ -21,10 +21,10 @@ impl SlabInfo {
     pub fn new() -> Result<SlabInfo, Error> {
         let content = fs::read_to_string("/proc/slabinfo")?;
 
-        Self::parse(content).ok_or(ErrorKind::Unsupported.into())
+        Self::parse(&content).ok_or(ErrorKind::Unsupported.into())
     }
 
-    pub fn parse(content: String) -> Option<SlabInfo> {
+    pub fn parse(content: &str) -> Option<SlabInfo> {
         let mut lines: Vec<&str> = content.lines().collect();
 
         let _ = parse_version(lines.remove(0))?;
