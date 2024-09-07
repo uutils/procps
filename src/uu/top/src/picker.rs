@@ -174,7 +174,7 @@ fn command(pid: u32) -> String {
                             .collect::<Vec<_>>()
                             .first()
                             .unwrap()
-                            .split(":")
+                            .split(':')
                             .collect::<Vec<_>>();
 
                         line[1].trim().to_owned()

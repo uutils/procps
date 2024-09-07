@@ -76,7 +76,7 @@ fn parse_map_line(line: &str) -> (String, u64) {
     let (perms, rest) = rest.split_once(' ').expect("line should contain 2nd ' '");
     let perms = parse_perms(perms);
 
-    let filename: String = rest.splitn(4, " ").skip(3).collect();
+    let filename: String = rest.splitn(4, ' ').skip(3).collect();
     let filename = filename.trim_ascii_start();
     let filename = parse_filename(filename);
 
