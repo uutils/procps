@@ -39,6 +39,25 @@ fn test_no_args() {
 }
 
 #[test]
+fn test_line() {
+    let pattern = Regex::new(r"^SwapUse +\d+ CachUse +\d+ {2}MemUse +\d+ MemFree +\d+\n$").unwrap();
+
+    for arg in ["-L", "--line"] {
+        new_ucmd!().arg(arg).succeeds().stdout_matches(&pattern);
+    }
+
+    // ensure --line "wins"
+    for arg in ["--lohi", "--total", "--committed", "--wide"] {
+        new_ucmd!()
+            .arg(arg)
+            .arg("--line")
+            .arg(arg)
+            .succeeds()
+            .stdout_matches(&pattern);
+    }
+}
+
+#[test]
 fn test_wide() {
     let header_pattern = r"^ {15}total {8}used {8}free {6}shared {5}buffers {7}cache {3}available$";
     let mem_pattern = r"^Mem:( +\d+){7}$";
@@ -108,13 +127,4 @@ fn test_committed() {
             .unwrap()
             .starts_with("Comm:"));
     }
-}
-
-#[test]
-fn test_always_one_line() {
-    // -L should ignore all other parameters and always print one line
-    let result = new_ucmd!().arg("-hltvwL").succeeds();
-    let stdout = result.stdout_str().lines().collect::<Vec<&str>>();
-    assert_eq!(stdout.len(), 1);
-    assert!(stdout[0].starts_with("SwapUse"));
 }
