@@ -15,7 +15,10 @@ use std::ops::Mul;
 use std::process;
 use std::thread::sleep;
 use std::time::Duration;
-use uucore::{error::UResult, format_usage, help_about, help_usage};
+use uucore::{
+    error::{UResult, USimpleError},
+    format_usage, help_about, help_usage,
+};
 
 const ABOUT: &str = help_about!("free.md");
 const USAGE: &str = help_usage!("free.md");
@@ -148,7 +151,16 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
 
     let count_flag = matches.get_one("count");
-    let mut count: u64 = count_flag.unwrap_or(&1_u64).to_owned();
+    let mut count: u64 = match count_flag {
+        Some(0) => {
+            return Err(USimpleError::new(
+                1,
+                "count argument must be greater than 0",
+            ))
+        }
+        Some(c) => *c,
+        None => 1,
+    };
     let seconds_flag = matches.get_one("seconds");
     let seconds: f64 = seconds_flag.unwrap_or(&1.0_f64).to_owned();
 

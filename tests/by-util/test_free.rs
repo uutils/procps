@@ -102,6 +102,15 @@ fn test_count() {
 }
 
 #[test]
+fn test_count_zero() {
+    new_ucmd!()
+        .arg("--count=0")
+        .fails()
+        .code_is(1)
+        .stderr_only("free: count argument must be greater than 0\n");
+}
+
+#[test]
 fn test_lohi() {
     for arg in ["-l", "--lohi"] {
         let result = new_ucmd!().arg(arg).succeeds();
