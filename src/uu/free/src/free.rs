@@ -162,7 +162,16 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         None => 1,
     };
     let seconds_flag = matches.get_one("seconds");
-    let seconds: f64 = seconds_flag.unwrap_or(&1.0_f64).to_owned();
+    let seconds: f64 = match seconds_flag {
+        Some(0.0) => {
+            return Err(USimpleError::new(
+                1,
+                "seconds argument must be greater than 0",
+            ))
+        }
+        Some(s) => *s,
+        None => 1.0,
+    };
 
     let dur = Duration::from_nanos(seconds.mul(1_000_000_000.0).round() as u64);
 

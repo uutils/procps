@@ -135,6 +135,18 @@ fn test_committed() {
     }
 }
 
+#[test]
+fn test_seconds_zero() {
+    for arg in ["-s", "--seconds"] {
+        new_ucmd!()
+            .arg(arg)
+            .arg("0")
+            .fails()
+            .code_is(1)
+            .stderr_only("free: seconds argument must be greater than 0\n");
+    }
+}
+
 fn assert_default_format(s: &str) {
     let header_pattern = r"^ {15}total {8}used {8}free {6}shared {2}buff/cache {3}available$";
     let mem_pattern = r"^Mem:( +\d+){6}$";
