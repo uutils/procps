@@ -350,33 +350,21 @@ impl Hash for ProcessInformation {
 
 /// Parsing `/proc/self/stat` file.
 ///
-/// In some case, the first pair (and the only one pair) will contains whitespace,
-/// so if we want to parse it, we have to write new algorithm.
-///
 /// TODO: If possible, test and use regex to replace this algorithm.
 fn stat_split(stat: &str) -> Vec<String> {
     let stat = String::from(stat);
 
-    let mut buf = String::with_capacity(stat.len());
+    if let (Some(l), Some(r)) = (stat.find('('), stat.rfind(')')) {
+        let mut split_stat = vec![];
 
-    let l = stat.find('(');
-    let r = stat.find(')');
-    let content = if let (Some(l), Some(r)) = (l, r) {
-        let replaced = stat[(l + 1)..r].replace(' ', "$$");
+        split_stat.push(stat[..l - 1].to_string());
+        split_stat.push(stat[l + 1..r].to_string());
+        split_stat.extend(stat[r + 2..].split_whitespace().map(String::from));
 
-        buf.push_str(&stat[..l]);
-        buf.push_str(&replaced);
-        buf.push_str(&stat[(r + 1)..stat.len()]);
-
-        &buf
+        split_stat
     } else {
-        &stat
-    };
-
-    content
-        .split_whitespace()
-        .map(|it| it.replace("$$", " "))
-        .collect()
+        stat.split_whitespace().map(String::from).collect()
+    }
 }
 
 /// Iterating pid in current system
@@ -464,5 +452,8 @@ mod tests {
 
         let case = "47246 (kworker /10:1-events) I 2 0 0 0 -1 69238880 0 0 0 0 17 29 0 0 20 0 1 0 1396260 0 0 18446744073709551615 0 0 0 0 0 0 0 2147483647 0 0 0 0 17 10 0 0 0 0 0 0 0 0 0 0 0 0 0";
         assert!(stat_split(case)[1] == "kworker /10:1-events");
+
+        let case = "83875 (sleep (2) .sh) S 75750 83875 75750 34824 83875 4194304 173 0 0 0 0 0 0 0 20 0 1 0 18366278 23187456 821 18446744073709551615 94424231874560 94424232638561 140734866834816 0 0 0 65536 4 65538 1 0 0 17 6 0 0 0 0 0 94424232876752 94424232924772 94424259932160 140734866837287 140734866837313 140734866837313 140734866841576 0";
+        assert!(stat_split(case)[1] == "sleep (2) .sh");
     }
 }
