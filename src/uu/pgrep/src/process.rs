@@ -354,12 +354,12 @@ impl Hash for ProcessInformation {
 fn stat_split(stat: &str) -> Vec<String> {
     let stat = String::from(stat);
 
-    if let (Some(l), Some(r)) = (stat.find('('), stat.rfind(')')) {
+    if let (Some(left), Some(right)) = (stat.find('('), stat.rfind(')')) {
         let mut split_stat = vec![];
 
-        split_stat.push(stat[..l - 1].to_string());
-        split_stat.push(stat[l + 1..r].to_string());
-        split_stat.extend(stat[r + 2..].split_whitespace().map(String::from));
+        split_stat.push(stat[..left - 1].to_string());
+        split_stat.push(stat[left + 1..right].to_string());
+        split_stat.extend(stat[right + 2..].split_whitespace().map(String::from));
 
         split_stat
     } else {
