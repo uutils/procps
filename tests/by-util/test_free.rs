@@ -17,25 +17,10 @@ fn test_invalid_arg() {
 
 #[test]
 fn test_no_args() {
-    let header_pattern = r"^ {15}total {8}used {8}free {6}shared {2}buff/cache {3}available$";
-    let mem_pattern = r"^Mem:( +\d+){6}$";
-    let swap_pattern = r"^Swap: ( +\d+){3}$";
+    let output = new_ucmd!().succeeds().stdout_move_str();
 
-    let patterns = vec![
-        Regex::new(header_pattern).unwrap(),
-        Regex::new(mem_pattern).unwrap(),
-        Regex::new(swap_pattern).unwrap(),
-    ];
-
-    let binding = new_ucmd!().succeeds();
-    let output = binding.stdout_str();
     assert_eq!(output.len(), 207);
-
-    // Check the format for each line output
-    let mut lines = output.lines();
-    for pattern in patterns {
-        assert!(pattern.is_match(lines.next().unwrap()));
-    }
+    assert_default_format(&output);
 }
 
 #[test]
@@ -100,8 +85,29 @@ fn test_total() {
 
 #[test]
 fn test_count() {
-    let result = new_ucmd!().args(&["-c", "2", "-s", "0"]).succeeds();
-    assert_eq!(result.stdout_str().lines().count(), 7);
+    for arg in ["-c", "--count"] {
+        let output = new_ucmd!()
+            // without -s, there would be a delay of 1s between the output of the
+            // two blocks
+            .args(&[arg, "2", "-s", "0.00001"])
+            .succeeds()
+            .stdout_move_str();
+
+        let lines: Vec<&str> = output.lines().collect();
+
+        assert_default_format(&lines[..3].join("\n"));
+        assert!(lines[3].is_empty());
+        assert_default_format(&lines[4..].join("\n"));
+    }
+}
+
+#[test]
+fn test_count_zero() {
+    new_ucmd!()
+        .arg("--count=0")
+        .fails()
+        .code_is(1)
+        .stderr_only("free: count argument must be greater than 0\n");
 }
 
 #[test]
@@ -126,5 +132,35 @@ fn test_committed() {
             .last()
             .unwrap()
             .starts_with("Comm:"));
+    }
+}
+
+#[test]
+fn test_seconds_zero() {
+    for arg in ["-s", "--seconds"] {
+        new_ucmd!()
+            .arg(arg)
+            .arg("0")
+            .fails()
+            .code_is(1)
+            .stderr_only("free: seconds argument must be greater than 0\n");
+    }
+}
+
+fn assert_default_format(s: &str) {
+    let header_pattern = r"^ {15}total {8}used {8}free {6}shared {2}buff/cache {3}available$";
+    let mem_pattern = r"^Mem:( +\d+){6}$";
+    let swap_pattern = r"^Swap: ( +\d+){3}$";
+
+    let patterns = vec![
+        Regex::new(header_pattern).unwrap(),
+        Regex::new(mem_pattern).unwrap(),
+        Regex::new(swap_pattern).unwrap(),
+    ];
+
+    // Check the format for each line output
+    let mut lines = s.lines();
+    for pattern in patterns {
+        assert!(pattern.is_match(lines.next().unwrap()));
     }
 }
