@@ -41,7 +41,10 @@ fn test_multiple_existing_pids() {
         .stdout_move_str();
 
     let result: Vec<_> = result.lines().collect();
-    let (left, right) = result.split_at(result.len() / 2);
+
+    let re = Regex::new(r"^[1-9]\d*:").unwrap();
+    let pos_second_pid = result.iter().rposition(|line| re.is_match(line)).unwrap();
+    let (left, right) = result.split_at(pos_second_pid);
 
     assert_format(pid, &left.join("\n"));
     assert_format(pid, &right.join("\n"));
