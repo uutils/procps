@@ -147,6 +147,58 @@ fn test_seconds_zero() {
     }
 }
 
+#[test]
+fn test_unit() {
+    fn extract_total(re: &Regex, output: &str) -> u64 {
+        re.captures(output)
+            .unwrap()
+            .get(1)
+            .unwrap()
+            .as_str()
+            .parse::<u64>()
+            .unwrap()
+    }
+
+    let kibi_output = new_ucmd!().succeeds().stdout_move_str();
+    let total_mem_re = Regex::new(r"Mem:\s+(\d{1,12})").unwrap();
+    let total_swap_re = Regex::new(r"Swap:\s+(\d{1,12})").unwrap();
+    let total_mem_bytes = extract_total(&total_mem_re, &kibi_output) * 1024;
+    let total_swap_bytes = extract_total(&total_swap_re, &kibi_output) * 1024;
+
+    let base: u64 = 1024;
+    let base_si: u64 = 1000;
+    for (args, divisor) in vec![
+        (vec!["--kilo"], base_si),
+        (vec!["--mega"], base_si.pow(2)),
+        (vec!["--giga"], base_si.pow(3)),
+        (vec!["--tera"], base_si.pow(4)),
+        (vec!["--peta"], base_si.pow(5)),
+        (vec!["--kilo", "--si"], base_si),
+        (vec!["--mega", "--si"], base_si.pow(2)),
+        (vec!["--giga", "--si"], base_si.pow(3)),
+        (vec!["--tera", "--si"], base_si.pow(4)),
+        (vec!["--peta", "--si"], base_si.pow(5)),
+        (vec!["--kibi"], base),
+        (vec!["--mebi"], base.pow(2)),
+        (vec!["--gibi"], base.pow(3)),
+        (vec!["--tebi"], base.pow(4)),
+        (vec!["--pebi"], base.pow(5)),
+        (vec!["--kibi", "--si"], base_si),
+        (vec!["--mebi", "--si"], base_si.pow(2)),
+        (vec!["--gibi", "--si"], base_si.pow(3)),
+        (vec!["--tebi", "--si"], base_si.pow(4)),
+        (vec!["--pebi", "--si"], base_si.pow(5)),
+        (vec![], base),
+        (vec!["--si"], base_si),
+    ] {
+        let output = new_ucmd!().args(&args).succeeds().stdout_move_str();
+        let total_mem = extract_total(&total_mem_re, &output);
+        let total_swap = extract_total(&total_swap_re, &output);
+        assert!(total_mem == total_mem_bytes / divisor);
+        assert!(total_swap == total_swap_bytes / divisor);
+    }
+}
+
 fn assert_default_format(s: &str) {
     let header_pattern = r"^ {15}total {8}used {8}free {6}shared {2}buff/cache {3}available$";
     let mem_pattern = r"^Mem:( +\d+){6}$";
