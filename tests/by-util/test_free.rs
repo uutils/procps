@@ -150,7 +150,7 @@ fn test_seconds_zero() {
 #[test]
 fn test_unit() {
     fn extract_total(re: &Regex, output: &String) -> u64 {
-        re.captures(&output)
+        re.captures(output)
             .unwrap()
             .get(1)
             .unwrap()
@@ -160,8 +160,8 @@ fn test_unit() {
     }
 
     let no_args_output = new_ucmd!().args(&["--bytes"]).succeeds().stdout_move_str();
-    let total_mem_re = Regex::new(r"Mem:\s+(\d+)").unwrap();
-    let total_swap_re = Regex::new(r"Swap:\s+(\d+)").unwrap();
+    let total_mem_re = Regex::new(r"Mem:\s+(\d{1,12})").unwrap();
+    let total_swap_re = Regex::new(r"Swap:\s+(\d{1,12})").unwrap();
     let total_mem_bytes = extract_total(&total_mem_re, &no_args_output);
     let total_swap_bytes = extract_total(&total_swap_re, &no_args_output);
 
