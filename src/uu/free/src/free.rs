@@ -433,13 +433,24 @@ fn humanized(kib: u64, si: bool) -> String {
 }
 
 fn detect_unit(arg: &ArgMatches) -> fn(u64) -> u64 {
+    let si = arg.get_flag("si");
     match arg {
         _ if arg.get_flag("bytes") => |kib: u64| ByteSize::kib(kib).0,
-        _ if arg.get_flag("kilo") => |kib: u64| ByteSize::kib(kib).0 / KB,
-        _ if arg.get_flag("mega") => |kib: u64| ByteSize::kib(kib).0 / MB,
-        _ if arg.get_flag("giga") => |kib: u64| ByteSize::kib(kib).0 / GB,
-        _ if arg.get_flag("tera") => |kib: u64| ByteSize::kib(kib).0 / TB,
-        _ if arg.get_flag("peta") => |kib: u64| ByteSize::kib(kib).0 / PB,
+        _ if arg.get_flag("kilo") || (!si && arg.get_flag("kibi")) => {
+            |kib: u64| ByteSize::kib(kib).0 / KB
+        }
+        _ if arg.get_flag("mega") || (!si && arg.get_flag("mebi")) => {
+            |kib: u64| ByteSize::kib(kib).0 / MB
+        }
+        _ if arg.get_flag("giga") || (!si && arg.get_flag("gibi")) => {
+            |kib: u64| ByteSize::kib(kib).0 / GB
+        }
+        _ if arg.get_flag("tera") || (!si && arg.get_flag("tebi")) => {
+            |kib: u64| ByteSize::kib(kib).0 / TB
+        }
+        _ if arg.get_flag("peta") || (!si && arg.get_flag("pebi")) => {
+            |kib: u64| ByteSize::kib(kib).0 / PB
+        }
         _ if arg.get_flag("kibi") => |kib: u64| ByteSize::kib(kib).0 / KIB,
         _ if arg.get_flag("mebi") => |kib: u64| ByteSize::kib(kib).0 / MIB,
         _ if arg.get_flag("gibi") => |kib: u64| ByteSize::kib(kib).0 / GIB,
