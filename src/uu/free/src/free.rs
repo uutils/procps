@@ -230,7 +230,7 @@ pub fn uu_app() -> Command {
             arg!(   --tebi   "show output in tebibytes").action(ArgAction::SetTrue),
             arg!(   --pebi   "show output in pebibytes").action(ArgAction::SetTrue),
             arg!(-h --human  "show human-readable output").action(ArgAction::SetTrue),
-            arg!(   --si     "use powers of 1000 not 1024").action(ArgAction::SetFalse),
+            arg!(   --si     "use powers of 1000 not 1024").action(ArgAction::SetTrue),
             arg!(-l --lohi   "show detailed low and high memory statistics")
                 .action(ArgAction::SetTrue),
             arg!(-t --total "show total for RAM + swap").action(ArgAction::SetTrue),
@@ -418,7 +418,7 @@ fn construct_committed_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> S
 
 // Here's the `-h` `--human` flag processing logic
 fn humanized(kib: u64, si: bool) -> String {
-    let binding = ByteSize::kib(kib).to_string_as(si);
+    let binding = ByteSize::kib(kib).to_string_as(!si);
     let split: Vec<&str> = binding.split(' ').collect();
 
     // TODO: finish the logic of automatic scale.
@@ -436,19 +436,19 @@ fn detect_unit(arg: &ArgMatches) -> fn(u64) -> u64 {
     let si = arg.get_flag("si");
     match arg {
         _ if arg.get_flag("bytes") => |kib: u64| ByteSize::kib(kib).0,
-        _ if arg.get_flag("kilo") || (!si && arg.get_flag("kibi")) => {
+        _ if arg.get_flag("kilo") || (si && arg.get_flag("kibi")) => {
             |kib: u64| ByteSize::kib(kib).0 / KB
         }
-        _ if arg.get_flag("mega") || (!si && arg.get_flag("mebi")) => {
+        _ if arg.get_flag("mega") || (si && arg.get_flag("mebi")) => {
             |kib: u64| ByteSize::kib(kib).0 / MB
         }
-        _ if arg.get_flag("giga") || (!si && arg.get_flag("gibi")) => {
+        _ if arg.get_flag("giga") || (si && arg.get_flag("gibi")) => {
             |kib: u64| ByteSize::kib(kib).0 / GB
         }
-        _ if arg.get_flag("tera") || (!si && arg.get_flag("tebi")) => {
+        _ if arg.get_flag("tera") || (si && arg.get_flag("tebi")) => {
             |kib: u64| ByteSize::kib(kib).0 / TB
         }
-        _ if arg.get_flag("peta") || (!si && arg.get_flag("pebi")) => {
+        _ if arg.get_flag("peta") || (si && arg.get_flag("pebi")) => {
             |kib: u64| ByteSize::kib(kib).0 / PB
         }
         _ if arg.get_flag("kibi") => |kib: u64| ByteSize::kib(kib).0 / KIB,
@@ -456,7 +456,7 @@ fn detect_unit(arg: &ArgMatches) -> fn(u64) -> u64 {
         _ if arg.get_flag("gibi") => |kib: u64| ByteSize::kib(kib).0 / GIB,
         _ if arg.get_flag("tebi") => |kib: u64| ByteSize::kib(kib).0 / TIB,
         _ if arg.get_flag("pebi") => |kib: u64| ByteSize::kib(kib).0 / PIB,
-        _ if !si => |kib: u64| ByteSize::kib(kib).0 / KB,
+        _ if si => |kib: u64| ByteSize::kib(kib).0 / KB,
         _ => |kib: u64| kib,
     }
 }
