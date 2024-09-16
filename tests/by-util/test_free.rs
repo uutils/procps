@@ -102,6 +102,23 @@ fn test_count() {
 }
 
 #[test]
+fn test_count_line() {
+    let re = Regex::new(r"^SwapUse +\d+ CachUse +\d+ {2}MemUse +\d+ MemFree +\d+$").unwrap();
+
+    let output = new_ucmd!()
+        .args(&["--count", "2", "--line", "-s", "0.00001"])
+        .succeeds()
+        .stdout_move_str();
+
+    let lines: Vec<&str> = output.lines().collect();
+
+    assert_eq!(2, lines.len());
+
+    assert!(re.is_match(lines[0]));
+    assert!(re.is_match(lines[1]));
+}
+
+#[test]
 fn test_count_zero() {
     new_ucmd!()
         .arg("--count=0")
