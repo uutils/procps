@@ -194,8 +194,8 @@ fn test_unit() {
         let output = new_ucmd!().args(&args).succeeds().stdout_move_str();
         let total_mem = extract_total(&total_mem_re, &output);
         let total_swap = extract_total(&total_swap_re, &output);
-        assert!(total_mem == total_mem_bytes / divisor);
-        assert!(total_swap == total_swap_bytes / divisor);
+        assert_eq!(total_mem, total_mem_bytes / divisor);
+        assert_eq!(total_swap, total_swap_bytes / divisor);
     }
 }
 
