@@ -1,0 +1,155 @@
+// This file is part of the uutils procps package.
+//
+// For the full copyright and license information, please view the LICENSE
+// file that was distributed with this source code.
+
+// Represents a parsed single line from /proc/<PID>/maps.
+#[derive(Debug, PartialEq)]
+pub struct MapLine {
+    pub address: String,
+    pub size_in_kb: u64,
+    pub perms: String,
+    pub mapping: String,
+}
+
+// Parses a single line from /proc/<PID>/maps. It assumes the format of `line` is correct (see
+// https://www.kernel.org/doc/html/latest/filesystems/proc.html for details).
+pub fn parse_map_line(line: &str) -> MapLine {
+    let (memory_range, rest) = line.split_once(' ').expect("line should contain ' '");
+    let (address, size_in_kb) = parse_address(memory_range);
+
+    let (perms, rest) = rest.split_once(' ').expect("line should contain 2nd ' '");
+    let perms = parse_perms(perms);
+
+    let mapping: String = rest.splitn(4, ' ').skip(3).collect();
+    let mapping = mapping.trim_ascii_start();
+    let mapping = parse_mapping(mapping);
+
+    MapLine {
+        address,
+        size_in_kb,
+        perms,
+        mapping,
+    }
+}
+
+// Returns the start address and the size of the provided memory range. The start address is always
+// 16-digits and padded with 0, if necessary. The size is in KB.
+fn parse_address(memory_range: &str) -> (String, u64) {
+    let (start, end) = memory_range
+        .split_once('-')
+        .expect("memory range should contain '-'");
+
+    let low = u64::from_str_radix(start, 16).expect("should be a hex value");
+    let high = u64::from_str_radix(end, 16).expect("should be a hex value");
+    let size_in_kb = (high - low) / 1024;
+
+    (format!("{start:0>16}"), size_in_kb)
+}
+
+// Turns a 4-char perms string from /proc/<PID>/maps into a 5-char perms string. The first three
+// chars are left untouched.
+fn parse_perms(perms: &str) -> String {
+    let perms = perms.replace("p", "-");
+
+    // the fifth char seems to be always '-' in the original pmap
+    format!("{perms}-")
+}
+
+fn parse_mapping(mapping: &str) -> String {
+    if mapping == "[stack]" {
+        return "  [ stack ]".into();
+    }
+
+    if mapping.is_empty() || mapping.starts_with('[') || mapping.starts_with("anon") {
+        return "  [ anon ]".into();
+    }
+
+    match mapping.rsplit_once('/') {
+        Some((_, name)) => name.into(),
+        None => mapping.into(),
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn create_map_line(address: &str, size_in_kb: u64, perms: &str, mapping: &str) -> MapLine {
+        MapLine {
+            address: address.to_string(),
+            size_in_kb,
+            perms: perms.to_string(),
+            mapping: mapping.to_string(),
+        }
+    }
+
+    #[test]
+    fn test_parse_map_line() {
+        let data = [
+            (
+                create_map_line("000062442eb9e000", 16, "r----", "konsole"),
+                "62442eb9e000-62442eba2000 r--p 00000000 08:08 10813151                   /usr/bin/konsole"
+            ),
+            (
+                create_map_line("000071af50000000", 132, "rw---", "  [ anon ]"),
+                "71af50000000-71af50021000 rw-p 00000000 00:00 0 "
+            ),
+            (
+                create_map_line("00007ffc3f8df000", 132, "rw---", "  [ stack ]"),
+                "7ffc3f8df000-7ffc3f900000 rw-p 00000000 00:00 0                          [stack]"
+            ),
+            (
+                create_map_line("000071af8c9e6000", 16, "rw-s-", "  [ anon ]"),
+                "71af8c9e6000-71af8c9ea000 rw-s 105830000 00:10 1075                      anon_inode:i915.gem"
+            ),
+            (
+                create_map_line("000071af6cf0c000", 3560, "rw-s-", "memfd:wayland-shm (deleted)"),
+                "71af6cf0c000-71af6d286000 rw-s 00000000 00:01 256481                     /memfd:wayland-shm (deleted)"
+            ),
+            (
+                create_map_line("ffffffffff600000", 4, "--x--", "  [ anon ]"),
+                "ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]"
+            ),
+            (
+                create_map_line("00005e8187da8000", 24, "r----", "hello   world"),
+                "5e8187da8000-5e8187dae000 r--p 00000000 08:08 9524160                    /usr/bin/hello   world"
+            ),
+        ];
+
+        for (expected_map_line, line) in data {
+            assert_eq!(expected_map_line, parse_map_line(line));
+        }
+    }
+
+    #[test]
+    fn test_parse_address() {
+        let (start, size) = parse_address("ffffffffff600000-ffffffffff601000");
+        assert_eq!(start, "ffffffffff600000");
+        assert_eq!(size, 4);
+
+        let (start, size) = parse_address("7ffc4f0c2000-7ffc4f0e3000");
+        assert_eq!(start, "00007ffc4f0c2000");
+        assert_eq!(size, 132);
+    }
+
+    #[test]
+    fn test_parse_perms() {
+        assert_eq!("-----", parse_perms("---p"));
+        assert_eq!("---s-", parse_perms("---s"));
+        assert_eq!("rwx--", parse_perms("rwxp"));
+    }
+
+    #[test]
+    fn test_parse_mapping() {
+        assert_eq!("  [ anon ]", parse_mapping(""));
+        assert_eq!("  [ anon ]", parse_mapping("[vvar]"));
+        assert_eq!("  [ anon ]", parse_mapping("[vdso]"));
+        assert_eq!("  [ anon ]", parse_mapping("anon_inode:i915.gem"));
+        assert_eq!("  [ stack ]", parse_mapping("[stack]"));
+        assert_eq!(
+            "ld-linux-x86-64.so.2",
+            parse_mapping("/usr/lib/ld-linux-x86-64.so.2")
+        );
+    }
+}
