@@ -11,13 +11,13 @@ use std::io::Write;
 use std::path::Path;
 
 pub fn main() {
-    if let Ok(profile) = env::var("PROFILE") {
-        println!("cargo:rustc-cfg=build={profile:?}");
-    }
-
     const ENV_FEATURE_PREFIX: &str = "CARGO_FEATURE_";
     const FEATURE_PREFIX: &str = "feat_";
     const OVERRIDE_PREFIX: &str = "uu_";
+
+    if let Ok(profile) = env::var("PROFILE") {
+        println!("cargo:rustc-cfg=build={profile:?}");
+    }
 
     let out_dir = env::var("OUT_DIR").unwrap();
 
