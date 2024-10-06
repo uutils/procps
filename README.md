@@ -26,8 +26,10 @@ Ongoing:
 * `watch`: Executes a program periodically, showing output fullscreen.
 
 TODO:
+* `hugetop`: Report hugepage usage of processes and the system as a whole.
 * `pkill`: Kills processes based on name and other attributes.
 * `skill`: Sends a signal to processes based on criteria like user, terminal, etc.
+* `sysctl`: Read or write kernel parameters at run-time.
 * `tload`: Prints a graphical representation of system load average to the terminal.
 * `vmstat`: Reports information about processes, memory, paging, block IO, traps, and CPU activity.
 
