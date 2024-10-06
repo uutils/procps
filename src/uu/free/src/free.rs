@@ -150,55 +150,60 @@ where
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
 
-    let count_flag = matches.get_one("count");
-    let mut count: u64 = match count_flag {
-        Some(0) => {
-            return Err(USimpleError::new(
-                1,
-                "count argument must be greater than 0",
-            ))
-        }
-        Some(c) => *c,
-        None => 1,
+    let count: Option<u64> = matches.get_one("count").copied();
+    let seconds: Option<f64> = matches.get_one("seconds").copied();
+
+    if count == Some(0) {
+        return Err(USimpleError::new(
+            1,
+            "count argument must be greater than 0",
+        ));
+    }
+
+    if seconds == Some(0.0) {
+        return Err(USimpleError::new(
+            1,
+            "seconds argument must be greater than 0",
+        ));
+    }
+
+    let (count, seconds) = match (count, seconds) {
+        (None, None) => (Some(1), 1.0),
+        (None, Some(s)) => (None, s),
+        (Some(c), None) => (Some(c), 1.0),
+        (Some(c), Some(s)) => (Some(c), s),
     };
-    let seconds_flag = matches.get_one("seconds");
-    let seconds: f64 = match seconds_flag {
-        Some(0.0) => {
-            return Err(USimpleError::new(
-                1,
-                "seconds argument must be greater than 0",
-            ))
+
+    let duration = Duration::from_nanos(seconds.mul(1_000_000_000.0).round() as u64);
+    let construct_str = parse_output_format(&matches);
+
+    let output_meminfo = || match parse_meminfo() {
+        Ok(mem_info) => {
+            print!("{}", construct_str(&mem_info));
         }
-        Some(s) => *s,
-        None => 1.0,
+        Err(e) => {
+            eprintln!("free: failed to read memory info: {}", e);
+            process::exit(1);
+        }
     };
 
-    let dur = Duration::from_nanos(seconds.mul(1_000_000_000.0).round() as u64);
-
-    let infinite: bool = count_flag.is_none() && seconds_flag.is_some();
-
-    let construct_str = parse_output_format(matches);
-
-    while count > 0 || infinite {
-        // prevent underflow
-        if !infinite {
-            count -= 1;
-        }
-
-        match parse_meminfo() {
-            Ok(mem_info) => {
-                print!("{}", construct_str(&mem_info));
-            }
-            Err(e) => {
-                eprintln!("free: failed to read memory info: {}", e);
-                process::exit(1);
-            }
-        }
-
-        if count > 0 || infinite {
-            // the original free prints a newline everytime before waiting for the next round
+    let do_sleep = || {
+        if !matches.get_flag("line") {
             println!();
-            sleep(dur);
+        }
+        sleep(duration);
+    };
+
+    if let Some(c) = count {
+        for _ in 0..c - 1 {
+            output_meminfo();
+            do_sleep();
+        }
+        output_meminfo();
+    } else {
+        loop {
+            output_meminfo();
+            do_sleep();
         }
     }
 
@@ -273,7 +278,7 @@ fn parse_meminfo_value(value: &str) -> Result<u64, std::io::Error> {
         })
 }
 
-fn parse_output_format(matches: ArgMatches) -> impl Fn(&MemInfo) -> String {
+fn parse_output_format(matches: &ArgMatches) -> impl Fn(&MemInfo) -> String {
     let wide = matches.get_flag("wide");
     let human = matches.get_flag("human");
     let si = matches.get_flag("si");
@@ -282,7 +287,7 @@ fn parse_output_format(matches: ArgMatches) -> impl Fn(&MemInfo) -> String {
     let committed = matches.get_flag("committed");
     let one_line = matches.get_flag("line");
 
-    let convert = detect_unit(&matches);
+    let convert = detect_unit(matches);
 
     // function that converts the number to the correct string
     let n2s = move |x| {
