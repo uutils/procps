@@ -108,23 +108,27 @@ pub fn uu_app() -> Command {
             Arg::new(options::EXTENDED)
                 .short('x')
                 .long("extended")
-                .help("show details"),
+                .help("show details")
+                .action(ArgAction::SetTrue),
         )
         .arg(
             Arg::new(options::MORE_EXTENDED)
                 .short('X')
-                .help("show even more details"),
+                .help("show even more details")
+                .action(ArgAction::SetTrue),
         )
         .arg(
             Arg::new(options::MOST_EXTENDED)
                 .long("XX")
-                .help("show everything the kernel provides"),
+                .help("show everything the kernel provides")
+                .action(ArgAction::SetTrue),
         )
         .arg(
             Arg::new(options::READ_RC)
                 .short('c')
                 .long("read-rc")
-                .help("read the default rc"),
+                .help("read the default rc")
+                .action(ArgAction::SetTrue),
         )
         .arg(
             Arg::new(options::READ_RC_FROM)
@@ -137,7 +141,8 @@ pub fn uu_app() -> Command {
             Arg::new(options::CREATE_RC)
                 .short('n')
                 .long("create-rc")
-                .help("create new default rc"),
+                .help("create new default rc")
+                .action(ArgAction::SetTrue),
         )
         .arg(
             Arg::new(options::CREATE_RC_TO)
@@ -150,19 +155,22 @@ pub fn uu_app() -> Command {
             Arg::new(options::DEVICE)
                 .short('d')
                 .long("device")
-                .help("show the device format"),
+                .help("show the device format")
+                .action(ArgAction::SetTrue),
         )
         .arg(
             Arg::new(options::QUIET)
                 .short('q')
                 .long("quiet")
-                .help("do not display header and footer"),
+                .help("do not display header and footer")
+                .action(ArgAction::SetTrue),
         )
         .arg(
             Arg::new(options::SHOW_PATH)
                 .short('p')
                 .long("show-path")
-                .help("show path in the mapping"),
+                .help("show path in the mapping")
+                .action(ArgAction::SetTrue),
         )
         .arg(
             Arg::new(options::RANGE)
