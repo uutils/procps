@@ -16,10 +16,27 @@ mod maps_format_parser;
 const ABOUT: &str = help_about!("pmap.md");
 const USAGE: &str = help_usage!("pmap.md");
 
+mod options {
+    pub const PID: &str = "pid";
+    pub const EXTENDED: &str = "extended";
+    pub const MORE_EXTENDED: &str = "more-extended";
+    pub const MOST_EXTENDED: &str = "most-extended";
+    pub const READ_RC: &str = "read-rc";
+    pub const READ_RC_FROM: &str = "read-rc-from";
+    pub const CREATE_RC: &str = "create-rc";
+    pub const CREATE_RC_TO: &str = "create-rc-to";
+    pub const DEVICE: &str = "device";
+    pub const QUIET: &str = "quiet";
+    pub const SHOW_PATH: &str = "show-path";
+    pub const RANGE: &str = "range";
+}
+
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
-    let pids = matches.get_many::<String>("pid").expect("PID required");
+    let pids = matches
+        .get_many::<String>(options::PID)
+        .expect("PID required");
 
     for pid in pids {
         match parse_cmdline(pid) {
@@ -81,74 +98,82 @@ pub fn uu_app() -> Command {
         .override_usage(format_usage(USAGE))
         .infer_long_args(true)
         .arg(
-            Arg::new("pid")
+            Arg::new(options::PID)
                 .help("Process ID")
                 .required_unless_present_any(["create-rc", "create-rc-to"]) // Adjusted for -n, -N note
                 .action(ArgAction::Append)
                 .conflicts_with_all(["create-rc", "create-rc-to"]),
         ) // Ensure pid is not used with -n, -N
         .arg(
-            Arg::new("extended")
+            Arg::new(options::EXTENDED)
                 .short('x')
                 .long("extended")
-                .help("show details"),
+                .help("show details")
+                .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("very-extended")
+            Arg::new(options::MORE_EXTENDED)
                 .short('X')
-                .help("show even more details"),
+                .help("show even more details")
+                .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("all-details")
+            Arg::new(options::MOST_EXTENDED)
                 .long("XX")
-                .help("show everything the kernel provides"),
+                .help("show everything the kernel provides")
+                .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("read-rc")
+            Arg::new(options::READ_RC)
                 .short('c')
                 .long("read-rc")
-                .help("read the default rc"),
+                .help("read the default rc")
+                .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("read-rc-from")
+            Arg::new(options::READ_RC_FROM)
                 .short('C')
                 .long("read-rc-from")
                 .num_args(1)
                 .help("read the rc from file"),
         )
         .arg(
-            Arg::new("create-rc")
+            Arg::new(options::CREATE_RC)
                 .short('n')
                 .long("create-rc")
-                .help("create new default rc"),
+                .help("create new default rc")
+                .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("create-rc-to")
+            Arg::new(options::CREATE_RC_TO)
                 .short('N')
                 .long("create-rc-to")
                 .num_args(1)
                 .help("create new rc to file"),
         )
         .arg(
-            Arg::new("device")
+            Arg::new(options::DEVICE)
                 .short('d')
                 .long("device")
-                .help("show the device format"),
+                .help("show the device format")
+                .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("quiet")
+            Arg::new(options::QUIET)
                 .short('q')
                 .long("quiet")
-                .help("do not display header and footer"),
+                .help("do not display header and footer")
+                .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("show-path")
+            Arg::new(options::SHOW_PATH)
                 .short('p')
                 .long("show-path")
-                .help("show path in the mapping"),
+                .help("show path in the mapping")
+                .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("range")
+            Arg::new(options::RANGE)
                 .short('A')
                 .long("range")
                 .num_args(1..=2)
