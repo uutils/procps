@@ -3,12 +3,15 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-// Represents a parsed single line from /proc/<PID>/maps.
+// Represents a parsed single line from /proc/<PID>/maps for the default and device formats. It
+// omits the inode information because it's not used by those formats.
 #[derive(Debug, PartialEq)]
 pub struct MapLine {
     pub address: String,
     pub size_in_kb: u64,
     pub perms: String,
+    pub offset: String,
+    pub device: String,
     pub mapping: String,
 }
 
@@ -21,7 +24,14 @@ pub fn parse_map_line(line: &str) -> MapLine {
     let (perms, rest) = rest.split_once(' ').expect("line should contain 2nd ' '");
     let perms = parse_perms(perms);
 
-    let mapping: String = rest.splitn(4, ' ').skip(3).collect();
+    let (offset, rest) = rest.split_once(' ').expect("line should contain 3rd ' '");
+    let offset = format!("{offset:0>16}");
+
+    let (device, rest) = rest.split_once(' ').expect("line should contain 4th ' '");
+    let device = parse_device(device);
+
+    // skip the "inode" column
+    let mapping: String = rest.splitn(2, ' ').skip(1).collect();
     let mapping = mapping.trim_ascii_start();
     let mapping = parse_mapping(mapping);
 
@@ -29,6 +39,8 @@ pub fn parse_map_line(line: &str) -> MapLine {
         address,
         size_in_kb,
         perms,
+        offset,
+        device,
         mapping,
     }
 }
@@ -56,6 +68,15 @@ fn parse_perms(perms: &str) -> String {
     format!("{perms}-")
 }
 
+// Pads the device info from /proc/<PID>/maps with zeros and turns AB:CD into 0AB:000CD.
+fn parse_device(device: &str) -> String {
+    if let Some((major, minor)) = device.split_once(':') {
+        format!("{major:0>3}:{minor:0>5}")
+    } else {
+        unreachable!("device must contain a ':'")
+    }
+}
+
 fn parse_mapping(mapping: &str) -> String {
     if mapping == "[stack]" {
         return "  [ stack ]".into();
@@ -75,11 +96,20 @@ fn parse_mapping(mapping: &str) -> String {
 mod test {
     use super::*;
 
-    fn create_map_line(address: &str, size_in_kb: u64, perms: &str, mapping: &str) -> MapLine {
+    fn create_map_line(
+        address: &str,
+        size_in_kb: u64,
+        perms: &str,
+        offset: &str,
+        device: &str,
+        mapping: &str,
+    ) -> MapLine {
         MapLine {
             address: address.to_string(),
             size_in_kb,
             perms: perms.to_string(),
+            offset: offset.to_string(),
+            device: device.to_string(),
             mapping: mapping.to_string(),
         }
     }
@@ -88,31 +118,31 @@ mod test {
     fn test_parse_map_line() {
         let data = [
             (
-                create_map_line("000062442eb9e000", 16, "r----", "konsole"),
+                create_map_line("000062442eb9e000", 16, "r----", "0000000000000000", "008:00008", "konsole"),
                 "62442eb9e000-62442eba2000 r--p 00000000 08:08 10813151                   /usr/bin/konsole"
             ),
             (
-                create_map_line("000071af50000000", 132, "rw---", "  [ anon ]"),
+                create_map_line("000071af50000000", 132, "rw---", "0000000000000000", "000:00000", "  [ anon ]"),
                 "71af50000000-71af50021000 rw-p 00000000 00:00 0 "
             ),
             (
-                create_map_line("00007ffc3f8df000", 132, "rw---", "  [ stack ]"),
+                create_map_line("00007ffc3f8df000", 132, "rw---", "0000000000000000", "000:00000", "  [ stack ]"),
                 "7ffc3f8df000-7ffc3f900000 rw-p 00000000 00:00 0                          [stack]"
             ),
             (
-                create_map_line("000071af8c9e6000", 16, "rw-s-", "  [ anon ]"),
+                create_map_line("000071af8c9e6000", 16, "rw-s-", "0000000105830000", "000:00010", "  [ anon ]"),
                 "71af8c9e6000-71af8c9ea000 rw-s 105830000 00:10 1075                      anon_inode:i915.gem"
             ),
             (
-                create_map_line("000071af6cf0c000", 3560, "rw-s-", "memfd:wayland-shm (deleted)"),
+                create_map_line("000071af6cf0c000", 3560, "rw-s-", "0000000000000000", "000:00001", "memfd:wayland-shm (deleted)"),
                 "71af6cf0c000-71af6d286000 rw-s 00000000 00:01 256481                     /memfd:wayland-shm (deleted)"
             ),
             (
-                create_map_line("ffffffffff600000", 4, "--x--", "  [ anon ]"),
+                create_map_line("ffffffffff600000", 4, "--x--", "0000000000000000", "000:00000", "  [ anon ]"),
                 "ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]"
             ),
             (
-                create_map_line("00005e8187da8000", 24, "r----", "hello   world"),
+                create_map_line("00005e8187da8000", 24, "r----", "0000000000000000", "008:00008", "hello   world"),
                 "5e8187da8000-5e8187dae000 r--p 00000000 08:08 9524160                    /usr/bin/hello   world"
             ),
         ];
@@ -138,6 +168,12 @@ mod test {
         assert_eq!("-----", parse_perms("---p"));
         assert_eq!("---s-", parse_perms("---s"));
         assert_eq!("rwx--", parse_perms("rwxp"));
+    }
+
+    #[test]
+    fn test_parse_device() {
+        assert_eq!("012:00034", parse_device("12:34"));
+        assert_eq!("000:00000", parse_device("00:00"));
     }
 
     #[test]
