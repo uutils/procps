@@ -49,11 +49,12 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             }
         }
 
-        match parse_maps(pid) {
-            Ok(total) => println!(" total {total:>16}K"),
-            Err(_) => {
-                set_exit_code(1);
-            }
+        if matches.get_flag(options::DEVICE) {
+            output_device_format(pid).map_err(|_| set_exit_code(1)).ok();
+        } else {
+            output_default_format(pid)
+                .map_err(|_| set_exit_code(1))
+                .ok();
         }
     }
 
@@ -74,7 +75,7 @@ fn parse_cmdline(pid: &str) -> Result<String, Error> {
     Ok(cmdline.into())
 }
 
-fn parse_maps(pid: &str) -> Result<u64, Error> {
+fn output_default_format(pid: &str) -> Result<(), Error> {
     let path = format!("/proc/{pid}/maps");
     let contents = fs::read_to_string(path)?;
     let mut total = 0;
@@ -88,7 +89,47 @@ fn parse_maps(pid: &str) -> Result<u64, Error> {
         total += map_line.size_in_kb;
     }
 
-    Ok(total)
+    println!(" total {total:>16}K");
+
+    Ok(())
+}
+
+fn output_device_format(pid: &str) -> Result<(), Error> {
+    let path = format!("/proc/{pid}/maps");
+    let contents = fs::read_to_string(path)?;
+    let mut total_mapped = 0;
+    let mut total_writeable_private = 0;
+    let mut total_shared = 0;
+
+    println!("Address           Kbytes Mode  Offset           Device    Mapping");
+
+    for line in contents.lines() {
+        let map_line = parse_map_line(line);
+        println!(
+            "{} {:>7} {} {} {} {}",
+            map_line.address,
+            map_line.size_in_kb,
+            map_line.perms,
+            map_line.offset,
+            map_line.device,
+            map_line.mapping
+        );
+        total_mapped += map_line.size_in_kb;
+
+        if map_line.perms.writable && !map_line.perms.shared {
+            total_writeable_private += map_line.size_in_kb;
+        }
+
+        if map_line.perms.shared {
+            total_shared += map_line.size_in_kb;
+        }
+    }
+
+    println!(
+        "mapped: {total_mapped}K    writeable/private: {total_writeable_private}K    shared: {total_shared}K"
+    );
+
+    Ok(())
 }
 
 pub fn uu_app() -> Command {
