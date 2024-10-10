@@ -474,8 +474,8 @@ fn test_line_wide() {
     let matches_with_line_wide = uu_app()
         .try_get_matches_from(vec!["free", "--line", "--wide"])
         .unwrap();
-    let construct_line_str = parse_output_format(matches_with_line);
-    let construct_line_wide_str = parse_output_format(matches_with_line_wide);
+    let construct_line_str = parse_output_format(&matches_with_line);
+    let construct_line_wide_str = parse_output_format(&matches_with_line_wide);
     match parse_meminfo() {
         Ok(mem_info) => {
             assert_eq!(
