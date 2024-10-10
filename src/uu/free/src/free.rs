@@ -3,6 +3,9 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+#[cfg(target_os = "windows")]
+mod windows_util;
+
 use bytesize::{ByteSize, GB, GIB, KB, KIB, MB, MIB, PB, PIB, TB, TIB};
 use clap::{arg, crate_version, ArgAction, ArgGroup, ArgMatches, Command};
 use std::env;
@@ -118,10 +121,42 @@ fn parse_meminfo() -> Result<MemInfo, Box<dyn std::error::Error>> {
     Ok(mem_info)
 }
 
-// TODO: implement function
 #[cfg(target_os = "windows")]
 fn parse_meminfo() -> Result<MemInfo, Box<dyn std::error::Error>> {
-    Ok(MemInfo::default())
+    use std::mem::size_of;
+    use windows::Win32::System::{
+        ProcessStatus::{GetPerformanceInfo, PERFORMANCE_INFORMATION},
+        SystemInformation::{GlobalMemoryStatusEx, MEMORYSTATUSEX},
+    };
+
+    let (pagefile_used, pagefile_total) = windows_util::get_pagefile_usage()?;
+
+    let mut status = MEMORYSTATUSEX {
+        dwLength: size_of::<MEMORYSTATUSEX>() as u32,
+        ..Default::default()
+    };
+    unsafe { GlobalMemoryStatusEx(&mut status)? }
+
+    let mut perf_info = PERFORMANCE_INFORMATION {
+        cb: size_of::<PERFORMANCE_INFORMATION>() as u32,
+        ..Default::default()
+    };
+    unsafe { GetPerformanceInfo(&mut perf_info, perf_info.cb)? }
+
+    let mem_info = MemInfo {
+        total: status.ullTotalPhys / 1024,
+        free: (status.ullAvailPhys - (perf_info.SystemCache * perf_info.PageSize) as u64) / 1024,
+        available: status.ullAvailPhys / 1024,
+        cached: (perf_info.SystemCache * perf_info.PageSize) as u64 / 1024,
+        swap_total: (pagefile_total as u64 * perf_info.PageSize as u64) / 1024,
+        swap_free: ((pagefile_total - pagefile_used) as u64 * perf_info.PageSize as u64) / 1024,
+        swap_used: (pagefile_used as u64 * perf_info.PageSize as u64) / 1024,
+        commit_limit: (perf_info.CommitLimit * perf_info.PageSize) as u64 / 1024,
+        committed: (perf_info.CommitTotal * perf_info.PageSize) as u64 / 1024,
+        ..Default::default()
+    };
+
+    Ok(mem_info)
 }
 
 // print total - used - free combo that is used for everything except memory for now
