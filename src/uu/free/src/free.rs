@@ -501,25 +501,30 @@ fn detect_unit(arg: &ArgMatches) -> fn(u64) -> u64 {
     }
 }
 
-#[test]
-fn test_line_wide() {
-    let matches_with_line = uu_app()
-        .try_get_matches_from(vec!["free", "--line"])
-        .unwrap();
-    let matches_with_line_wide = uu_app()
-        .try_get_matches_from(vec!["free", "--line", "--wide"])
-        .unwrap();
-    let construct_line_str = parse_output_format(&matches_with_line);
-    let construct_line_wide_str = parse_output_format(&matches_with_line_wide);
-    match parse_meminfo() {
-        Ok(mem_info) => {
-            assert_eq!(
-                construct_line_str(&mem_info),
-                construct_line_wide_str(&mem_info)
-            );
-        }
-        Err(e) => {
-            eprintln!("free: failed to read memory info: {}", e);
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_line_wide() {
+        let matches_with_line = uu_app()
+            .try_get_matches_from(vec!["free", "--line"])
+            .unwrap();
+        let matches_with_line_wide = uu_app()
+            .try_get_matches_from(vec!["free", "--line", "--wide"])
+            .unwrap();
+        let construct_line_str = parse_output_format(&matches_with_line);
+        let construct_line_wide_str = parse_output_format(&matches_with_line_wide);
+        match parse_meminfo() {
+            Ok(mem_info) => {
+                assert_eq!(
+                    construct_line_str(&mem_info),
+                    construct_line_wide_str(&mem_info)
+                );
+            }
+            Err(e) => {
+                eprintln!("free: failed to read memory info: {}", e);
+            }
         }
     }
 }
