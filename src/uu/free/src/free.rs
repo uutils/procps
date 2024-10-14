@@ -466,7 +466,9 @@ fn humanized(kib: u64, si: bool) -> String {
 
     let unit_string = {
         let mut tmp = String::from(split[1]);
-        tmp.pop();
+        if tmp != "B" {
+            tmp.pop();
+        }
         tmp
     };
     format!("{}{}", num_string, unit_string)
@@ -526,5 +528,11 @@ mod test {
                 eprintln!("free: failed to read memory info: {}", e);
             }
         }
+    }
+
+    #[test]
+    fn test_humanized_unit_for_zero() {
+        assert_eq!("0B", humanized(0, false));
+        assert_eq!("0B", humanized(0, true));
     }
 }
