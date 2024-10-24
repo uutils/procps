@@ -3,6 +3,8 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use std::io::{Error, ErrorKind};
+
 // Represents a parsed single line from /proc/<PID>/maps.
 #[derive(Debug, PartialEq)]
 pub struct MapLine {
@@ -12,39 +14,48 @@ pub struct MapLine {
     pub mapping: String,
 }
 
-// Parses a single line from /proc/<PID>/maps. It assumes the format of `line` is correct (see
-// https://www.kernel.org/doc/html/latest/filesystems/proc.html for details).
-pub fn parse_map_line(line: &str) -> MapLine {
-    let (memory_range, rest) = line.split_once(' ').expect("line should contain ' '");
-    let (address, size_in_kb) = parse_address(memory_range);
+// Parses a single line from /proc/<PID>/maps. See
+// https://www.kernel.org/doc/html/latest/filesystems/proc.html for details about the expected
+// format.
+//
+// # Errors
+//
+// Will return an `Error` if the format is incorrect.
+pub fn parse_map_line(line: &str) -> Result<MapLine, Error> {
+    let (memory_range, rest) = line
+        .split_once(' ')
+        .ok_or_else(|| Error::from(ErrorKind::InvalidData))?;
+    let (address, size_in_kb) = parse_address(memory_range)?;
 
-    let (perms, rest) = rest.split_once(' ').expect("line should contain 2nd ' '");
+    let (perms, rest) = rest
+        .split_once(' ')
+        .ok_or_else(|| Error::from(ErrorKind::InvalidData))?;
     let perms = parse_perms(perms);
 
     let mapping: String = rest.splitn(4, ' ').skip(3).collect();
     let mapping = mapping.trim_ascii_start();
     let mapping = parse_mapping(mapping);
 
-    MapLine {
+    Ok(MapLine {
         address,
         size_in_kb,
         perms,
         mapping,
-    }
+    })
 }
 
 // Returns the start address and the size of the provided memory range. The start address is always
 // 16-digits and padded with 0, if necessary. The size is in KB.
-fn parse_address(memory_range: &str) -> (String, u64) {
+fn parse_address(memory_range: &str) -> Result<(String, u64), Error> {
     let (start, end) = memory_range
         .split_once('-')
-        .expect("memory range should contain '-'");
+        .ok_or_else(|| Error::from(ErrorKind::InvalidData))?;
 
-    let low = u64::from_str_radix(start, 16).expect("should be a hex value");
-    let high = u64::from_str_radix(end, 16).expect("should be a hex value");
+    let low = u64::from_str_radix(start, 16).map_err(|_| Error::from(ErrorKind::InvalidData))?;
+    let high = u64::from_str_radix(end, 16).map_err(|_| Error::from(ErrorKind::InvalidData))?;
     let size_in_kb = (high - low) / 1024;
 
-    (format!("{start:0>16}"), size_in_kb)
+    Ok((format!("{start:0>16}"), size_in_kb))
 }
 
 // Turns a 4-char perms string from /proc/<PID>/maps into a 5-char perms string. The first three
@@ -118,19 +129,35 @@ mod test {
         ];
 
         for (expected_map_line, line) in data {
-            assert_eq!(expected_map_line, parse_map_line(line));
+            assert_eq!(expected_map_line, parse_map_line(line).unwrap());
         }
     }
 
     #[test]
+    fn test_parse_map_line_with_invalid_format() {
+        assert!(parse_map_line("invalid_format").is_err());
+    }
+
+    #[test]
     fn test_parse_address() {
-        let (start, size) = parse_address("ffffffffff600000-ffffffffff601000");
+        let (start, size) = parse_address("ffffffffff600000-ffffffffff601000").unwrap();
         assert_eq!(start, "ffffffffff600000");
         assert_eq!(size, 4);
 
-        let (start, size) = parse_address("7ffc4f0c2000-7ffc4f0e3000");
+        let (start, size) = parse_address("7ffc4f0c2000-7ffc4f0e3000").unwrap();
         assert_eq!(start, "00007ffc4f0c2000");
         assert_eq!(size, 132);
+    }
+
+    #[test]
+    fn test_parse_address_with_missing_hyphen() {
+        assert!(parse_address("ffffffffff600000").is_err());
+    }
+
+    #[test]
+    fn test_parse_address_with_non_hex_values() {
+        assert!(parse_address("zfffffffff600000-ffffffffff601000").is_err());
+        assert!(parse_address("ffffffffff600000-zfffffffff601000").is_err());
     }
 
     #[test]
