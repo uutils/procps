@@ -80,7 +80,7 @@ fn parse_maps(pid: &str) -> Result<u64, Error> {
     let mut total = 0;
 
     for line in contents.lines() {
-        let map_line = parse_map_line(line);
+        let map_line = parse_map_line(line)?;
         println!(
             "{} {:>6}K {} {}",
             map_line.address, map_line.size_in_kb, map_line.perms, map_line.mapping
