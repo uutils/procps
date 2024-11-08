@@ -3,15 +3,57 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use std::fmt;
 use std::io::{Error, ErrorKind};
 
-// Represents a parsed single line from /proc/<PID>/maps.
+// Represents a parsed single line from /proc/<PID>/maps for the default and device formats. It
+// omits the inode information because it's not used by those formats.
 #[derive(Debug, PartialEq)]
 pub struct MapLine {
     pub address: String,
     pub size_in_kb: u64,
-    pub perms: String,
+    pub perms: Perms,
+    pub offset: String,
+    pub device: String,
     pub mapping: String,
+}
+
+// Represents a set of permissions from the "perms" column of /proc/<PID>/maps.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Perms {
+    pub readable: bool,
+    pub writable: bool,
+    pub executable: bool,
+    pub shared: bool,
+}
+
+impl From<&str> for Perms {
+    fn from(s: &str) -> Self {
+        let mut chars = s.chars();
+
+        Self {
+            readable: chars.next() == Some('r'),
+            writable: chars.next() == Some('w'),
+            executable: chars.next() == Some('x'),
+            shared: chars.next() == Some('s'),
+        }
+    }
+}
+
+// Please note: While `Perms` has four boolean fields, it's string representation has five
+// characters because pmap's default and device formats use five characters for the perms,
+// with the last character always being '-'.
+impl fmt::Display for Perms {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}{}{}{}-",
+            if self.readable { 'r' } else { '-' },
+            if self.writable { 'w' } else { '-' },
+            if self.executable { 'x' } else { '-' },
+            if self.shared { 's' } else { '-' },
+        )
+    }
 }
 
 // Parses a single line from /proc/<PID>/maps. See
@@ -30,9 +72,20 @@ pub fn parse_map_line(line: &str) -> Result<MapLine, Error> {
     let (perms, rest) = rest
         .split_once(' ')
         .ok_or_else(|| Error::from(ErrorKind::InvalidData))?;
-    let perms = parse_perms(perms);
+    let perms = Perms::from(perms);
 
-    let mapping: String = rest.splitn(4, ' ').skip(3).collect();
+    let (offset, rest) = rest
+        .split_once(' ')
+        .ok_or_else(|| Error::from(ErrorKind::InvalidData))?;
+    let offset = format!("{offset:0>16}");
+
+    let (device, rest) = rest
+        .split_once(' ')
+        .ok_or_else(|| Error::from(ErrorKind::InvalidData))?;
+    let device = parse_device(device)?;
+
+    // skip the "inode" column
+    let mapping: String = rest.splitn(2, ' ').skip(1).collect();
     let mapping = mapping.trim_ascii_start();
     let mapping = parse_mapping(mapping);
 
@@ -40,6 +93,8 @@ pub fn parse_map_line(line: &str) -> Result<MapLine, Error> {
         address,
         size_in_kb,
         perms,
+        offset,
+        device,
         mapping,
     })
 }
@@ -58,13 +113,12 @@ fn parse_address(memory_range: &str) -> Result<(String, u64), Error> {
     Ok((format!("{start:0>16}"), size_in_kb))
 }
 
-// Turns a 4-char perms string from /proc/<PID>/maps into a 5-char perms string. The first three
-// chars are left untouched.
-fn parse_perms(perms: &str) -> String {
-    let perms = perms.replace("p", "-");
-
-    // the fifth char seems to be always '-' in the original pmap
-    format!("{perms}-")
+// Pads the device info from /proc/<PID>/maps with zeros and turns AB:CD into 0AB:000CD.
+fn parse_device(device: &str) -> Result<String, Error> {
+    let (major, minor) = device
+        .split_once(':')
+        .ok_or_else(|| Error::from(ErrorKind::InvalidData))?;
+    Ok(format!("{major:0>3}:{minor:0>5}"))
 }
 
 fn parse_mapping(mapping: &str) -> String {
@@ -86,44 +140,60 @@ fn parse_mapping(mapping: &str) -> String {
 mod test {
     use super::*;
 
-    fn create_map_line(address: &str, size_in_kb: u64, perms: &str, mapping: &str) -> MapLine {
+    fn create_map_line(
+        address: &str,
+        size_in_kb: u64,
+        perms: Perms,
+        offset: &str,
+        device: &str,
+        mapping: &str,
+    ) -> MapLine {
         MapLine {
             address: address.to_string(),
             size_in_kb,
-            perms: perms.to_string(),
+            perms,
+            offset: offset.to_string(),
+            device: device.to_string(),
             mapping: mapping.to_string(),
         }
+    }
+
+    #[test]
+    fn test_perms_to_string() {
+        assert_eq!("-----", Perms::from("---p").to_string());
+        assert_eq!("---s-", Perms::from("---s").to_string());
+        assert_eq!("rwx--", Perms::from("rwxp").to_string());
     }
 
     #[test]
     fn test_parse_map_line() {
         let data = [
             (
-                create_map_line("000062442eb9e000", 16, "r----", "konsole"),
+                create_map_line("000062442eb9e000", 16, Perms::from("r--p"), "0000000000000000", "008:00008", "konsole"),
                 "62442eb9e000-62442eba2000 r--p 00000000 08:08 10813151                   /usr/bin/konsole"
             ),
             (
-                create_map_line("000071af50000000", 132, "rw---", "  [ anon ]"),
+                create_map_line("000071af50000000", 132, Perms::from("rw-p"), "0000000000000000", "000:00000", "  [ anon ]"),
                 "71af50000000-71af50021000 rw-p 00000000 00:00 0 "
             ),
             (
-                create_map_line("00007ffc3f8df000", 132, "rw---", "  [ stack ]"),
+                create_map_line("00007ffc3f8df000", 132, Perms::from("rw-p"), "0000000000000000", "000:00000", "  [ stack ]"),
                 "7ffc3f8df000-7ffc3f900000 rw-p 00000000 00:00 0                          [stack]"
             ),
             (
-                create_map_line("000071af8c9e6000", 16, "rw-s-", "  [ anon ]"),
+                create_map_line("000071af8c9e6000", 16, Perms::from("rw-s"), "0000000105830000", "000:00010", "  [ anon ]"),
                 "71af8c9e6000-71af8c9ea000 rw-s 105830000 00:10 1075                      anon_inode:i915.gem"
             ),
             (
-                create_map_line("000071af6cf0c000", 3560, "rw-s-", "memfd:wayland-shm (deleted)"),
+                create_map_line("000071af6cf0c000", 3560, Perms::from("rw-s"), "0000000000000000", "000:00001", "memfd:wayland-shm (deleted)"),
                 "71af6cf0c000-71af6d286000 rw-s 00000000 00:01 256481                     /memfd:wayland-shm (deleted)"
             ),
             (
-                create_map_line("ffffffffff600000", 4, "--x--", "  [ anon ]"),
+                create_map_line("ffffffffff600000", 4, Perms::from("--xp"), "0000000000000000", "000:00000", "  [ anon ]"),
                 "ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]"
             ),
             (
-                create_map_line("00005e8187da8000", 24, "r----", "hello   world"),
+                create_map_line("00005e8187da8000", 24, Perms::from("r--p"), "0000000000000000", "008:00008", "hello   world"),
                 "5e8187da8000-5e8187dae000 r--p 00000000 08:08 9524160                    /usr/bin/hello   world"
             ),
         ];
@@ -161,10 +231,14 @@ mod test {
     }
 
     #[test]
-    fn test_parse_perms() {
-        assert_eq!("-----", parse_perms("---p"));
-        assert_eq!("---s-", parse_perms("---s"));
-        assert_eq!("rwx--", parse_perms("rwxp"));
+    fn test_parse_device() {
+        assert_eq!("012:00034", parse_device("12:34").unwrap());
+        assert_eq!("000:00000", parse_device("00:00").unwrap());
+    }
+
+    #[test]
+    fn test_parse_device_without_colon() {
+        assert!(parse_device("1234").is_err());
     }
 
     #[test]
