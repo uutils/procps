@@ -11,7 +11,7 @@ use std::io::Write;
 use std::path::Path;
 
 pub fn main() {
-    if let Ok(profile) = env::var("PROFILE") {
+    if let Ok(profile) = env::var("PROFILEjh") {
         println!("cargo:rustc-cfg=build={profile:?}");
     }
 
