@@ -5,6 +5,15 @@
 
 use crate::common::util::TestScenario;
 
+// runddl32.exe has no console window, no side effects,
+// and no arguments are required.
+// The full path must be provided since tests are ran with clear_env
+#[cfg(windows)]
+const TRUE_CMD: &str = "%SYSTEMROOT%\\System32\\rundll32.exe";
+
+#[cfg(not(windows))]
+const TRUE_CMD: &str = "true";
+
 #[test]
 fn test_invalid_arg() {
     new_ucmd!().arg("--definitely-invalid").fails().code_is(1);
@@ -12,18 +21,16 @@ fn test_invalid_arg() {
 
 #[test]
 fn test_invalid_interval() {
-    let args = vec!["-n", "definitely-not-valid", "true"];
+    let args = vec!["-n", "definitely-not-valid", TRUE_CMD];
     new_ucmd!()
         .args(&args)
         .fails()
         .stderr_contains("Invalid argument");
 }
 
-// TODO make it work on windows
-#[cfg(not(windows))]
 #[test]
 fn test_no_interval() {
-    let mut p = new_ucmd!().arg("true").run_no_wait();
+    let mut p = new_ucmd!().arg(TRUE_CMD).run_no_wait();
     p.make_assertion_with_delay(500).is_alive();
     p.kill()
         .make_assertion()
@@ -32,11 +39,9 @@ fn test_no_interval() {
         .no_stdout();
 }
 
-// TODO make it work on windows
-#[cfg(not(windows))]
 #[test]
 fn test_valid_interval() {
-    let args = vec!["-n", "1.5", "true"];
+    let args = vec!["-n", "1.5", TRUE_CMD];
     let mut p = new_ucmd!().args(&args).run_no_wait();
     p.make_assertion_with_delay(500).is_alive();
     p.kill()
@@ -46,11 +51,9 @@ fn test_valid_interval() {
         .no_stdout();
 }
 
-// TODO make it work on windows
-#[cfg(not(windows))]
 #[test]
 fn test_valid_interval_comma() {
-    let args = vec!["-n", "1,5", "true"];
+    let args = vec!["-n", "1,5", TRUE_CMD];
     let mut p = new_ucmd!().args(&args).run_no_wait();
     p.make_assertion_with_delay(1000).is_alive();
     p.kill()

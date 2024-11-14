@@ -17,12 +17,9 @@ const USAGE: &str = help_usage!("watch.md");
 
 fn parse_interval(input: &str) -> Result<Duration, ParseIntError> {
     // Find index where to split string into seconds and nanos
-    let index = match input.find(|c: char| c == ',' || c == '.') {
-        Some(index) => index,
-        None => {
-            let seconds: u64 = input.parse()?;
-            return Ok(Duration::new(seconds, 0));
-        }
+    let Some(index) = input.find([',', '.']) else {
+        let seconds: u64 = input.parse()?;
+        return Ok(Duration::new(seconds, 0));
     };
 
     // If the seconds string is empty, set seconds to 0
@@ -76,8 +73,18 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     };
 
     loop {
-        let output = SystemCommand::new("sh")
-            .arg("-c")
+        #[cfg(windows)]
+        let mut command =
+            SystemCommand::new(std::env::var_os("COMSPEC").unwrap_or_else(|| "cmd.exe".into()));
+        #[cfg(not(windows))]
+        let mut command = SystemCommand::new("sh");
+
+        #[cfg(windows)]
+        command.arg("/c");
+        #[cfg(not(windows))]
+        command.arg("-c");
+
+        let output = command
             .arg(command_to_watch)
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())

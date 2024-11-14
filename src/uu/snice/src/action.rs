@@ -132,9 +132,8 @@ fn set_priority(pid: u32, prio: &Priority) -> Option<ActionResult> {
                 Errno::ESRCH => Some(ActionResult::PermissionDenied),
                 _ => None,
             };
-        } else {
-            prio
         }
+        prio
     };
 
     let prio = match prio {

@@ -20,7 +20,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let sys = System::new_all();
 
     for pid_str in pids {
-        let pid = match pid_str.parse::<i32>() {
+        let pid = match pid_str.parse::<usize>() {
             // PIDs start at 1, hence 0 is invalid
             Ok(0) | Err(_) => {
                 return Err(USimpleError::new(
@@ -31,7 +31,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             Ok(pid) => pid,
         };
 
-        match sys.process(Pid::from(pid as usize)) {
+        match sys.process(Pid::from(pid)) {
             Some(process) => match process.cwd() {
                 Some(cwd) => println!("{pid}: {}", cwd.display()),
                 None => {

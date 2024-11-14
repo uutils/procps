@@ -4,19 +4,39 @@
 // file that was distributed with this source code.
 
 use clap::{crate_version, Arg, ArgAction, Command};
+use maps_format_parser::{parse_map_line, MapLine};
 use std::env;
 use std::fs;
 use std::io::Error;
 use uucore::error::{set_exit_code, UResult};
 use uucore::{format_usage, help_about, help_usage};
 
+mod maps_format_parser;
+
 const ABOUT: &str = help_about!("pmap.md");
 const USAGE: &str = help_usage!("pmap.md");
+
+mod options {
+    pub const PID: &str = "pid";
+    pub const EXTENDED: &str = "extended";
+    pub const MORE_EXTENDED: &str = "more-extended";
+    pub const MOST_EXTENDED: &str = "most-extended";
+    pub const READ_RC: &str = "read-rc";
+    pub const READ_RC_FROM: &str = "read-rc-from";
+    pub const CREATE_RC: &str = "create-rc";
+    pub const CREATE_RC_TO: &str = "create-rc-to";
+    pub const DEVICE: &str = "device";
+    pub const QUIET: &str = "quiet";
+    pub const SHOW_PATH: &str = "show-path";
+    pub const RANGE: &str = "range";
+}
 
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
-    let pids = matches.get_many::<String>("pid").expect("PID required");
+    let pids = matches
+        .get_many::<String>(options::PID)
+        .expect("PID required");
 
     for pid in pids {
         match parse_cmdline(pid) {
@@ -29,11 +49,12 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             }
         }
 
-        match parse_maps(pid) {
-            Ok(total) => println!(" total {total:>16}K"),
-            Err(_) => {
-                set_exit_code(1);
-            }
+        if matches.get_flag(options::DEVICE) {
+            output_device_format(pid).map_err(|_| set_exit_code(1)).ok();
+        } else {
+            output_default_format(pid)
+                .map_err(|_| set_exit_code(1))
+                .ok();
         }
     }
 
@@ -41,7 +62,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 }
 
 fn parse_cmdline(pid: &str) -> Result<String, Error> {
-    let path = format!("/proc/{}/cmdline", pid);
+    let path = format!("/proc/{pid}/cmdline");
     let contents = fs::read(path)?;
     // Command line arguments are separated by null bytes.
     // Replace them with spaces for display.
@@ -54,77 +75,70 @@ fn parse_cmdline(pid: &str) -> Result<String, Error> {
     Ok(cmdline.into())
 }
 
-fn parse_maps(pid: &str) -> Result<u64, Error> {
-    let path = format!("/proc/{}/maps", pid);
+fn process_maps<F>(pid: &str, mut process_line: F) -> Result<(), Error>
+where
+    F: FnMut(&MapLine),
+{
+    let path = format!("/proc/{pid}/maps");
     let contents = fs::read_to_string(path)?;
-    let mut total = 0;
 
     for line in contents.lines() {
-        let (generated_line, size) = parse_map_line(line);
-        println!("{generated_line}");
-        total += size;
+        let map_line = parse_map_line(line)?;
+        process_line(&map_line);
     }
 
-    Ok(total)
+    Ok(())
 }
 
-// Parses a single line from /proc/<PID>/maps.
-fn parse_map_line(line: &str) -> (String, u64) {
-    let (memory_range, rest) = line.split_once(' ').expect("line should contain ' '");
-    let (start_address, size_in_kb) = parse_memory_range(memory_range);
+fn output_default_format(pid: &str) -> Result<(), Error> {
+    let mut total = 0;
 
-    let (perms, rest) = rest.split_once(' ').expect("line should contain 2nd ' '");
-    let perms = parse_perms(perms);
+    process_maps(pid, |map_line| {
+        println!(
+            "{} {:>6}K {} {}",
+            map_line.address, map_line.size_in_kb, map_line.perms, map_line.mapping
+        );
+        total += map_line.size_in_kb;
+    })?;
 
-    let filename: String = rest.splitn(4, " ").skip(3).collect();
-    let filename = filename.trim_ascii_start();
-    let filename = parse_filename(filename);
+    println!(" total {total:>16}K");
 
-    (
-        format!("{start_address} {size_in_kb:>6}K {perms} {filename}"),
-        size_in_kb,
-    )
+    Ok(())
 }
 
-// Returns the start address and the size of the provided memory range. The start address is always
-// 16-digits and padded with 0, if necessary. The size is in KB.
-//
-// This function assumes the provided `memory_range` comes from /proc/<PID>/maps and thus its
-// format is correct.
-fn parse_memory_range(memory_range: &str) -> (String, u64) {
-    let (start, end) = memory_range
-        .split_once('-')
-        .expect("memory range should contain '-'");
+fn output_device_format(pid: &str) -> Result<(), Error> {
+    let mut total_mapped = 0;
+    let mut total_writeable_private = 0;
+    let mut total_shared = 0;
 
-    let low = u64::from_str_radix(start, 16).expect("should be a hex value");
-    let high = u64::from_str_radix(end, 16).expect("should be a hex value");
-    let size_in_kb = (high - low) / 1024;
+    println!("Address           Kbytes Mode  Offset           Device    Mapping");
 
-    (format!("{start:0>16}"), size_in_kb)
-}
+    process_maps(pid, |map_line| {
+        println!(
+            "{} {:>7} {} {} {} {}",
+            map_line.address,
+            map_line.size_in_kb,
+            map_line.perms,
+            map_line.offset,
+            map_line.device,
+            map_line.mapping
+        );
+        total_mapped += map_line.size_in_kb;
 
-// Turns a 4-char perms string from /proc/<PID>/maps into a 5-char perms string. The first three
-// chars are left untouched.
-fn parse_perms(perms: &str) -> String {
-    let perms = perms.replace("p", "-");
+        if map_line.perms.writable && !map_line.perms.shared {
+            total_writeable_private += map_line.size_in_kb;
+        }
 
-    // the fifth char seems to be always '-' in the original pmap
-    format!("{perms}-")
-}
+        if map_line.perms.shared {
+            total_shared += map_line.size_in_kb;
+        }
+    })?;
 
-fn parse_filename(filename: &str) -> String {
-    if filename == "[stack]" {
-        return "  [ stack ]".into();
-    }
+    println!(
+        "mapped: {total_mapped}K    writeable/private: {total_writeable_private}K    shared: {total_shared}K"
+    );
 
-    if filename.is_empty() || filename.starts_with('[') || filename.starts_with("anon") {
-        return "  [ anon ]".into();
-    }
-
-    match filename.rsplit_once('/') {
-        Some((_, name)) => name.into(),
-        None => filename.into(),
-    }
+    Ok(())
 }
 
 pub fn uu_app() -> Command {
@@ -134,153 +148,85 @@ pub fn uu_app() -> Command {
         .override_usage(format_usage(USAGE))
         .infer_long_args(true)
         .arg(
-            Arg::new("pid")
+            Arg::new(options::PID)
                 .help("Process ID")
                 .required_unless_present_any(["create-rc", "create-rc-to"]) // Adjusted for -n, -N note
                 .action(ArgAction::Append)
                 .conflicts_with_all(["create-rc", "create-rc-to"]),
         ) // Ensure pid is not used with -n, -N
         .arg(
-            Arg::new("extended")
+            Arg::new(options::EXTENDED)
                 .short('x')
                 .long("extended")
-                .help("show details"),
+                .help("show details")
+                .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("very-extended")
+            Arg::new(options::MORE_EXTENDED)
                 .short('X')
-                .help("show even more details"),
+                .help("show even more details")
+                .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("all-details")
+            Arg::new(options::MOST_EXTENDED)
                 .long("XX")
-                .help("show everything the kernel provides"),
+                .help("show everything the kernel provides")
+                .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("read-rc")
+            Arg::new(options::READ_RC)
                 .short('c')
                 .long("read-rc")
-                .help("read the default rc"),
+                .help("read the default rc")
+                .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("read-rc-from")
+            Arg::new(options::READ_RC_FROM)
                 .short('C')
                 .long("read-rc-from")
                 .num_args(1)
                 .help("read the rc from file"),
         )
         .arg(
-            Arg::new("create-rc")
+            Arg::new(options::CREATE_RC)
                 .short('n')
                 .long("create-rc")
-                .help("create new default rc"),
+                .help("create new default rc")
+                .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("create-rc-to")
+            Arg::new(options::CREATE_RC_TO)
                 .short('N')
                 .long("create-rc-to")
                 .num_args(1)
                 .help("create new rc to file"),
         )
         .arg(
-            Arg::new("device")
+            Arg::new(options::DEVICE)
                 .short('d')
                 .long("device")
-                .help("show the device format"),
+                .help("show the device format")
+                .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("quiet")
+            Arg::new(options::QUIET)
                 .short('q')
                 .long("quiet")
-                .help("do not display header and footer"),
+                .help("do not display header and footer")
+                .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("show-path")
+            Arg::new(options::SHOW_PATH)
                 .short('p')
                 .long("show-path")
-                .help("show path in the mapping"),
+                .help("show path in the mapping")
+                .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("range")
+            Arg::new(options::RANGE)
                 .short('A')
                 .long("range")
                 .num_args(1..=2)
                 .help("limit results to the given range"),
         )
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_parse_map_line() {
-        let data = [
-            (
-                ("000062442eb9e000     16K r---- konsole", 16),
-                "62442eb9e000-62442eba2000 r--p 00000000 08:08 10813151                   /usr/bin/konsole"
-            ),
-            (
-                ("000071af50000000    132K rw---   [ anon ]", 132),
-                "71af50000000-71af50021000 rw-p 00000000 00:00 0 "
-            ),
-            (
-                ("00007ffc3f8df000    132K rw---   [ stack ]", 132),
-                "7ffc3f8df000-7ffc3f900000 rw-p 00000000 00:00 0                          [stack]"
-            ),
-            (
-                ("000071af8c9e6000     16K rw-s-   [ anon ]", 16),
-                "71af8c9e6000-71af8c9ea000 rw-s 105830000 00:10 1075                      anon_inode:i915.gem"
-            ),
-            (
-                ("000071af6cf0c000   3560K rw-s- memfd:wayland-shm (deleted)", 3560),
-                "71af6cf0c000-71af6d286000 rw-s 00000000 00:01 256481                     /memfd:wayland-shm (deleted)"
-            ),
-            (
-                ("ffffffffff600000      4K --x--   [ anon ]", 4),
-                "ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]"
-            ),
-            (
-                ("00005e8187da8000     24K r---- hello   world", 24),
-                "5e8187da8000-5e8187dae000 r--p 00000000 08:08 9524160                    /usr/bin/hello   world"
-            ),
-        ];
-
-        for ((expected_line, expected_size), line) in data {
-            let (generated_line, size) = parse_map_line(line);
-            assert_eq!(expected_line, generated_line);
-            assert_eq!(expected_size, size);
-        }
-    }
-
-    #[test]
-    fn test_parse_memory_range() {
-        let (start, size) = parse_memory_range("ffffffffff600000-ffffffffff601000");
-        assert_eq!(start, "ffffffffff600000");
-        assert_eq!(size, 4);
-
-        let (start, size) = parse_memory_range("7ffc4f0c2000-7ffc4f0e3000");
-        assert_eq!(start, "00007ffc4f0c2000");
-        assert_eq!(size, 132);
-    }
-
-    #[test]
-    fn test_parse_perms() {
-        assert_eq!("-----", parse_perms("---p"));
-        assert_eq!("---s-", parse_perms("---s"));
-        assert_eq!("rwx--", parse_perms("rwxp"));
-    }
-
-    #[test]
-    fn test_parse_filename() {
-        assert_eq!("  [ anon ]", parse_filename(""));
-        assert_eq!("  [ anon ]", parse_filename("[vvar]"));
-        assert_eq!("  [ anon ]", parse_filename("[vdso]"));
-        assert_eq!("  [ anon ]", parse_filename("anon_inode:i915.gem"));
-        assert_eq!("  [ stack ]", parse_filename("[stack]"));
-        assert_eq!(
-            "ld-linux-x86-64.so.2",
-            parse_filename("/usr/lib/ld-linux-x86-64.so.2")
-        );
-    }
 }

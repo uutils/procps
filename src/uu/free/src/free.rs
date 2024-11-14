@@ -3,6 +3,9 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+#[cfg(target_os = "windows")]
+mod windows_util;
+
 use bytesize::{ByteSize, GB, GIB, KB, KIB, MB, MIB, PB, PIB, TB, TIB};
 use clap::{arg, crate_version, ArgAction, ArgGroup, ArgMatches, Command};
 use std::env;
@@ -15,7 +18,10 @@ use std::ops::Mul;
 use std::process;
 use std::thread::sleep;
 use std::time::Duration;
-use uucore::{error::UResult, format_usage, help_about, help_usage};
+use uucore::{
+    error::{UResult, USimpleError},
+    format_usage, help_about, help_usage,
+};
 
 const ABOUT: &str = help_about!("free.md");
 const USAGE: &str = help_usage!("free.md");
@@ -115,10 +121,42 @@ fn parse_meminfo() -> Result<MemInfo, Box<dyn std::error::Error>> {
     Ok(mem_info)
 }
 
-// TODO: implement function
 #[cfg(target_os = "windows")]
 fn parse_meminfo() -> Result<MemInfo, Box<dyn std::error::Error>> {
-    Ok(MemInfo::default())
+    use std::mem::size_of;
+    use windows::Win32::System::{
+        ProcessStatus::{GetPerformanceInfo, PERFORMANCE_INFORMATION},
+        SystemInformation::{GlobalMemoryStatusEx, MEMORYSTATUSEX},
+    };
+
+    let (pagefile_used, pagefile_total) = windows_util::get_pagefile_usage()?;
+
+    let mut status = MEMORYSTATUSEX {
+        dwLength: size_of::<MEMORYSTATUSEX>() as u32,
+        ..Default::default()
+    };
+    unsafe { GlobalMemoryStatusEx(&mut status)? }
+
+    let mut perf_info = PERFORMANCE_INFORMATION {
+        cb: size_of::<PERFORMANCE_INFORMATION>() as u32,
+        ..Default::default()
+    };
+    unsafe { GetPerformanceInfo(&mut perf_info, perf_info.cb)? }
+
+    let mem_info = MemInfo {
+        total: status.ullTotalPhys / 1024,
+        free: (status.ullAvailPhys - (perf_info.SystemCache * perf_info.PageSize) as u64) / 1024,
+        available: status.ullAvailPhys / 1024,
+        cached: (perf_info.SystemCache * perf_info.PageSize) as u64 / 1024,
+        swap_total: (pagefile_total as u64 * perf_info.PageSize as u64) / 1024,
+        swap_free: ((pagefile_total - pagefile_used) as u64 * perf_info.PageSize as u64) / 1024,
+        swap_used: (pagefile_used as u64 * perf_info.PageSize as u64) / 1024,
+        commit_limit: (perf_info.CommitLimit * perf_info.PageSize) as u64 / 1024,
+        committed: (perf_info.CommitTotal * perf_info.PageSize) as u64 / 1024,
+        ..Default::default()
+    };
+
+    Ok(mem_info)
 }
 
 // print total - used - free combo that is used for everything except memory for now
@@ -147,37 +185,60 @@ where
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
 
-    let count_flag = matches.get_one("count");
-    let mut count: u64 = count_flag.unwrap_or(&1_u64).to_owned();
-    let seconds_flag = matches.get_one("seconds");
-    let seconds: f64 = seconds_flag.unwrap_or(&1.0_f64).to_owned();
+    let count: Option<u64> = matches.get_one("count").copied();
+    let seconds: Option<f64> = matches.get_one("seconds").copied();
 
-    let dur = Duration::from_nanos(seconds.mul(1_000_000_000.0).round() as u64);
+    if count == Some(0) {
+        return Err(USimpleError::new(
+            1,
+            "count argument must be greater than 0",
+        ));
+    }
 
-    let infinite: bool = count_flag.is_none() && seconds_flag.is_some();
+    if seconds == Some(0.0) {
+        return Err(USimpleError::new(
+            1,
+            "seconds argument must be greater than 0",
+        ));
+    }
 
-    let construct_str = parse_output_format(matches);
+    let (count, seconds) = match (count, seconds) {
+        (None, None) => (Some(1), 1.0),
+        (None, Some(s)) => (None, s),
+        (Some(c), None) => (Some(c), 1.0),
+        (Some(c), Some(s)) => (Some(c), s),
+    };
 
-    while count > 0 || infinite {
-        // prevent underflow
-        if !infinite {
-            count -= 1;
+    let duration = Duration::from_nanos(seconds.mul(1_000_000_000.0).round() as u64);
+    let construct_str = parse_output_format(&matches);
+
+    let output_meminfo = || match parse_meminfo() {
+        Ok(mem_info) => {
+            print!("{}", construct_str(&mem_info));
         }
-
-        match parse_meminfo() {
-            Ok(mem_info) => {
-                print!("{}", construct_str(&mem_info));
-            }
-            Err(e) => {
-                eprintln!("free: failed to read memory info: {}", e);
-                process::exit(1);
-            }
+        Err(e) => {
+            eprintln!("free: failed to read memory info: {}", e);
+            process::exit(1);
         }
+    };
 
-        if count > 0 || infinite {
-            // the original free prints a newline everytime before waiting for the next round
+    let do_sleep = || {
+        if !matches.get_flag("line") {
             println!();
-            sleep(dur);
+        }
+        sleep(duration);
+    };
+
+    if let Some(c) = count {
+        for _ in 0..c - 1 {
+            output_meminfo();
+            do_sleep();
+        }
+        output_meminfo();
+    } else {
+        loop {
+            output_meminfo();
+            do_sleep();
         }
     }
 
@@ -190,6 +251,7 @@ pub fn uu_app() -> Command {
         .version(crate_version!())
         .about(ABOUT)
         .override_usage(format_usage(USAGE))
+        .args_override_self(true)
         .infer_long_args(true)
         .disable_help_flag(true)
         .group(ArgGroup::new("unit").args([
@@ -208,7 +270,7 @@ pub fn uu_app() -> Command {
             arg!(   --tebi   "show output in tebibytes").action(ArgAction::SetTrue),
             arg!(   --pebi   "show output in pebibytes").action(ArgAction::SetTrue),
             arg!(-h --human  "show human-readable output").action(ArgAction::SetTrue),
-            arg!(   --si     "use powers of 1000 not 1024").action(ArgAction::SetFalse),
+            arg!(   --si     "use powers of 1000 not 1024").action(ArgAction::SetTrue),
             arg!(-l --lohi   "show detailed low and high memory statistics")
                 .action(ArgAction::SetTrue),
             arg!(-t --total "show total for RAM + swap").action(ArgAction::SetTrue),
@@ -251,7 +313,7 @@ fn parse_meminfo_value(value: &str) -> Result<u64, std::io::Error> {
         })
 }
 
-fn parse_output_format(matches: ArgMatches) -> impl Fn(&MemInfo) -> String {
+fn parse_output_format(matches: &ArgMatches) -> impl Fn(&MemInfo) -> String {
     let wide = matches.get_flag("wide");
     let human = matches.get_flag("human");
     let si = matches.get_flag("si");
@@ -260,7 +322,7 @@ fn parse_output_format(matches: ArgMatches) -> impl Fn(&MemInfo) -> String {
     let committed = matches.get_flag("committed");
     let one_line = matches.get_flag("line");
 
-    let convert = detect_unit(&matches);
+    let convert = detect_unit(matches);
 
     // function that converts the number to the correct string
     let n2s = move |x| {
@@ -396,7 +458,7 @@ fn construct_committed_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> S
 
 // Here's the `-h` `--human` flag processing logic
 fn humanized(kib: u64, si: bool) -> String {
-    let binding = ByteSize::kib(kib).to_string_as(si);
+    let binding = ByteSize::kib(kib).to_string_as(!si);
     let split: Vec<&str> = binding.split(' ').collect();
 
     // TODO: finish the logic of automatic scale.
@@ -404,48 +466,73 @@ fn humanized(kib: u64, si: bool) -> String {
 
     let unit_string = {
         let mut tmp = String::from(split[1]);
-        tmp.pop();
+        if tmp != "B" {
+            tmp.pop();
+        }
         tmp
     };
     format!("{}{}", num_string, unit_string)
 }
 
 fn detect_unit(arg: &ArgMatches) -> fn(u64) -> u64 {
+    let si = arg.get_flag("si");
     match arg {
         _ if arg.get_flag("bytes") => |kib: u64| ByteSize::kib(kib).0,
-        _ if arg.get_flag("kilo") => |kib: u64| ByteSize::kib(kib).0 / KB,
-        _ if arg.get_flag("mega") => |kib: u64| ByteSize::kib(kib).0 / MB,
-        _ if arg.get_flag("giga") => |kib: u64| ByteSize::kib(kib).0 / GB,
-        _ if arg.get_flag("tera") => |kib: u64| ByteSize::kib(kib).0 / TB,
-        _ if arg.get_flag("peta") => |kib: u64| ByteSize::kib(kib).0 / PB,
+        _ if arg.get_flag("kilo") || (si && arg.get_flag("kibi")) => {
+            |kib: u64| ByteSize::kib(kib).0 / KB
+        }
+        _ if arg.get_flag("mega") || (si && arg.get_flag("mebi")) => {
+            |kib: u64| ByteSize::kib(kib).0 / MB
+        }
+        _ if arg.get_flag("giga") || (si && arg.get_flag("gibi")) => {
+            |kib: u64| ByteSize::kib(kib).0 / GB
+        }
+        _ if arg.get_flag("tera") || (si && arg.get_flag("tebi")) => {
+            |kib: u64| ByteSize::kib(kib).0 / TB
+        }
+        _ if arg.get_flag("peta") || (si && arg.get_flag("pebi")) => {
+            |kib: u64| ByteSize::kib(kib).0 / PB
+        }
         _ if arg.get_flag("kibi") => |kib: u64| ByteSize::kib(kib).0 / KIB,
         _ if arg.get_flag("mebi") => |kib: u64| ByteSize::kib(kib).0 / MIB,
         _ if arg.get_flag("gibi") => |kib: u64| ByteSize::kib(kib).0 / GIB,
         _ if arg.get_flag("tebi") => |kib: u64| ByteSize::kib(kib).0 / TIB,
         _ if arg.get_flag("pebi") => |kib: u64| ByteSize::kib(kib).0 / PIB,
+        _ if si => |kib: u64| ByteSize::kib(kib).0 / KB,
         _ => |kib: u64| kib,
     }
 }
 
-#[test]
-fn test_line_wide() {
-    let matches_with_line = uu_app()
-        .try_get_matches_from(vec!["free", "--line"])
-        .unwrap();
-    let matches_with_line_wide = uu_app()
-        .try_get_matches_from(vec!["free", "--line", "--wide"])
-        .unwrap();
-    let construct_line_str = parse_output_format(matches_with_line);
-    let construct_line_wide_str = parse_output_format(matches_with_line_wide);
-    match parse_meminfo() {
-        Ok(mem_info) => {
-            assert_eq!(
-                construct_line_str(&mem_info),
-                construct_line_wide_str(&mem_info)
-            );
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_line_wide() {
+        let matches_with_line = uu_app()
+            .try_get_matches_from(vec!["free", "--line"])
+            .unwrap();
+        let matches_with_line_wide = uu_app()
+            .try_get_matches_from(vec!["free", "--line", "--wide"])
+            .unwrap();
+        let construct_line_str = parse_output_format(&matches_with_line);
+        let construct_line_wide_str = parse_output_format(&matches_with_line_wide);
+        match parse_meminfo() {
+            Ok(mem_info) => {
+                assert_eq!(
+                    construct_line_str(&mem_info),
+                    construct_line_wide_str(&mem_info)
+                );
+            }
+            Err(e) => {
+                eprintln!("free: failed to read memory info: {}", e);
+            }
         }
-        Err(e) => {
-            eprintln!("free: failed to read memory info: {}", e);
-        }
+    }
+
+    #[test]
+    fn test_humanized_unit_for_zero() {
+        assert_eq!("0B", humanized(0, false));
+        assert_eq!("0B", humanized(0, true));
     }
 }

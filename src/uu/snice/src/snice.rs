@@ -236,7 +236,7 @@ fn collect_pids(targets: &[SelectedTarget]) -> Vec<u32> {
         .collect::<HashSet<_>>();
 
     let mut collected = collected.into_iter().collect::<Vec<_>>();
-    collected.sort();
+    collected.sort_unstable();
     collected
 }
 
