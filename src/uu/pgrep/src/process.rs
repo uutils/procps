@@ -381,6 +381,7 @@ pub fn walk_process() -> impl Iterator<Item = ProcessInformation> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(target_os = "linux")]
     use std::{collections::HashSet, str::FromStr};
 
     #[test]
@@ -398,6 +399,7 @@ mod tests {
         assert!(RunState::try_from("Rg").is_err());
     }
 
+    #[cfg(target_os = "linux")]
     fn current_pid() -> usize {
         // Direct read link of /proc/self.
         // It's result must be current programs pid.
@@ -410,6 +412,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_os = "linux")]
     fn test_walk_pid() {
         let current_pid = current_pid();
 
@@ -419,6 +422,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_os = "linux")]
     fn test_pid_entry() {
         let current_pid = current_pid();
 
