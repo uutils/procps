@@ -257,6 +257,7 @@ pub fn uu_app() -> Command {
 }
 
 #[cfg(test)]
+#[cfg(target_os = "linux")]
 mod tests {
     use crate::{
         fetch_cmdline, fetch_pcpu_time, fetch_terminal_number, format_time, get_clock_tick,
@@ -264,7 +265,6 @@ mod tests {
     use std::{fs, path::Path, process};
 
     #[test]
-    #[cfg(target_os = "linux")]
     fn test_format_time() {
         let unix_epoc = chrono::Local::now()
             .format("%Y-%m-%d %H:%M:%S%.6f %::z")
@@ -284,7 +284,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(target_os = "linux")]
     // Get PID of current process and use that for cmdline testing
     fn test_fetch_cmdline() {
         // uucore's utmpx returns an i32, so we cast to that to mimic it.
@@ -297,7 +296,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(target_os = "linux")]
     fn test_fetch_terminal_number() {
         let pid = process::id() as i32;
         let path = Path::new("/proc").join(pid.to_string()).join("stat");
@@ -308,7 +306,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(target_os = "linux")]
     fn test_fetch_pcpu_time() {
         let pid = process::id() as i32;
         let path = Path::new("/proc").join(pid.to_string()).join("stat");
