@@ -17,6 +17,7 @@ uucore = { workspace = true }
 clap = { workspace = true }
 walkdir = { workspace = true }
 regex = { workspace = true }
+nix = { workspace = true, features = ["signal"] }
 
 [lib]
 path = "src/pkill.rs"
