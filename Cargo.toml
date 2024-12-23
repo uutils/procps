@@ -54,10 +54,10 @@ phf_codegen = "0.11.2"
 prettytable-rs = "0.10.0"
 rand = { version = "0.8.5", features = ["small_rng"] }
 regex = "1.10.4"
-sysinfo = "0.32.0"
+sysinfo = "0.33.0"
 tempfile = "3.10.1"
 textwrap = { version = "0.16.1", features = ["terminal_size"] }
-thiserror = "1.0.63"
+thiserror = "2.0.4"
 uucore = "0.0.28"
 walkdir = "2.5.0"
 windows = { version = "0.58.0" }
