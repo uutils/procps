@@ -3,6 +3,7 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use std::cell::RefCell;
 use std::hash::Hash;
 use std::{
     collections::HashMap,
@@ -181,11 +182,11 @@ pub struct ProcessInformation {
     inner_stat: String,
 
     /// Processed `/proc/self/status` file
-    cached_status: Option<Rc<HashMap<String, String>>>,
+    cached_status: RefCell<Option<Rc<HashMap<String, String>>>>,
     /// Processed `/proc/self/stat` file
-    cached_stat: Option<Rc<Vec<String>>>,
+    cached_stat: RefCell<Option<Rc<Vec<String>>>>,
 
-    cached_start_time: Option<u64>,
+    cached_start_time: RefCell<Option<u64>>,
 }
 
 impl ProcessInformation {
@@ -242,8 +243,8 @@ impl ProcessInformation {
     }
 
     /// Collect information from `/proc/<pid>/status` file
-    pub fn status(&mut self) -> Rc<HashMap<String, String>> {
-        if let Some(c) = &self.cached_status {
+    pub fn status(&self) -> Rc<HashMap<String, String>> {
+        if let Some(c) = &*self.cached_status.borrow() {
             return Rc::clone(c);
         }
 
@@ -255,28 +256,28 @@ impl ProcessInformation {
             .collect::<HashMap<_, _>>();
 
         let result = Rc::new(result);
-        self.cached_status = Some(Rc::clone(&result));
+        *self.cached_status.borrow_mut() = Some(Rc::clone(&result));
         Rc::clone(&result)
     }
 
     /// Collect information from `/proc/<pid>/stat` file
-    pub fn stat(&mut self) -> Rc<Vec<String>> {
-        if let Some(c) = &self.cached_stat {
+    pub fn stat(&self) -> Rc<Vec<String>> {
+        if let Some(c) = &*self.cached_stat.borrow() {
             return Rc::clone(c);
         }
 
         let result: Vec<_> = stat_split(&self.inner_stat);
 
         let result = Rc::new(result);
-        self.cached_stat = Some(Rc::clone(&result));
+        *self.cached_stat.borrow_mut() = Some(Rc::clone(&result));
         Rc::clone(&result)
     }
 
     /// Fetch start time from [ProcessInformation::cached_stat]
     ///
     /// - [The /proc Filesystem: Table 1-4](https://docs.kernel.org/filesystems/proc.html#id10)
-    pub fn start_time(&mut self) -> Result<u64, io::Error> {
-        if let Some(time) = self.cached_start_time {
+    pub fn start_time(&self) -> Result<u64, io::Error> {
+        if let Some(time) = *self.cached_start_time.borrow() {
             return Ok(time);
         }
 
@@ -289,7 +290,7 @@ impl ProcessInformation {
             .parse::<u64>()
             .map_err(|_| io::ErrorKind::InvalidData)?;
 
-        self.cached_start_time = Some(time);
+        *self.cached_start_time.borrow_mut() = Some(time);
 
         Ok(time)
     }
@@ -301,7 +302,7 @@ impl ProcessInformation {
     /// # Error
     ///
     /// If parsing failed, this function will return [io::ErrorKind::InvalidInput]
-    pub fn run_state(&mut self) -> Result<RunState, io::Error> {
+    pub fn run_state(&self) -> Result<RunState, io::Error> {
         RunState::try_from(self.stat().get(2).unwrap().as_str())
     }
 
