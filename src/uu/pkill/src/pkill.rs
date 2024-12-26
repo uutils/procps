@@ -84,7 +84,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     }
 
     // Parse signal
-    let sig = if let Some(signal) = obs_signal {
+    let sig_num = if let Some(signal) = obs_signal {
         signal
     } else if let Some(signal) = matches.get_one::<String>("signal") {
         parse_signal_value(signal)?
@@ -92,13 +92,13 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         15_usize //SIGTERM
     };
 
-    let sig_name = signal_name_by_value(sig);
+    let sig_name = signal_name_by_value(sig_num);
     // Signal does not support converting from EXIT
     // Instead, nix::signal::kill expects Option::None to properly handle EXIT
     let sig: Option<Signal> = if sig_name.is_some_and(|name| name == "EXIT") {
         None
     } else {
-        let sig = (sig as i32)
+        let sig = (sig_num as i32)
             .try_into()
             .map_err(|e| std::io::Error::from_raw_os_error(e as i32))?;
         Some(sig)
@@ -107,6 +107,16 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     // Collect pids
     let pids = {
         let mut pids = collect_matched_pids(&settings);
+        if matches.get_flag("require-handler") {
+            pids = pids
+                .into_iter()
+                .filter(|pid| {
+                    let mask = u32::from_str_radix(pid.status()
+                    .get("SigCgt").unwrap(), 16).unwrap();
+                    mask & (1 << sig_num) != 0
+                })
+                .collect();
+        }
         if pids.is_empty() {
             uucore::error::set_exit_code(1);
             pids
@@ -116,7 +126,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     };
 
     // Send signal
-    // TODO: Implement -H -q
+    // TODO: Implement -q
     for pid in &pids {
         if let Err(e) = signal::kill(Pid::from_raw(pid.pid as i32), sig) {
             show!(Error::from_raw_os_error(e as i32)
