@@ -111,8 +111,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             pids = pids
                 .into_iter()
                 .filter(|pid| {
-                    let mask = u32::from_str_radix(pid.status()
-                    .get("SigCgt").unwrap(), 16).unwrap();
+                    let mask =
+                        u32::from_str_radix(pid.status().get("SigCgt").unwrap(), 16).unwrap();
                     mask & (1 << sig_num) != 0
                 })
                 .collect();
@@ -133,7 +133,11 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 .map_err_context(|| format!("killing pid {} failed", pid.pid)));
         } else {
             if matches.get_flag("echo") {
-                println!("{} killed (pid {})", pid.cmdline.split(" ").next().unwrap_or(""), pid.pid);
+                println!(
+                    "{} killed (pid {})",
+                    pid.cmdline.split(" ").next().unwrap_or(""),
+                    pid.pid
+                );
             }
         }
     }
