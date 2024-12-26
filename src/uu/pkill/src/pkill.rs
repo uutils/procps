@@ -19,7 +19,7 @@ use uucore::show;
 use uucore::{
     error::{UResult, USimpleError},
     format_usage, help_about, help_usage,
-    signals::{signal_by_name_or_value, signal_name_by_value, ALL_SIGNALS},
+    signals::{signal_by_name_or_value, signal_name_by_value},
 };
 
 const ABOUT: &str = help_about!("pkill.md");
@@ -183,7 +183,7 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
     let filtered: Vec<ProcessInformation> = {
         let mut tmp_vec = Vec::new();
 
-        for mut pid in walk_process().collect::<Vec<_>>() {
+        for pid in walk_process().collect::<Vec<_>>() {
             let run_state_matched = match (&settings.runstates, (pid).run_state()) {
                 (Some(arg_run_states), Ok(pid_state)) => {
                     arg_run_states.contains(&pid_state.to_string())
@@ -315,16 +315,6 @@ fn parse_signal_value(signal_name: &str) -> UResult<usize> {
             format!("Unknown signal {}", signal_name.quote()),
         )),
     }
-}
-
-fn parse_pids(pids: &[String]) -> UResult<Vec<i32>> {
-    pids.iter()
-        .map(|x| {
-            x.parse::<i32>().map_err(|e| {
-                USimpleError::new(1, format!("failed to parse argument {}: {}", x.quote(), e))
-            })
-        })
-        .collect()
 }
 
 #[allow(clippy::cognitive_complexity)]
