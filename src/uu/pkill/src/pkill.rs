@@ -108,14 +108,10 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let pids = {
         let mut pids = collect_matched_pids(&settings);
         if matches.get_flag("require-handler") {
-            pids = pids
-                .into_iter()
-                .filter(|pid| {
-                    let mask =
-                        u32::from_str_radix(pid.status().get("SigCgt").unwrap(), 16).unwrap();
-                    mask & (1 << sig_num) != 0
-                })
-                .collect();
+            pids.retain(|pid| {
+                let mask = u32::from_str_radix(pid.status().get("SigCgt").unwrap(), 16).unwrap();
+                mask & (1 << sig_num) != 0
+            });
         }
         if pids.is_empty() {
             uucore::error::set_exit_code(1);
@@ -131,14 +127,12 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         if let Err(e) = signal::kill(Pid::from_raw(pid.pid as i32), sig) {
             show!(Error::from_raw_os_error(e as i32)
                 .map_err_context(|| format!("killing pid {} failed", pid.pid)));
-        } else {
-            if matches.get_flag("echo") {
-                println!(
-                    "{} killed (pid {})",
-                    pid.cmdline.split(" ").next().unwrap_or(""),
-                    pid.pid
-                );
-            }
+        } else if matches.get_flag("echo") {
+            println!(
+                "{} killed (pid {})",
+                pid.cmdline.split(" ").next().unwrap_or(""),
+                pid.pid
+            );
         }
     }
     if matches.get_flag("count") {
