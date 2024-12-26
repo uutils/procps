@@ -11,11 +11,11 @@ use nix::sys::signal::{self, Signal};
 use nix::unistd::Pid;
 use process::{walk_process, ProcessInformation, Teletype};
 use regex::Regex;
+use std::io::Error;
+use std::{collections::HashSet, sync::OnceLock};
 use uucore::display::Quotable;
 use uucore::error::FromIo;
 use uucore::show;
-use std::io::Error;
-use std::{collections::HashSet, sync::OnceLock};
 use uucore::{
     error::{UResult, USimpleError},
     format_usage, help_about, help_usage,
@@ -43,7 +43,7 @@ struct Settings {
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let mut args = args.collect_ignore();
     let obs_signal = handle_obsolete(&mut args);
-    
+
     let matches = uu_app().try_get_matches_from(&args)?;
 
     let pattern = try_get_pattern_from(&matches)?;
@@ -113,10 +113,20 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         } else {
             process_flag_o_n(&settings, &mut pids)
         }
-    }.iter().map(|x| x.pid as i32).collect::<Vec<_>>();
+    };
 
-    // TODO: Implement -H -q -e
-    kill(sig, &pids);
+    // Send signal
+    // TODO: Implement -H -q
+    for pid in &pids {
+        if let Err(e) = signal::kill(Pid::from_raw(pid.pid as i32), sig) {
+            show!(Error::from_raw_os_error(e as i32)
+                .map_err_context(|| format!("killing pid {} failed", pid.pid)));
+        } else {
+            if matches.get_flag("echo") {
+                println!("{} killed (pid {})", pid.cmdline.split(" ").next().unwrap_or(""), pid.pid);
+            }
+        }
+    }
     if matches.get_flag("count") {
         println!("{}", pids.len());
     }
@@ -301,15 +311,6 @@ fn parse_pids(pids: &[String]) -> UResult<Vec<i32>> {
             })
         })
         .collect()
-}
-
-fn kill(sig: Option<Signal>, pids: &[i32]) {
-    for &pid in pids {
-        if let Err(e) = signal::kill(Pid::from_raw(pid), sig) {
-            show!(Error::from_raw_os_error(e as i32)
-                .map_err_context(|| format!("sending signal to {pid} failed")));
-        }
-    }
 }
 
 #[allow(clippy::cognitive_complexity)]
