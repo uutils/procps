@@ -6,19 +6,21 @@
 use clap::{arg, crate_version, value_parser, ArgAction, ArgGroup, ArgMatches, Command};
 use picker::pickers;
 use picker::sysinfo;
-use prettytable::{format::consts::FORMAT_CLEAN, Row, Table};
+// use prettytable::{format::consts::FORMAT_CLEAN, Row, Table};
 use std::{thread::sleep, time::Duration};
 use sysinfo::{Pid, Users};
 use uucore::{
     error::{UResult, USimpleError},
     format_usage, help_about, help_usage,
 };
+use tui::start_tui;
 
 const ABOUT: &str = help_about!("top.md");
 const USAGE: &str = help_usage!("top.md");
 
 mod field;
 mod picker;
+mod tui;
 
 #[allow(unused)]
 #[derive(Debug)]
@@ -84,40 +86,46 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     };
 
     let fields = selected_fields();
-    let collected = collect(&settings, &fields);
+    
+    start_tui(move || {
+        let collected = collect(&settings, &fields);
+        (fields.clone(), collected)
+    })?;
 
-    let table = {
-        let mut table = Table::new();
+    // let collected = collect(&settings, &fields);
 
-        table.set_format(*FORMAT_CLEAN);
+    // let table = {
+    //     let mut table = Table::new();
 
-        table.add_row(Row::from_iter(fields));
-        table.extend(collected.iter().map(Row::from_iter));
+    //     table.set_format(*FORMAT_CLEAN);
 
-        table
-    };
+    //     table.add_row(Row::from_iter(fields));
+    //     table.extend(collected.iter().map(Row::from_iter));
 
-    println!("{}", header());
-    println!("\n");
+    //     table
+    // };
 
-    let cutter = {
-        #[inline]
-        fn f(f: impl Fn(&str) -> String + 'static) -> Box<dyn Fn(&str) -> String> {
-            Box::new(f)
-        }
+    // println!("{}", header());
+    // println!("\n");
 
-        if let Some(width) = settings.width {
-            f(move |line: &str| apply_width(line, width))
-        } else {
-            f(|line: &str| line.to_string())
-        }
-    };
+    // let cutter = {
+    //     #[inline]
+    //     fn f(f: impl Fn(&str) -> String + 'static) -> Box<dyn Fn(&str) -> String> {
+    //         Box::new(f)
+    //     }
 
-    table
-        .to_string()
-        .lines()
-        .map(cutter)
-        .for_each(|it| println!("{}", it));
+    //     if let Some(width) = settings.width {
+    //         f(move |line: &str| apply_width(line, width))
+    //     } else {
+    //         f(|line: &str| line.to_string())
+    //     }
+    // };
+
+    // table
+    //     .to_string()
+    //     .lines()
+    //     .map(cutter)
+    //     .for_each(|it| println!("{}", it));
 
     Ok(())
 }
@@ -142,25 +150,25 @@ where
         .ok_or(USimpleError::new(1, "Invalid user"))
 }
 
-fn apply_width<T>(input: T, width: usize) -> String
-where
-    T: Into<String>,
-{
-    let input: String = input.into();
+// fn apply_width<T>(input: T, width: usize) -> String
+// where
+//     T: Into<String>,
+// {
+//     let input: String = input.into();
 
-    if input.len() > width {
-        input.chars().take(width).collect()
-    } else {
-        let mut result = String::from(&input);
-        result.extend(std::iter::repeat(' ').take(width - input.len()));
-        result
-    }
-}
+//     if input.len() > width {
+//         input.chars().take(width).collect()
+//     } else {
+//         let mut result = String::from(&input);
+//         result.extend(std::iter::repeat(' ').take(width - input.len()));
+//         result
+//     }
+// }
 
 // TODO: Implement information collecting.
-fn header() -> String {
-    "TODO".into()
-}
+// fn header() -> String {
+//     "TODO".into()
+// }
 
 // TODO: Implement fields selecting
 fn selected_fields() -> Vec<String> {

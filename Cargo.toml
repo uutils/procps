@@ -63,6 +63,8 @@ uucore = "0.0.29"
 walkdir = "2.5.0"
 windows = { version = "0.59.0" }
 xattr = "1.3.1"
+ratatui = "0.26.1"
+crossterm = "0.28.1"
 
 [dependencies]
 clap = { workspace = true }
