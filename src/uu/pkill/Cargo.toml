@@ -23,5 +23,5 @@ nix = { workspace = true, features = ["signal"] }
 path = "src/pkill.rs"
 
 [[bin]]
-name = "pgrep"
+name = "pkill"
 path = "src/main.rs"
