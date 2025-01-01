@@ -1064,6 +1064,7 @@ dependencies = [
  "clap",
  "nix",
  "regex",
+ "uu_pgrep",
  "uucore",
  "walkdir",
 ]

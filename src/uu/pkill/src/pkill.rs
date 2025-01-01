@@ -4,12 +4,10 @@
 // file that was distributed with this source code.
 
 // Pid utils
-pub mod process;
-
 use clap::{arg, crate_version, Arg, ArgAction, ArgGroup, ArgMatches, Command};
 use nix::sys::signal::{self, Signal};
 use nix::unistd::Pid;
-use process::{walk_process, ProcessInformation, Teletype};
+use uu_pgrep::process::{walk_process, ProcessInformation, Teletype};
 use regex::Regex;
 use std::io::Error;
 use std::{collections::HashSet, sync::OnceLock};
@@ -109,7 +107,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         let mut pids = collect_matched_pids(&settings);
         if matches.get_flag("require-handler") {
             pids.retain(|pid| {
-                let mask = u32::from_str_radix(pid.status().get("SigCgt").unwrap(), 16).unwrap();
+                let mask = u32::from_str_radix(pid.clone().status().get("SigCgt").unwrap(), 16).unwrap();
                 mask & (1 << sig_num) != 0
             });
         }
@@ -177,8 +175,8 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
     let filtered: Vec<ProcessInformation> = {
         let mut tmp_vec = Vec::new();
 
-        for pid in walk_process().collect::<Vec<_>>() {
-            let run_state_matched = match (&settings.runstates, (pid).run_state()) {
+        for mut pid in walk_process().collect::<Vec<_>>() {
+            let run_state_matched = match (&settings.runstates, pid.run_state()) {
                 (Some(arg_run_states), Ok(pid_state)) => {
                     arg_run_states.contains(&pid_state.to_string())
                 }

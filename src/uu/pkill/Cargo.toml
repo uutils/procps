@@ -19,6 +19,8 @@ walkdir = { workspace = true }
 regex = { workspace = true }
 nix = { workspace = true, features = ["signal"] }
 
+uu_pgrep = { path = "../pgrep" }
+
 [lib]
 path = "src/pkill.rs"
 
