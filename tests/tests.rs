@@ -52,3 +52,7 @@ mod test_top;
 #[cfg(feature = "snice")]
 #[path = "by-util/test_snice.rs"]
 mod test_snice;
+
+#[cfg(feature = "pkill")]
+#[path = "by-util/test_pkill.rs"]
+mod test_pkill;
