@@ -7,10 +7,10 @@
 use clap::{arg, crate_version, Arg, ArgAction, ArgGroup, ArgMatches, Command};
 use nix::sys::signal::{self, Signal};
 use nix::unistd::Pid;
-use uu_pgrep::process::{walk_process, ProcessInformation, Teletype};
 use regex::Regex;
 use std::io::Error;
 use std::{collections::HashSet, sync::OnceLock};
+use uu_pgrep::process::{walk_process, ProcessInformation, Teletype};
 use uucore::display::Quotable;
 use uucore::error::FromIo;
 use uucore::show;
@@ -107,7 +107,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         let mut pids = collect_matched_pids(&settings);
         if matches.get_flag("require-handler") {
             pids.retain(|pid| {
-                let mask = u32::from_str_radix(pid.clone().status().get("SigCgt").unwrap(), 16).unwrap();
+                let mask =
+                    u32::from_str_radix(pid.clone().status().get("SigCgt").unwrap(), 16).unwrap();
                 mask & (1 << sig_num) != 0
             });
         }
