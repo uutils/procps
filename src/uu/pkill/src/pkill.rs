@@ -11,6 +11,7 @@ use nix::{
     unistd::Pid,
 };
 use regex::Regex;
+#[cfg(unix)]
 use std::io::Error;
 use std::{collections::HashSet, sync::OnceLock};
 use uu_pgrep::process::{walk_process, ProcessInformation, Teletype};
@@ -45,7 +46,10 @@ struct Settings {
 
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
+    #[cfg(unix)]
     let mut args = args.collect_ignore();
+    #[cfg(target_os = "windows")]
+    let args = args.collect_ignore();
     #[cfg(unix)]
     let obs_signal = handle_obsolete(&mut args);
 
@@ -133,6 +137,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     // Send signal
     // TODO: Implement -q
+    #[cfg(unix)]
     let echo = matches.get_flag("echo");
     #[cfg(unix)]
     kill(&pids, sig, echo);
