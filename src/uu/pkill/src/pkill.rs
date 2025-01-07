@@ -6,18 +6,21 @@
 // Pid utils
 use clap::{arg, crate_version, Arg, ArgAction, ArgGroup, ArgMatches, Command};
 #[cfg(unix)]
-use nix::sys::signal::{self, Signal};
-#[cfg(unix)]
-use nix::unistd::Pid;
+use nix::{
+    sys::signal::{self, Signal},
+    unistd::Pid,
+};
 use regex::Regex;
 use std::io::Error;
 use std::{collections::HashSet, sync::OnceLock};
 use uu_pgrep::process::{walk_process, ProcessInformation, Teletype};
-use uucore::display::Quotable;
-use uucore::error::FromIo;
-use uucore::show;
 #[cfg(unix)]
-use uucore::signals::{signal_by_name_or_value, signal_name_by_value};
+use uucore::{
+    display::Quotable,
+    error::FromIo,
+    show,
+    signals::{signal_by_name_or_value, signal_name_by_value},
+};
 use uucore::{
     error::{UResult, USimpleError},
     format_usage, help_about, help_usage,
@@ -112,6 +115,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     // Collect pids
     let pids = {
         let mut pids = collect_matched_pids(&settings);
+        #[cfg(unix)]
         if matches.get_flag("require-handler") {
             pids.retain(|pid| {
                 let mask =
