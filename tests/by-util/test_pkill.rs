@@ -5,7 +5,7 @@
 
 use crate::common::util::TestScenario;
 
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 #[test]
 fn test_no_args() {
     new_ucmd!()
@@ -15,7 +15,7 @@ fn test_no_args() {
         .stderr_contains("no matching criteria specified");
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 #[test]
 fn test_non_matching_pattern() {
     new_ucmd!()
@@ -25,7 +25,7 @@ fn test_non_matching_pattern() {
         .no_output();
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 #[test]
 fn test_too_many_patterns() {
     new_ucmd!()
@@ -37,13 +37,13 @@ fn test_too_many_patterns() {
         .stderr_contains("only one pattern can be provided");
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 #[test]
 fn test_invalid_arg() {
     new_ucmd!().arg("--definitely-invalid").fails().code_is(1);
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 #[test]
 fn test_help() {
     new_ucmd!().arg("--help").succeeds();
