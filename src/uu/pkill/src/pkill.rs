@@ -43,6 +43,7 @@ struct Settings {
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let mut args = args.collect_ignore();
+    #[cfg(unix)]
     let obs_signal = handle_obsolete(&mut args);
 
     let matches = uu_app().try_get_matches_from(&args)?;
@@ -85,6 +86,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     }
 
     // Parse signal
+    #[cfg(unix)]
     let sig_num = if let Some(signal) = obs_signal {
         signal
     } else if let Some(signal) = matches.get_one::<String>("signal") {
@@ -93,6 +95,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         15_usize //SIGTERM
     };
 
+    #[cfg(unix)]
     let sig_name = signal_name_by_value(sig_num);
     // Signal does not support converting from EXIT
     // Instead, nix::signal::kill expects Option::None to properly handle EXIT
@@ -277,6 +280,7 @@ fn process_flag_o_n(
     }
 }
 
+#[cfg(unix)]
 fn handle_obsolete(args: &mut Vec<String>) -> Option<usize> {
     // Sanity check
     if args.len() > 2 {
@@ -295,6 +299,7 @@ fn handle_obsolete(args: &mut Vec<String>) -> Option<usize> {
     None
 }
 
+#[cfg(unix)]
 fn parse_signal_value(signal_name: &str) -> UResult<usize> {
     let optional_signal_value = signal_by_name_or_value(signal_name);
     match optional_signal_value {
