@@ -5,10 +5,9 @@
 
 // Pid utils
 use clap::{arg, crate_version, Arg, ArgAction, ArgGroup, ArgMatches, Command};
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 use nix::sys::signal::{self, Signal};
-#[cfg(target_os = "macos")]
-use nix::sys::signal::{self, Signal};
+#[cfg(unix)]
 use nix::unistd::Pid;
 use regex::Regex;
 use std::io::Error;
@@ -126,6 +125,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     // Send signal
     // TODO: Implement -q
     let echo = matches.get_flag("echo");
+    #[cfg(unix)]
     kill(&pids, sig, echo);
 
     if matches.get_flag("count") {
@@ -304,7 +304,7 @@ fn parse_signal_value(signal_name: &str) -> UResult<usize> {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 fn kill(pids: &Vec<ProcessInformation>, sig: Option<Signal>, echo: bool) {
     for pid in pids {
         if let Err(e) = signal::kill(Pid::from_raw(pid.pid as i32), sig) {
@@ -319,25 +319,6 @@ fn kill(pids: &Vec<ProcessInformation>, sig: Option<Signal>, echo: bool) {
         }
     }
 }
-
-#[cfg(target_os = "macos")]
-fn kill(pids: &Vec<ProcessInformation>, sig: Option<Signal>, echo: bool) {
-    for pid in pids {
-        if let Err(e) = signal::kill(Pid::from_raw(pid.pid as i32), sig) {
-            show!(Error::from_raw_os_error(e as i32)
-                .map_err_context(|| format!("killing pid {} failed", pid.pid)));
-        } else if echo {
-            println!(
-                "{} killed (pid {})",
-                pid.cmdline.split(" ").next().unwrap_or(""),
-                pid.pid
-            );
-        }
-    }
-}
-
-#[cfg(target_os = "windows")]
-fn kill(pids: &Vec<ProcessInformation>, sig: Option<Signal>, echo: bool) {}
 
 #[allow(clippy::cognitive_complexity)]
 pub fn uu_app() -> Command {
