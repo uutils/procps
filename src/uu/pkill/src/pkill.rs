@@ -16,10 +16,11 @@ use uu_pgrep::process::{walk_process, ProcessInformation, Teletype};
 use uucore::display::Quotable;
 use uucore::error::FromIo;
 use uucore::show;
+#[cfg(unix)]
+use uucore::signals::{signal_by_name_or_value, signal_name_by_value};
 use uucore::{
     error::{UResult, USimpleError},
     format_usage, help_about, help_usage,
-    signals::{signal_by_name_or_value, signal_name_by_value},
 };
 
 const ABOUT: &str = help_about!("pkill.md");
@@ -95,6 +96,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let sig_name = signal_name_by_value(sig_num);
     // Signal does not support converting from EXIT
     // Instead, nix::signal::kill expects Option::None to properly handle EXIT
+    #[cfg(unix)]
     let sig: Option<Signal> = if sig_name.is_some_and(|name| name == "EXIT") {
         None
     } else {
