@@ -4,6 +4,7 @@
 // file that was distributed with this source code.
 
 use clap::{arg, crate_version, value_parser, ArgAction, ArgGroup, ArgMatches, Command};
+use header::header;
 use picker::pickers;
 use picker::sysinfo;
 use prettytable::{format::consts::FORMAT_CLEAN, Row, Table};
@@ -18,6 +19,7 @@ const ABOUT: &str = help_about!("top.md");
 const USAGE: &str = help_usage!("top.md");
 
 mod field;
+mod header;
 mod picker;
 
 #[allow(unused)]
@@ -53,6 +55,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     // Must refresh twice.
     // https://docs.rs/sysinfo/0.31.2/sysinfo/struct.System.html#method.refresh_cpu_usage
     picker::sysinfo().write().unwrap().refresh_all();
+    // Similar to the above.
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    crate::header::cpu_load();
     sleep(Duration::from_millis(200));
     picker::sysinfo().write().unwrap().refresh_all();
 
@@ -155,11 +160,6 @@ where
         result.extend(std::iter::repeat(' ').take(width - input.len()));
         result
     }
-}
-
-// TODO: Implement information collecting.
-fn header() -> String {
-    "TODO".into()
 }
 
 // TODO: Implement fields selecting
