@@ -72,10 +72,12 @@ fn test_omit_pid() {
 fn test_separator() {
     use regex::Regex;
 
+    let re = &Regex::new("^[1-9][0-9]*separator[1-9][0-9]*\n$").unwrap();
+
     for arg in ["-S", "-d", "--separator"] {
         new_ucmd!()
             .args(&[arg, "separator", "kthreadd", "kthreadd"])
             .succeeds()
-            .stdout_matches(&Regex::new("^[1-9][0-9]*separator[1-9][0-9]*\n$").unwrap());
+            .stdout_matches(re);
     }
 }

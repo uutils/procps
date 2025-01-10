@@ -55,11 +55,10 @@ fn test_help() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_oldest() {
+    let re = &Regex::new(SINGLE_PID).unwrap();
+
     for arg in ["-o", "--oldest"] {
-        new_ucmd!()
-            .arg(arg)
-            .succeeds()
-            .stdout_matches(&Regex::new(SINGLE_PID).unwrap());
+        new_ucmd!().arg(arg).succeeds().stdout_matches(re);
     }
 }
 
@@ -77,11 +76,10 @@ fn test_oldest_non_matching_pattern() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_newest() {
+    let re = &Regex::new(SINGLE_PID).unwrap();
+
     for arg in ["-n", "--newest"] {
-        new_ucmd!()
-            .arg(arg)
-            .succeeds()
-            .stdout_matches(&Regex::new(SINGLE_PID).unwrap());
+        new_ucmd!().arg(arg).succeeds().stdout_matches(re);
     }
 }
 
@@ -99,12 +97,10 @@ fn test_newest_non_matching_pattern() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_older() {
+    let re = &Regex::new(MULTIPLE_PIDS).unwrap();
+
     for arg in ["-O", "--older"] {
-        new_ucmd!()
-            .arg(arg)
-            .arg("0")
-            .succeeds()
-            .stdout_matches(&Regex::new(MULTIPLE_PIDS).unwrap());
+        new_ucmd!().arg(arg).arg("0").succeeds().stdout_matches(re);
     }
 }
 
@@ -199,13 +195,16 @@ fn test_ignore_case() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_list_full() {
+    // (?m) enables multi-line mode
+    let re = &Regex::new("(?m)^[1-9][0-9]* .+$").unwrap();
+
     for arg in ["-a", "--list-full"] {
         new_ucmd!()
             .arg("sh")
             .arg(arg)
             .succeeds()
             // (?m) enables multi-line mode
-            .stdout_matches(&Regex::new("(?m)^[1-9][0-9]* .+$").unwrap());
+            .stdout_matches(re);
     }
 }
 
@@ -246,13 +245,15 @@ fn test_count_with_non_matching_pattern() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_terminal() {
+    let re = &Regex::new(MULTIPLE_PIDS).unwrap();
+
     for arg in ["-t", "--terminal"] {
         new_ucmd!()
             .arg(arg)
             .arg("tty1")
             .arg("--inverse") // XXX hack to make test pass in CI
             .succeeds()
-            .stdout_matches(&Regex::new(MULTIPLE_PIDS).unwrap());
+            .stdout_matches(re);
     }
 }
 
@@ -286,12 +287,10 @@ fn test_terminal_invalid_terminal() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_runstates() {
+    let re = &Regex::new(MULTIPLE_PIDS).unwrap();
+
     for arg in ["-r", "--runstates"] {
-        new_ucmd!()
-            .arg(arg)
-            .arg("S")
-            .succeeds()
-            .stdout_matches(&Regex::new(MULTIPLE_PIDS).unwrap());
+        new_ucmd!().arg(arg).arg("S").succeeds().stdout_matches(re);
     }
 }
 
@@ -308,12 +307,10 @@ fn test_runstates_invalid_runstate() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_parent() {
+    let re = &Regex::new(MULTIPLE_PIDS).unwrap();
+
     for arg in ["-P", "--parent"] {
-        new_ucmd!()
-            .arg(arg)
-            .arg("0")
-            .succeeds()
-            .stdout_matches(&Regex::new(MULTIPLE_PIDS).unwrap());
+        new_ucmd!().arg(arg).arg("0").succeeds().stdout_matches(re);
     }
 }
 
