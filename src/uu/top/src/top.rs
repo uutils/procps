@@ -102,7 +102,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         table
     };
 
-    println!("{}", header());
+    println!("{}", header(&matches));
     println!("\n");
 
     let cutter = {
@@ -261,7 +261,7 @@ pub fn uu_app() -> Command {
             // arg!(-b  --"batch-mode"                         "run in non-interactive batch mode"),
             // arg!(-c  --"cmdline-toggle"                     "reverse last remembered 'c' state"),
             // arg!(-d  --delay                <SECS>          "iterative delay as SECS [.TENTHS]"),
-            // arg!(-E  --"scale-summary-mem"  <SCALE>         "set mem as: k,m,g,t,p,e for SCALE"),
+            arg!(-E  --"scale-summary-mem"  <SCALE>         "set mem as: k,m,g,t,p,e for SCALE"),
             // arg!(-e  --"scale-task-mem"     <SCALE>         "set mem with: k,m,g,t,p for SCALE"),
             // arg!(-H  --"threads-show"                       "show tasks plus all their threads"),
             // arg!(-i  --"idle-toggle"                        "reverse last remembered 'i' state"),

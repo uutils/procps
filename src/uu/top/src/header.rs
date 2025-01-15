@@ -1,5 +1,6 @@
 use crate::picker::{sysinfo, systemstat};
 use bytesize::ByteSize;
+use clap::ArgMatches;
 use systemstat::Platform;
 #[cfg(not(any(target_os = "macos", target_os = "linux")))]
 use {
@@ -34,21 +35,19 @@ pub(crate) fn cpu_load() -> CPULoad {
     }
 }
 
-pub(crate) fn header() -> String {
+pub(crate) fn header(arg: &ArgMatches) -> String {
     format!(
         "top - {time} {uptime}, {user}, {load_average}\n\
         {task}\n\
         {cpu}\n\
-        {memory}\n\
-        {swap}",
+        {memory}",
         time = chrono::Local::now().format("%H:%M:%S"),
         uptime = uptime(),
         user = user(),
         load_average = load_average(),
         task = task(),
         cpu = cpu(),
-        memory = memory(),
-        swap = swap(),
+        memory = memory(arg),
     )
 }
 
@@ -103,7 +102,7 @@ fn load_average() -> String {
 }
 
 #[cfg(target_os = "windows")]
-fn load_average() -> String{
+fn load_average() -> String {
     todo()
 }
 
@@ -203,30 +202,34 @@ fn cpu() -> String {
     todo()
 }
 
-fn memory() -> String {
+fn memory(arg: &ArgMatches) -> String {
     let binding = sysinfo().read().unwrap();
-    //TODO: unit from argument
-    let unit = bytesize::MIB;
+    let (unit, unit_name) = match arg.get_one::<String>("scale-summary-mem") {
+        Some(scale) => match scale.as_str() {
+            "k" => (bytesize::KIB, "KiB"),
+            "m" => (bytesize::MIB, "MiB"),
+            "g" => (bytesize::GIB, "GiB"),
+            "t" => (bytesize::TIB, "TiB"),
+            "p" => (bytesize::PIB, "PiB"),
+            "e" => (1_152_921_504_606_846_976, "EiB"),
+            _ => (bytesize::MIB, "MiB"),
+        },
+        None => {
+            (bytesize::MIB, "MiB")
+        }
+    };
 
     format!(
-        "MiB Mem : {:8.1} total, {:8.1} free, {:8.1} used, {:8.1} buff/cache",
+        "{unit_name} Mem : {:8.1} total, {:8.1} free, {:8.1} used, {:8.1} buff/cache\n\
+        {unit_name} Swap: {:8.1} total, {:8.1} free, {:8.1} used, {:8.1} avail Mem",
         format_memory(binding.total_memory(), unit),
         format_memory(binding.free_memory(), unit),
         format_memory(binding.used_memory(), unit),
-        format_memory(binding.total_memory() - binding.free_memory(), unit),
-    )
-}
-
-fn swap() -> String {
-    let binding = sysinfo().read().unwrap();
-    //TODO: unit from argument
-    let unit = bytesize::MIB;
-
-    format!(
-        "MiB Swap: {:8.1} total, {:8.1} free, {:8.1} used, {:8.1} avail Mem",
+        format_memory(binding.available_memory() - binding.free_memory(), unit),
         format_memory(binding.total_swap(), unit),
         format_memory(binding.free_swap(), unit),
         format_memory(binding.used_swap(), unit),
-        format_memory(binding.total_memory() - binding.free_memory(), unit),
+        format_memory(binding.available_memory(), unit),
+        unit_name = unit_name
     )
 }
