@@ -615,6 +615,7 @@ dependencies = [
  "uu_pgrep",
  "uu_pidof",
  "uu_pidwait",
+ "uu_pkill",
  "uu_pmap",
  "uu_ps",
  "uu_pwdx",
@@ -1054,6 +1055,18 @@ dependencies = [
  "regex",
  "uu_pgrep",
  "uucore",
+]
+
+[[package]]
+name = "uu_pkill"
+version = "0.0.1"
+dependencies = [
+ "clap",
+ "nix",
+ "regex",
+ "uu_pgrep",
+ "uucore",
+ "walkdir",
 ]
 
 [[package]]
