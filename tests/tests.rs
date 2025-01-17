@@ -56,3 +56,7 @@ mod test_snice;
 #[cfg(feature = "pkill")]
 #[path = "by-util/test_pkill.rs"]
 mod test_pkill;
+
+#[cfg(feature = "sysctl")]
+#[path = "by-util/test_sysctl.rs"]
+mod test_sysctl;
