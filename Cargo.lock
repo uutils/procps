@@ -1165,13 +1165,14 @@ dependencies = [
 
 [[package]]
 name = "uucore"
-version = "0.0.28"
+version = "0.0.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04ea43050c46912575654c5181f4135529e8d4003fca80803af10cdef3ca6412"
+checksum = "50e0dc1598d959a08f24cea4d9e992f7ca874bd4ac80746683272afd37603b5e"
 dependencies = [
  "clap",
  "dns-lookup",
  "glob",
+ "lazy_static",
  "libc",
  "nix",
  "number_prefix",
@@ -1184,9 +1185,9 @@ dependencies = [
 
 [[package]]
 name = "uucore_procs"
-version = "0.0.25"
+version = "0.0.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7f51594832e53b11811446b1cd3567722e2906a589a5b19622c5c4720977309"
+checksum = "27d3de33ab2b56c0437cca084a2aeb1d46c56d138ab6341c009a90018a9a1c5f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1195,9 +1196,9 @@ dependencies = [
 
 [[package]]
 name = "uuhelp_parser"
-version = "0.0.25"
+version = "0.0.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac7a6832a5add86204d5a8d0ef41c5a11e3ddf61c0f1a508f69e7e3e1bf04e3f"
+checksum = "0cf4c8b31abfb5dc79940d6ca8000a1a6aa42f38711cdeaacb95850c69924cbc"
 
 [[package]]
 name = "walkdir"
