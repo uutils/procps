@@ -621,6 +621,7 @@ dependencies = [
  "uu_pwdx",
  "uu_slabtop",
  "uu_snice",
+ "uu_sysctl",
  "uu_top",
  "uu_w",
  "uu_watch",
@@ -1119,6 +1120,16 @@ dependencies = [
  "thiserror 2.0.11",
  "uu_pgrep",
  "uucore",
+]
+
+[[package]]
+name = "uu_sysctl"
+version = "0.0.1"
+dependencies = [
+ "clap",
+ "sysinfo",
+ "uucore",
+ "walkdir",
 ]
 
 [[package]]

@@ -1,0 +1,25 @@
+[package]
+name = "uu_sysctl"
+version = "0.0.1"
+edition = "2021"
+authors = ["uutils developers"]
+license = "MIT"
+description = "sysctl ~ (uutils) Show or modify kernel parameters at runtime"
+
+homepage = "https://github.com/uutils/procps"
+repository = "https://github.com/uutils/procps/tree/main/src/uu/sysctl"
+keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
+categories = ["command-line-utilities"]
+
+[dependencies]
+uucore = { workspace = true }
+clap = { workspace = true }
+sysinfo = { workspace = true }
+walkdir = { workspace = true }
+
+[lib]
+path = "src/sysctl.rs"
+
+[[bin]]
+name = "sysctl"
+path = "src/main.rs"

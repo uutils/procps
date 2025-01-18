@@ -36,6 +36,7 @@ feat_common_core = [
     "slabtop",
     "snice",
     "pkill",
+    "sysctl",
     "top",
     "w",
     "watch",
@@ -84,6 +85,7 @@ pwdx = { optional = true, version = "0.0.1", package = "uu_pwdx", path = "src/uu
 slabtop = { optional = true, version = "0.0.1", package = "uu_slabtop", path = "src/uu/slabtop" }
 snice = { optional = true, version = "0.0.1", package = "uu_snice", path = "src/uu/snice" }
 pkill = { optional = true, version = "0.0.1", package = "uu_pkill", path = "src/uu/pkill" }
+sysctl = { optional = true, version = "0.0.1", package = "uu_sysctl", path = "src/uu/sysctl" }
 top = { optional = true, version = "0.0.1", package = "uu_top", path = "src/uu/top" }
 w = { optional = true, version = "0.0.1", package = "uu_w", path = "src/uu/w" }
 watch = { optional = true, version = "0.0.1", package = "uu_watch", path = "src/uu/watch" }
