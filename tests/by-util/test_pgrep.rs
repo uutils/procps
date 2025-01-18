@@ -3,6 +3,12 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+#[cfg(target_os = "linux")]
+use std::{
+    array,
+    process::{Child, Command},
+};
+
 use crate::common::util::TestScenario;
 #[cfg(target_os = "linux")]
 use regex::Regex;
@@ -152,23 +158,31 @@ fn test_valid_regex() {
 }
 
 #[cfg(target_os = "linux")]
+fn spawn_2_dummy_sleep_processes() -> [Child; 2] {
+    array::from_fn(|_| Command::new("sleep").arg("2").spawn().unwrap())
+}
+
+#[cfg(target_os = "linux")]
 #[test]
 fn test_delimiter() {
+    let mut sleep_processes = spawn_2_dummy_sleep_processes();
     for arg in ["-d", "--delimiter"] {
         new_ucmd!()
-            .arg("sh")
+            .arg("sleep")
             .arg(arg)
             .arg("|")
             .succeeds()
             .stdout_contains("|");
     }
+    sleep_processes.iter_mut().for_each(|p| drop(p.kill()));
 }
 
 #[cfg(target_os = "linux")]
 #[test]
 fn test_delimiter_last_wins() {
+    let mut sleep_processes = spawn_2_dummy_sleep_processes();
     new_ucmd!()
-        .arg("sh")
+        .arg("sleep")
         .arg("-d_")
         .arg("-d:")
         .succeeds()
@@ -176,12 +190,13 @@ fn test_delimiter_last_wins() {
         .stdout_contains(":");
 
     new_ucmd!()
-        .arg("sh")
+        .arg("sleep")
         .arg("-d:")
         .arg("-d_")
         .succeeds()
         .stdout_does_not_contain(":")
         .stdout_contains("_");
+    sleep_processes.iter_mut().for_each(|p| drop(p.kill()));
 }
 
 #[test]
