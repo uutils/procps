@@ -51,6 +51,7 @@ pub(crate) fn header(arg: &ArgMatches) -> String {
     )
 }
 
+#[cfg(not(target_os = "linux"))]
 fn todo() -> String {
     "TODO".into()
 }
@@ -85,9 +86,116 @@ fn uptime() -> String {
     res
 }
 
-//TODO: Implement active user count
+#[inline]
+fn format_user(user: u64) -> String {
+    match user {
+        0 => "0 user".to_string(),
+        1 => "1 user".to_string(),
+        _ => format!("{} users", user),
+    }
+}
+
+#[cfg(target_os = "windows")]
 fn user() -> String {
-    todo()
+    use windows::{core::*, Win32::System::RemoteDesktop::*};
+
+    let mut num_user = 0;
+
+    unsafe {
+        let mut session_info_ptr = std::ptr::null_mut();
+        let mut session_count = 0;
+
+        WTSEnumerateSessionsW(
+            Some(WTS_CURRENT_SERVER_HANDLE),
+            0,
+            1,
+            &mut session_info_ptr,
+            &mut session_count,
+        )
+        .unwrap();
+
+        let sessions = std::slice::from_raw_parts(session_info_ptr, session_count as usize);
+
+        for session in sessions {
+            let mut buffer = PWSTR::null();
+            let mut bytes_returned = 0;
+
+            WTSQuerySessionInformationW(
+                Some(WTS_CURRENT_SERVER_HANDLE),
+                session.SessionId,
+                WTS_INFO_CLASS(5),
+                &mut buffer,
+                &mut bytes_returned,
+            )
+            .unwrap();
+
+            let username = PWSTR(buffer.0).to_string().unwrap_or_default();
+            if !username.is_empty() {
+                num_user += 1;
+            }
+
+            WTSFreeMemory(buffer.0 as _);
+        }
+
+        WTSFreeMemory(session_info_ptr as _);
+    }
+
+    format_user(num_user)
+}
+
+#[cfg(unix)]
+// see: https://gitlab.com/procps-ng/procps/-/blob/4740a0efa79cade867cfc7b32955fe0f75bf5173/library/uptime.c#L63-L115
+fn user() -> String {
+    use uucore::utmpx::Utmpx;
+
+    #[cfg(target_os = "linux")]
+    unsafe {
+        use libc::free;
+        use libsystemd_sys::daemon::sd_booted;
+        use libsystemd_sys::login::{sd_get_sessions, sd_session_get_class};
+        use std::ffi::{c_char, c_void, CStr};
+        use std::ptr;
+        // systemd
+        if sd_booted() > 0 {
+            let mut sessions_list: *mut *mut c_char = ptr::null_mut();
+            let mut num_user = 0;
+            let sessions = sd_get_sessions(&mut sessions_list); // rust-systemd does not implement this
+
+            if sessions > 0 {
+                for i in 0..sessions {
+                    let mut class: *mut c_char = ptr::null_mut();
+
+                    if sd_session_get_class(
+                        *sessions_list.add(i as usize) as *const c_char,
+                        &mut class,
+                    ) < 0
+                    {
+                        continue;
+                    }
+                    if CStr::from_ptr(class).to_str().unwrap().starts_with("user") {
+                        num_user += 1;
+                    }
+                    free(class as *mut c_void);
+                }
+            }
+
+            for i in 0..sessions {
+                free(*sessions_list.add(i as usize) as *mut c_void);
+            }
+            free(sessions_list as *mut c_void);
+
+            return format_user(num_user);
+        }
+    }
+
+    // utmpx
+    let mut num_user = 0;
+    Utmpx::iter_all_records().for_each(|ut| {
+        if ut.record_type() == 7 && !ut.user().is_empty() {
+            num_user += 1;
+        }
+    });
+    format_user(num_user)
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -214,9 +322,7 @@ fn memory(arg: &ArgMatches) -> String {
             "e" => (1_152_921_504_606_846_976, "EiB"),
             _ => (bytesize::MIB, "MiB"),
         },
-        None => {
-            (bytesize::MIB, "MiB")
-        }
+        None => (bytesize::MIB, "MiB"),
     };
 
     format!(
