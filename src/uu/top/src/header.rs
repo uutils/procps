@@ -1,3 +1,8 @@
+// This file is part of the uutils procps package.
+//
+// For the full copyright and license information, please view the LICENSE
+// file that was distributed with this source code.
+
 use crate::picker::{sysinfo, systemstat};
 use bytesize::ByteSize;
 use clap::ArgMatches;
