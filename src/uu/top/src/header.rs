@@ -7,38 +7,6 @@ use crate::picker::{sysinfo, systemstat};
 use bytesize::ByteSize;
 use clap::ArgMatches;
 use systemstat::Platform;
-#[cfg(not(any(target_os = "macos", target_os = "linux")))]
-use {
-    std::sync::{Mutex, OnceLock},
-    systemstat::{CPULoad, DelayedMeasurement},
-};
-
-#[cfg(not(any(target_os = "macos", target_os = "linux")))]
-static LOAD_AVERAGE: OnceLock<Mutex<DelayedMeasurement<CPULoad>>> = OnceLock::new();
-
-#[cfg(not(any(target_os = "macos", target_os = "linux")))]
-pub(crate) fn cpu_load() -> CPULoad {
-    match LOAD_AVERAGE.get() {
-        None => {
-            LOAD_AVERAGE.get_or_init(|| {
-                Mutex::new(systemstat().read().unwrap().cpu_load_aggregate().unwrap())
-            });
-            systemstat()
-                .read()
-                .unwrap()
-                .cpu_load_aggregate()
-                .unwrap()
-                .done()
-                .unwrap()
-        }
-        Some(v) => {
-            let mut v = v.lock().unwrap();
-            let load = v.done().unwrap();
-            *v = systemstat().read().unwrap().cpu_load_aggregate().unwrap();
-            load
-        }
-    }
-}
 
 pub(crate) fn header(arg: &ArgMatches) -> String {
     format!(
@@ -296,16 +264,64 @@ fn cpu() -> String {
     )
 }
 
-//TODO: Implement io wait, hardware interrupt, software interrupt and steal time
-#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+#[cfg(target_os = "windows")]
 fn cpu() -> String {
-    let cpu = cpu_load();
+    use libc::malloc;
+    use windows::Wdk::System::SystemInformation::NtQuerySystemInformation;
+
+    #[repr(C)]
+    #[derive(Debug)]
+    struct SystemProcessorPerformanceInformation {
+        idle_time: i64,       // LARGE_INTEGER
+        kernel_time: i64,     // LARGE_INTEGER
+        user_time: i64,       // LARGE_INTEGER
+        dpc_time: i64,        // LARGE_INTEGER
+        interrupt_time: i64,  // LARGE_INTEGER
+        interrupt_count: u32, // ULONG
+    }
+
+    let n_cpu = sysinfo().read().unwrap().cpus().len();
+    let mut cpu_load = SystemProcessorPerformanceInformation {
+        idle_time: 0,
+        kernel_time: 0,
+        user_time: 0,
+        dpc_time: 0,
+        interrupt_time: 0,
+        interrupt_count: 0,
+    };
+    unsafe {
+        let len = n_cpu * size_of::<SystemProcessorPerformanceInformation>();
+        let data = malloc(len);
+        let _ = NtQuerySystemInformation(
+            windows::Wdk::System::SystemInformation::SystemProcessorPerformanceInformation,
+            data,
+            (n_cpu * size_of::<SystemProcessorPerformanceInformation>()) as u32,
+            std::ptr::null_mut(),
+        );
+        for i in 0..n_cpu {
+            let cpu = data.add(i * size_of::<SystemProcessorPerformanceInformation>())
+                as *const SystemProcessorPerformanceInformation;
+            let cpu = cpu.as_ref().unwrap();
+            cpu_load.idle_time += cpu.idle_time;
+            cpu_load.kernel_time += cpu.kernel_time;
+            cpu_load.user_time += cpu.user_time;
+            cpu_load.dpc_time += cpu.dpc_time;
+            cpu_load.interrupt_time += cpu.interrupt_time;
+            cpu_load.interrupt_count += cpu.interrupt_count;
+        }
+    }
+    let total = cpu_load.idle_time
+        + cpu_load.kernel_time
+        + cpu_load.user_time
+        + cpu_load.dpc_time
+        + cpu_load.interrupt_time;
     format!(
-        "%Cpu(s):  {:.1} us,  {:.1} sy,  {:.1} ni, {:.1} id",
-        cpu.user * 100.0,
-        cpu.system * 100.0,
-        cpu.nice * 100.0,
-        cpu.idle * 100.0
+        "%Cpu(s):  {:.1} us,  {:.1} sy,  {:.1} id,  {:.1} hi,  {:.1} si",
+        cpu_load.user_time as f64 / total as f64 * 100.0,
+        cpu_load.kernel_time as f64 / total as f64 * 100.0,
+        cpu_load.idle_time as f64 / total as f64 * 100.0,
+        cpu_load.interrupt_time as f64 / total as f64 * 100.0,
+        cpu_load.dpc_time as f64 / total as f64 * 100.0,
     )
 }
 
