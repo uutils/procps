@@ -5,10 +5,9 @@
 
 use crate::picker::{sysinfo, systemstat};
 use bytesize::ByteSize;
-use clap::ArgMatches;
 use systemstat::Platform;
 
-pub(crate) fn header(arg: &ArgMatches) -> String {
+pub(crate) fn header(scale_summary_mem: Option<&String>) -> String {
     format!(
         "top - {time} {uptime}, {user}, {load_average}\n\
         {task}\n\
@@ -20,7 +19,7 @@ pub(crate) fn header(arg: &ArgMatches) -> String {
         load_average = load_average(),
         task = task(),
         cpu = cpu(),
-        memory = memory(arg),
+        memory = memory(scale_summary_mem),
     )
 }
 
@@ -331,9 +330,9 @@ fn cpu() -> String {
     todo()
 }
 
-fn memory(arg: &ArgMatches) -> String {
+fn memory(scale_summary_mem: Option<&String>) -> String {
     let binding = sysinfo().read().unwrap();
-    let (unit, unit_name) = match arg.get_one::<String>("scale-summary-mem") {
+    let (unit, unit_name) = match scale_summary_mem {
         Some(scale) => match scale.as_str() {
             "k" => (bytesize::KIB, "KiB"),
             "m" => (bytesize::MIB, "MiB"),

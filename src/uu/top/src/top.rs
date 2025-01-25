@@ -99,7 +99,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         table
     };
 
-    println!("{}", header(&matches));
+    println!("{}", header(matches.get_one::<String>("scale-summary-mem")));
     println!("\n");
 
     let cutter = {
