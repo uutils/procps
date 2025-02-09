@@ -170,7 +170,7 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
         let mut tmp_vec = Vec::new();
 
         for mut pid in walk_process().collect::<Vec<_>>() {
-            let run_state_matched = match (&settings.runstates, (pid).run_state()) {
+            let run_state_matched = match (&settings.runstates, pid.run_state()) {
                 (Some(arg_run_states), Ok(pid_state)) => {
                     arg_run_states.contains(&pid_state.to_string())
                 }
