@@ -36,6 +36,7 @@ struct Settings {
     exact: bool,
     full: bool,
     ignore_case: bool,
+    inverse: bool,
     newest: bool,
     oldest: bool,
     older: Option<u64>,
@@ -64,6 +65,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         exact: matches.get_flag("exact"),
         full: matches.get_flag("full"),
         ignore_case: matches.get_flag("ignore-case"),
+        inverse: matches.get_flag("inverse"),
         newest: matches.get_flag("newest"),
         oldest: matches.get_flag("oldest"),
         parent: matches
@@ -235,11 +237,12 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
                 _ => true,
             };
 
-            if run_state_matched
+            if (run_state_matched
                 && pattern_matched
                 && tty_matched
                 && older_matched
-                && parent_matched
+                && parent_matched)
+                ^ settings.inverse
             {
                 tmp_vec.push(pid);
             }
@@ -343,12 +346,13 @@ pub fn uu_app() -> Command {
         .about(ABOUT)
         .override_usage(format_usage(USAGE))
         .args_override_self(true)
-        .group(ArgGroup::new("oldest_newest").args(["oldest", "newest"]))
+        .group(ArgGroup::new("oldest_newest").args(["oldest", "newest", "inverse"]))
         .args([
             // arg!(-<sig>                    "signal to send (either number or name)"),
             arg!(-H --"require-handler"    "match only if signal handler is present"),
             // arg!(-q --queue <value>        "integer value to be sent with the signal"),
             arg!(-e --echo                 "display what is killed"),
+            arg!(--inverse                 "negates the matching"),
             arg!(-c --count                "count of matching processes"),
             arg!(-f --full                 "use full process name to match"),
             // arg!(-g --pgroup <PGID>        "match listed process group IDs")
