@@ -293,8 +293,12 @@ pub fn uu_app() -> Command {
             // arg!(-w     --lightweight           "list all TID"),
             arg!(-c     --count                 "count of matching processes"),
             arg!(-f     --full                  "use full process name to match"),
-            // arg!(-g     --pgroup <PGID>     ... "match listed process group IDs"),
-            // arg!(-G     --group <GID>       ... "match real group IDs"),
+            // arg!(-g     --pgroup <PGID>     ... "match listed process group IDs")
+            //     .value_delimiter(',')
+            //     .value_parser(clap::value_parser!(u64)),
+            // arg!(-G     --group <GID>       ... "match real group IDs")
+            //     .value_delimiter(',')
+            //     .value_parser(clap::value_parser!(u64)),
             arg!(-i     --"ignore-case"         "match case insensitively"),
             arg!(-n     --newest                "select most recently started"),
             arg!(-o     --oldest                "select least recently started"),
@@ -303,17 +307,29 @@ pub fn uu_app() -> Command {
             arg!(-P     --parent <PPID>         "match only child processes of the given parent")
                 .value_delimiter(',')
                 .value_parser(clap::value_parser!(u64)),
-            // arg!(-s     --session <SID>         "match session IDs"),
+            // arg!(-s     --session <SID>         "match session IDs")
+            //     .value_delimiter(',')
+            //     .value_parser(clap::value_parser!(u64)),
+            // arg!(--signal <sig>                 "signal to send (either number or name)"),
             arg!(-t     --terminal <tty>        "match by controlling terminal")
                 .value_delimiter(','),
-            // arg!(-u     --euid <ID>         ... "match by effective IDs"),
-            // arg!(-U     --uid <ID>          ... "match by real IDs"),
+            // arg!(-u     --euid <ID>         ... "match by effective IDs")
+            //     .value_delimiter(',')
+            //     .value_parser(clap::value_parser!(u64)),
+            // arg!(-U     --uid <ID>          ... "match by real IDs")
+            //     .value_delimiter(',')
+            //     .value_parser(clap::value_parser!(u64)),
             arg!(-x     --exact                 "match exactly with the command name"),
             // arg!(-F     --pidfile <file>        "read PIDs from file"),
             // arg!(-L     --logpidfile            "fail if PID file is not locked"),
             arg!(-r     --runstates <state>     "match runstates [D,S,Z,...]"),
+            // arg!(-A     --"ignore-ancestors"    "exclude our ancestors from results"),
+            // arg!(--cgroup <grp>                 "match by cgroup v2 names")
+            //     .value_delimiter(','),
             // arg!(       --ns <PID>              "match the processes that belong to the same namespace as <pid>"),
-            // arg!(       --nslist <ns>       ... "list which namespaces will be considered for the --ns option."),
+            // arg!(       --nslist <ns>       ... "list which namespaces will be considered for the --ns option.")
+            //     .value_delimiter(',')
+            //     .value_parser(["ipc", "mnt", "net", "pid", "user", "uts"]),
         ])
         .arg(
             Arg::new("pattern")
