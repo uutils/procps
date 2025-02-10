@@ -52,7 +52,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     #[cfg(target_os = "windows")]
     let args = args.collect_ignore();
     #[cfg(unix)]
-    let obs_signal = handle_obsolete(&mut args);
+    handle_obsolete(&mut args);
 
     let matches = uu_app().try_get_matches_from(&args)?;
 
@@ -96,13 +96,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     // Parse signal
     #[cfg(unix)]
-    let sig_num = if let Some(signal) = obs_signal {
-        signal
-    } else if let Some(signal) = matches.get_one::<String>("signal") {
-        parse_signal_value(signal)?
-    } else {
-        15_usize //SIGTERM
-    };
+    let sig_num = parse_signal_value(matches.get_one::<String>("signal").unwrap())?;
 
     #[cfg(unix)]
     let sig_name = signal_name_by_value(sig_num);
@@ -125,7 +119,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         if matches.get_flag("require-handler") {
             pids.retain(|pid| {
                 let mask =
-                    u32::from_str_radix(pid.clone().status().get("SigCgt").unwrap(), 16).unwrap();
+                    u64::from_str_radix(pid.clone().status().get("SigCgt").unwrap(), 16).unwrap();
                 mask & (1 << sig_num) != 0
             });
         }
@@ -293,7 +287,7 @@ fn process_flag_o_n(
 }
 
 #[cfg(unix)]
-fn handle_obsolete(args: &mut Vec<String>) -> Option<usize> {
+fn handle_obsolete(args: &mut [String]) {
     // Sanity check
     if args.len() > 2 {
         // Old signal can only be in the first argument position
@@ -302,13 +296,11 @@ fn handle_obsolete(args: &mut Vec<String>) -> Option<usize> {
             // Check if it is a valid signal
             let opt_signal = signal_by_name_or_value(signal);
             if opt_signal.is_some() {
-                // remove the signal before return
-                args.remove(1);
-                return opt_signal;
+                // Replace with long option that clap can parse
+                args[1] = format!("--signal={}", signal);
             }
         }
     }
-    None
 }
 
 #[cfg(unix)]
@@ -372,7 +364,8 @@ pub fn uu_app() -> Command {
             // arg!(-s --session <SID>        "match session IDs")
             //     .value_delimiter(',')
             //     .value_parser(clap::value_parser!(u64)),
-            arg!(--signal <sig>            "signal to send (either number or name)"),
+            arg!(--signal <sig>            "signal to send (either number or name)")
+                .default_value("SIGTERM"),
             arg!(-t --terminal <tty>       "match by controlling terminal").value_delimiter(','),
             // arg!(-u --euid <ID>            "match by effective IDs")
             //     .value_delimiter(',')
