@@ -33,6 +33,7 @@ struct Settings {
     runstates: Option<String>,
     terminal: Option<HashSet<Teletype>>,
     signal: usize,
+    require_handler: bool,
 }
 
 fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
@@ -58,6 +59,7 @@ fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
                 .collect::<HashSet<_>>()
         }),
         signal: parse_signal_value(matches.get_one::<String>("signal").unwrap())?,
+        require_handler: matches.get_flag("require-handler"),
     };
 
     if (!settings.newest
@@ -74,6 +76,24 @@ fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
         ));
     }
     Ok(settings)
+}
+
+fn find_matching_pids(settings: &Settings) -> Vec<ProcessInformation> {
+    let mut pids = collect_matched_pids(settings);
+    #[cfg(unix)]
+    if settings.require_handler {
+        pids.retain(|pid| {
+            let mask =
+                u64::from_str_radix(pid.clone().status().get("SigCgt").unwrap(), 16).unwrap();
+            mask & (1 << settings.signal) != 0
+        });
+    }
+    if pids.is_empty() {
+        uucore::error::set_exit_code(1);
+        pids
+    } else {
+        process_flag_o_n(settings, &mut pids)
+    }
 }
 
 /// # Conceptual model of `pgrep`
@@ -94,23 +114,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let settings = get_match_settings(&matches)?;
 
     // Collect pids
-    let pids = {
-        let mut pids = collect_matched_pids(&settings);
-        #[cfg(unix)]
-        if matches.get_flag("require-handler") {
-            pids.retain(|pid| {
-                let mask =
-                    u64::from_str_radix(pid.clone().status().get("SigCgt").unwrap(), 16).unwrap();
-                mask & (1 << settings.signal) != 0
-            });
-        }
-        if pids.is_empty() {
-            uucore::error::set_exit_code(1);
-            pids
-        } else {
-            process_flag_o_n(&settings, &mut pids)
-        }
-    };
+    let pids = find_matching_pids(&settings);
 
     // Processing output
     let output = if matches.get_flag("count") {
