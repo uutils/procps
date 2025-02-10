@@ -9,7 +9,6 @@ pub mod process;
 use clap::{arg, crate_version, Arg, ArgAction, ArgGroup, ArgMatches, Command};
 use process::{walk_process, ProcessInformation, Teletype};
 use regex::Regex;
-use std::{collections::HashSet, sync::OnceLock};
 #[cfg(unix)]
 use uucore::{display::Quotable, signals::signal_by_name_or_value};
 use uucore::{
@@ -20,9 +19,9 @@ use uucore::{
 const ABOUT: &str = help_about!("pgrep.md");
 const USAGE: &str = help_usage!("pgrep.md");
 
-static REGEX: OnceLock<Regex> = OnceLock::new();
-
 struct Settings {
+    regex: Regex,
+
     exact: bool,
     full: bool,
     ignore_case: bool,
@@ -35,28 +34,12 @@ struct Settings {
     terminal: Option<HashSet<Teletype>>,
 }
 
-/// # Conceptual model of `pgrep`
-///
-/// At first, `pgrep` command will check the patterns is legal.
-/// In this stage, `pgrep` will construct regex if `--exact` argument was passed.
-///
-/// Then, `pgrep` will collect all *matched* pids, and filtering them.
-/// In this stage `pgrep` command will collect all the pids and its information from __/proc/__
-/// file system. At the same time, `pgrep` will construct filters from command
-/// line arguments to filter the collected pids. Note that the "-o" and "-n" flag filters works
-/// if them enabled and based on general collecting result.
-///
-/// Last, `pgrep` will construct output format from arguments, and print the processed result.
-#[uucore::main]
-pub fn uumain(args: impl uucore::Args) -> UResult<()> {
-    let matches = uu_app().try_get_matches_from(args)?;
-
-    let pattern = try_get_pattern_from(&matches)?;
-    REGEX
-        .set(Regex::new(&pattern).map_err(|e| USimpleError::new(2, e.to_string()))?)
-        .unwrap();
+fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
+    let pattern = try_get_pattern_from(matches)?;
+    let regex = Regex::new(&pattern).map_err(|e| USimpleError::new(2, e.to_string()))?;
 
     let settings = Settings {
+        regex,
         exact: matches.get_flag("exact"),
         full: matches.get_flag("full"),
         ignore_case: matches.get_flag("ignore-case"),
@@ -88,6 +71,25 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             "no matching criteria specified\nTry `pgrep --help' for more information.",
         ));
     }
+    Ok(settings)
+}
+
+/// # Conceptual model of `pgrep`
+///
+/// At first, `pgrep` command will check the patterns is legal.
+/// In this stage, `pgrep` will construct regex if `--exact` argument was passed.
+///
+/// Then, `pgrep` will collect all *matched* pids, and filtering them.
+/// In this stage `pgrep` command will collect all the pids and its information from __/proc/__
+/// file system. At the same time, `pgrep` will construct filters from command
+/// line arguments to filter the collected pids. Note that the "-o" and "-n" flag filters works
+/// if them enabled and based on general collecting result.
+///
+/// Last, `pgrep` will construct output format from arguments, and print the processed result.
+#[uucore::main]
+pub fn uumain(args: impl uucore::Args) -> UResult<()> {
+    let matches = uu_app().try_get_matches_from(args)?;
+    let settings = get_match_settings(&matches)?;
 
     // Parse signal
     #[cfg(unix)]
@@ -214,7 +216,7 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
                     &pid.proc_stat()[..15]
                 };
 
-                REGEX.get().unwrap().is_match(want)
+                settings.regex.is_match(want)
             };
 
             let tty_matched = match &settings.terminal {

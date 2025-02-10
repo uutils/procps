@@ -11,9 +11,9 @@ use nix::{
     unistd::Pid,
 };
 use regex::Regex;
+use std::collections::HashSet;
 #[cfg(unix)]
 use std::io::Error;
-use std::{collections::HashSet, sync::OnceLock};
 use uu_pgrep::process::{walk_process, ProcessInformation, Teletype};
 #[cfg(unix)]
 use uucore::{
@@ -30,9 +30,9 @@ use uucore::{
 const ABOUT: &str = help_about!("pkill.md");
 const USAGE: &str = help_usage!("pkill.md");
 
-static REGEX: OnceLock<Regex> = OnceLock::new();
-
 struct Settings {
+    regex: Regex,
+
     exact: bool,
     full: bool,
     ignore_case: bool,
@@ -45,23 +45,12 @@ struct Settings {
     terminal: Option<HashSet<Teletype>>,
 }
 
-#[uucore::main]
-pub fn uumain(args: impl uucore::Args) -> UResult<()> {
-    #[cfg(unix)]
-    let mut args = args.collect_ignore();
-    #[cfg(target_os = "windows")]
-    let args = args.collect_ignore();
-    #[cfg(unix)]
-    handle_obsolete(&mut args);
-
-    let matches = uu_app().try_get_matches_from(&args)?;
-
-    let pattern = try_get_pattern_from(&matches)?;
-    REGEX
-        .set(Regex::new(&pattern).map_err(|e| USimpleError::new(2, e.to_string()))?)
-        .unwrap();
+fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
+    let pattern = try_get_pattern_from(matches)?;
+    let regex = Regex::new(&pattern).map_err(|e| USimpleError::new(2, e.to_string()))?;
 
     let settings = Settings {
+        regex,
         exact: matches.get_flag("exact"),
         full: matches.get_flag("full"),
         ignore_case: matches.get_flag("ignore-case"),
@@ -93,6 +82,20 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             "no matching criteria specified\nTry `pkill --help' for more information.",
         ));
     }
+    Ok(settings)
+}
+
+#[uucore::main]
+pub fn uumain(args: impl uucore::Args) -> UResult<()> {
+    #[cfg(unix)]
+    let mut args = args.collect_ignore();
+    #[cfg(target_os = "windows")]
+    let args = args.collect_ignore();
+    #[cfg(unix)]
+    handle_obsolete(&mut args);
+
+    let matches = uu_app().try_get_matches_from(&args)?;
+    let settings = get_match_settings(&matches)?;
 
     // Parse signal
     #[cfg(unix)]
@@ -211,7 +214,7 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
                     &pid.proc_stat()[..15]
                 };
 
-                REGEX.get().unwrap().is_match(want)
+                settings.regex.is_match(want)
             };
 
             let tty_matched = match &settings.terminal {
