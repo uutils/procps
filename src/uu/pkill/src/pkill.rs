@@ -305,14 +305,8 @@ fn handle_obsolete(args: &mut [String]) {
 
 #[cfg(unix)]
 fn parse_signal_value(signal_name: &str) -> UResult<usize> {
-    let optional_signal_value = signal_by_name_or_value(signal_name);
-    match optional_signal_value {
-        Some(x) => Ok(x),
-        None => Err(USimpleError::new(
-            1,
-            format!("Unknown signal {}", signal_name.quote()),
-        )),
-    }
+    signal_by_name_or_value(signal_name)
+        .ok_or_else(|| USimpleError::new(1, format!("Unknown signal {}", signal_name.quote())))
 }
 
 #[cfg(unix)]

@@ -10,6 +10,8 @@ use clap::{arg, crate_version, Arg, ArgAction, ArgGroup, ArgMatches, Command};
 use process::{walk_process, ProcessInformation, Teletype};
 use regex::Regex;
 use std::{collections::HashSet, sync::OnceLock};
+#[cfg(unix)]
+use uucore::{display::Quotable, signals::signal_by_name_or_value};
 use uucore::{
     error::{UResult, USimpleError},
     format_usage, help_about, help_usage,
@@ -87,9 +89,21 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         ));
     }
 
+    // Parse signal
+    #[cfg(unix)]
+    let sig_num = parse_signal_value(matches.get_one::<String>("signal").unwrap())?;
+
     // Collect pids
     let pids = {
         let mut pids = collect_matched_pids(&settings);
+        #[cfg(unix)]
+        if matches.get_flag("require-handler") {
+            pids.retain(|pid| {
+                let mask =
+                    u64::from_str_radix(pid.clone().status().get("SigCgt").unwrap(), 16).unwrap();
+                mask & (1 << sig_num) != 0
+            });
+        }
         if pids.is_empty() {
             uucore::error::set_exit_code(1);
             pids
@@ -275,6 +289,12 @@ fn process_flag_o_n(
     }
 }
 
+#[cfg(unix)]
+fn parse_signal_value(signal_name: &str) -> UResult<usize> {
+    signal_by_name_or_value(signal_name)
+        .ok_or_else(|| USimpleError::new(1, format!("Unknown signal {}", signal_name.quote())))
+}
+
 #[allow(clippy::cognitive_complexity)]
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
@@ -289,6 +309,7 @@ pub fn uu_app() -> Command {
                 .hide_default_value(true),
             arg!(-l     --"list-name"           "list PID and process name"),
             arg!(-a     --"list-full"           "list PID and full command line"),
+            arg!(-H     --"require-handler"     "match only if signal handler is present"),
             arg!(-v     --inverse               "negates the matching"),
             // arg!(-w     --lightweight           "list all TID"),
             arg!(-c     --count                 "count of matching processes"),
@@ -310,7 +331,8 @@ pub fn uu_app() -> Command {
             // arg!(-s     --session <SID>         "match session IDs")
             //     .value_delimiter(',')
             //     .value_parser(clap::value_parser!(u64)),
-            // arg!(--signal <sig>                 "signal to send (either number or name)"),
+            arg!(--signal <sig>                 "signal to send (either number or name)")
+                .default_value("SIGTERM"),
             arg!(-t     --terminal <tty>        "match by controlling terminal")
                 .value_delimiter(','),
             // arg!(-u     --euid <ID>         ... "match by effective IDs")

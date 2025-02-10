@@ -347,3 +347,24 @@ fn test_parent_non_matching_parent() {
         .code_is(1)
         .no_output();
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_require_handler() {
+    new_ucmd!()
+        .arg("--require-handler")
+        .arg("--signal=INT")
+        .arg("NONEXISTENT")
+        .fails()
+        .no_output();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_invalid_signal() {
+    new_ucmd!()
+        .arg("--signal=foo")
+        .arg("NONEXISTENT")
+        .fails()
+        .stderr_contains("Unknown signal 'foo'");
+}
