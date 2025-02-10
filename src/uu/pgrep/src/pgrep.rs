@@ -32,6 +32,7 @@ struct Settings {
     parent: Option<Vec<u64>>,
     runstates: Option<String>,
     terminal: Option<HashSet<Teletype>>,
+    signal: usize,
 }
 
 fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
@@ -56,6 +57,7 @@ fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
                 .flat_map(Teletype::try_from)
                 .collect::<HashSet<_>>()
         }),
+        signal: parse_signal_value(matches.get_one::<String>("signal").unwrap())?,
     };
 
     if (!settings.newest
@@ -91,10 +93,6 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
     let settings = get_match_settings(&matches)?;
 
-    // Parse signal
-    #[cfg(unix)]
-    let sig_num = parse_signal_value(matches.get_one::<String>("signal").unwrap())?;
-
     // Collect pids
     let pids = {
         let mut pids = collect_matched_pids(&settings);
@@ -103,7 +101,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             pids.retain(|pid| {
                 let mask =
                     u64::from_str_radix(pid.clone().status().get("SigCgt").unwrap(), 16).unwrap();
-                mask & (1 << sig_num) != 0
+                mask & (1 << settings.signal) != 0
             });
         }
         if pids.is_empty() {
