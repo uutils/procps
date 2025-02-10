@@ -7,7 +7,7 @@
 
 use std::collections::HashSet;
 
-use clap::ArgMatches;
+use clap::{arg, Arg, ArgAction, ArgMatches};
 use regex::Regex;
 use uucore::error::{UResult, USimpleError};
 #[cfg(unix)]
@@ -247,4 +247,61 @@ fn process_flag_o_n(
 fn parse_signal_value(signal_name: &str) -> UResult<usize> {
     signal_by_name_or_value(signal_name)
         .ok_or_else(|| USimpleError::new(1, format!("Unknown signal {}", signal_name.quote())))
+}
+
+#[allow(clippy::cognitive_complexity)]
+pub fn clap_args(pattern_help: &'static str, enable_v_flag: bool) -> Vec<Arg> {
+    vec![
+        if enable_v_flag {
+            arg!(-v --inverse          "negates the matching").group("oldest_newest_inverse")
+        } else {
+            arg!(--inverse             "negates the matching").group("oldest_newest_inverse")
+        },
+        arg!(-H --"require-handler"    "match only if signal handler is present"),
+        arg!(-c --count                "count of matching processes"),
+        arg!(-f --full                 "use full process name to match"),
+        // arg!(-g --pgroup <PGID>        "match listed process group IDs")
+        //     .value_delimiter(',')
+        //     .value_parser(clap::value_parser!(u64)),
+        // arg!(-G --group <GID>          "match real group IDs")
+        //     .value_delimiter(',')
+        //     .value_parser(clap::value_parser!(u64)),
+        arg!(-i --"ignore-case"        "match case insensitively"),
+        arg!(-n --newest               "select most recently started")
+            .group("oldest_newest_inverse"),
+        arg!(-o --oldest               "select least recently started")
+            .group("oldest_newest_inverse"),
+        arg!(-O --older <seconds>      "select where older than seconds")
+            .value_parser(clap::value_parser!(u64)),
+        arg!(-P --parent <PPID>        "match only child processes of the given parent")
+            .value_delimiter(',')
+            .value_parser(clap::value_parser!(u64)),
+        // arg!(-s --session <SID>        "match session IDs")
+        //     .value_delimiter(',')
+        //     .value_parser(clap::value_parser!(u64)),
+        arg!(--signal <sig>            "signal to send (either number or name)")
+            .default_value("SIGTERM"),
+        arg!(-t --terminal <tty>       "match by controlling terminal").value_delimiter(','),
+        // arg!(-u --euid <ID>            "match by effective IDs")
+        //     .value_delimiter(',')
+        //     .value_parser(clap::value_parser!(u64)),
+        // arg!(-U --uid <ID>             "match by real IDs")
+        //     .value_delimiter(',')
+        //     .value_parser(clap::value_parser!(u64)),
+        arg!(-x --exact                "match exactly with the command name"),
+        // arg!(-F --pidfile <file>       "read PIDs from file"),
+        // arg!(-L --logpidfile           "fail if PID file is not locked"),
+        arg!(-r --runstates <state>    "match runstates [D,S,Z,...]"),
+        // arg!(-A --"ignore-ancestors"   "exclude our ancestors from results"),
+        // arg!(--cgroup <grp>            "match by cgroup v2 names")
+        //     .value_delimiter(','),
+        // arg!(--ns <PID>                "match the processes that belong to the same namespace as <pid>"),
+        // arg!(--nslist <ns>             "list which namespaces will be considered for the --ns option.")
+        //     .value_delimiter(',')
+        //     .value_parser(["ipc", "mnt", "net", "pid", "user", "uts"]),
+        Arg::new("pattern")
+            .help(pattern_help)
+            .action(ArgAction::Append)
+            .index(1),
+    ]
 }
