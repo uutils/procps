@@ -10,6 +10,8 @@ use clap::{arg, crate_version, Arg, ArgAction, ArgGroup, ArgMatches, Command};
 use process::{walk_process, ProcessInformation, Teletype};
 use regex::Regex;
 use std::{collections::HashSet, sync::OnceLock};
+#[cfg(unix)]
+use uucore::{display::Quotable, signals::signal_by_name_or_value};
 use uucore::{
     error::{UResult, USimpleError},
     format_usage, help_about, help_usage,
@@ -87,9 +89,21 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         ));
     }
 
+    // Parse signal
+    #[cfg(unix)]
+    let sig_num = parse_signal_value(matches.get_one::<String>("signal").unwrap())?;
+
     // Collect pids
     let pids = {
         let mut pids = collect_matched_pids(&settings);
+        #[cfg(unix)]
+        if matches.get_flag("require-handler") {
+            pids.retain(|pid| {
+                let mask =
+                    u64::from_str_radix(pid.clone().status().get("SigCgt").unwrap(), 16).unwrap();
+                mask & (1 << sig_num) != 0
+            });
+        }
         if pids.is_empty() {
             uucore::error::set_exit_code(1);
             pids
@@ -170,7 +184,7 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
         let mut tmp_vec = Vec::new();
 
         for mut pid in walk_process().collect::<Vec<_>>() {
-            let run_state_matched = match (&settings.runstates, (pid).run_state()) {
+            let run_state_matched = match (&settings.runstates, pid.run_state()) {
                 (Some(arg_run_states), Ok(pid_state)) => {
                     arg_run_states.contains(&pid_state.to_string())
                 }
@@ -275,6 +289,12 @@ fn process_flag_o_n(
     }
 }
 
+#[cfg(unix)]
+fn parse_signal_value(signal_name: &str) -> UResult<usize> {
+    signal_by_name_or_value(signal_name)
+        .ok_or_else(|| USimpleError::new(1, format!("Unknown signal {}", signal_name.quote())))
+}
+
 #[allow(clippy::cognitive_complexity)]
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
@@ -289,12 +309,17 @@ pub fn uu_app() -> Command {
                 .hide_default_value(true),
             arg!(-l     --"list-name"           "list PID and process name"),
             arg!(-a     --"list-full"           "list PID and full command line"),
+            arg!(-H     --"require-handler"     "match only if signal handler is present"),
             arg!(-v     --inverse               "negates the matching"),
             // arg!(-w     --lightweight           "list all TID"),
             arg!(-c     --count                 "count of matching processes"),
             arg!(-f     --full                  "use full process name to match"),
-            // arg!(-g     --pgroup <PGID>     ... "match listed process group IDs"),
-            // arg!(-G     --group <GID>       ... "match real group IDs"),
+            // arg!(-g     --pgroup <PGID>     ... "match listed process group IDs")
+            //     .value_delimiter(',')
+            //     .value_parser(clap::value_parser!(u64)),
+            // arg!(-G     --group <GID>       ... "match real group IDs")
+            //     .value_delimiter(',')
+            //     .value_parser(clap::value_parser!(u64)),
             arg!(-i     --"ignore-case"         "match case insensitively"),
             arg!(-n     --newest                "select most recently started"),
             arg!(-o     --oldest                "select least recently started"),
@@ -303,17 +328,30 @@ pub fn uu_app() -> Command {
             arg!(-P     --parent <PPID>         "match only child processes of the given parent")
                 .value_delimiter(',')
                 .value_parser(clap::value_parser!(u64)),
-            // arg!(-s     --session <SID>         "match session IDs"),
+            // arg!(-s     --session <SID>         "match session IDs")
+            //     .value_delimiter(',')
+            //     .value_parser(clap::value_parser!(u64)),
+            arg!(--signal <sig>                 "signal to send (either number or name)")
+                .default_value("SIGTERM"),
             arg!(-t     --terminal <tty>        "match by controlling terminal")
                 .value_delimiter(','),
-            // arg!(-u     --euid <ID>         ... "match by effective IDs"),
-            // arg!(-U     --uid <ID>          ... "match by real IDs"),
+            // arg!(-u     --euid <ID>         ... "match by effective IDs")
+            //     .value_delimiter(',')
+            //     .value_parser(clap::value_parser!(u64)),
+            // arg!(-U     --uid <ID>          ... "match by real IDs")
+            //     .value_delimiter(',')
+            //     .value_parser(clap::value_parser!(u64)),
             arg!(-x     --exact                 "match exactly with the command name"),
             // arg!(-F     --pidfile <file>        "read PIDs from file"),
             // arg!(-L     --logpidfile            "fail if PID file is not locked"),
             arg!(-r     --runstates <state>     "match runstates [D,S,Z,...]"),
+            // arg!(-A     --"ignore-ancestors"    "exclude our ancestors from results"),
+            // arg!(--cgroup <grp>                 "match by cgroup v2 names")
+            //     .value_delimiter(','),
             // arg!(       --ns <PID>              "match the processes that belong to the same namespace as <pid>"),
-            // arg!(       --nslist <ns>       ... "list which namespaces will be considered for the --ns option."),
+            // arg!(       --nslist <ns>       ... "list which namespaces will be considered for the --ns option.")
+            //     .value_delimiter(',')
+            //     .value_parser(["ipc", "mnt", "net", "pid", "user", "uts"]),
         ])
         .arg(
             Arg::new("pattern")

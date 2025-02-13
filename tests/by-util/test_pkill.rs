@@ -44,6 +44,17 @@ fn test_invalid_arg() {
     new_ucmd!().arg("--definitely-invalid").fails().code_is(1);
 }
 
+#[cfg(target_os = "linux")]
+#[test]
+fn test_inverse() {
+    new_ucmd!()
+        .arg("-0")
+        .arg("--inverse")
+        .arg("NONEXISTENT")
+        .fails()
+        .stderr_contains("Permission denied");
+}
+
 #[cfg(unix)]
 #[test]
 fn test_help() {
