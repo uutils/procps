@@ -186,6 +186,8 @@ pub struct ProcessInformation {
     cached_stat: Option<Rc<Vec<String>>>,
 
     cached_start_time: Option<u64>,
+
+    cached_thread_ids: Option<Rc<Vec<usize>>>,
 }
 
 impl ProcessInformation {
@@ -328,6 +330,31 @@ impl ProcessInformation {
 
         Teletype::Unknown
     }
+
+    pub fn thread_ids(&mut self) -> Rc<Vec<usize>> {
+        if let Some(c) = &self.cached_thread_ids {
+            return Rc::clone(c);
+        }
+
+        let tids_dir = format!("/proc/{}/task", self.pid);
+        let result = Rc::new(
+            WalkDir::new(tids_dir)
+                .min_depth(1)
+                .max_depth(1)
+                .follow_links(false)
+                .into_iter()
+                .flatten()
+                .flat_map(|it| {
+                    it.path()
+                        .file_name()
+                        .map(|it| it.to_str().unwrap().parse::<usize>().unwrap())
+                })
+                .collect::<Vec<_>>(),
+        );
+
+        self.cached_thread_ids = Some(Rc::clone(&result));
+        Rc::clone(&result)
+    }
 }
 impl TryFrom<DirEntry> for ProcessInformation {
     type Error = io::Error;
@@ -444,6 +471,26 @@ mod tests {
         }
 
         assert!(result.contains(&pid_entry.tty()));
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn test_thread_ids() {
+        let main_tid = unsafe { uucore::libc::gettid() };
+        std::thread::spawn(move || {
+            let mut pid_entry = ProcessInformation::try_new(
+                PathBuf::from_str(&format!("/proc/{}", current_pid())).unwrap(),
+            )
+            .unwrap();
+            let thread_ids = pid_entry.thread_ids();
+
+            assert!(thread_ids.contains(&(main_tid as usize)));
+
+            let new_thread_tid = unsafe { uucore::libc::gettid() };
+            assert!(thread_ids.contains(&(new_thread_tid as usize)));
+        })
+        .join()
+        .unwrap();
     }
 
     #[test]

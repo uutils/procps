@@ -81,3 +81,27 @@ fn test_separator() {
             .stdout_matches(re);
     }
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_threads() {
+    let main_tid = unsafe { uucore::libc::gettid() };
+    std::thread::spawn(move || {
+        let argv0 = std::env::args().next().unwrap();
+        let our_name = std::path::Path::new(argv0.as_str())
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap();
+
+        let new_thread_tid = unsafe { uucore::libc::gettid() };
+        new_ucmd!()
+            .arg("-t")
+            .arg(our_name)
+            .succeeds()
+            .stdout_contains(main_tid.to_string())
+            .stdout_contains(new_thread_tid.to_string());
+    })
+    .join()
+    .unwrap();
+}
