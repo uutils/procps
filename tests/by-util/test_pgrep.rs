@@ -31,7 +31,7 @@ fn test_no_args() {
 #[test]
 fn test_non_matching_pattern() {
     new_ucmd!()
-        .arg("THIS_PATTERN_DOES_NOT_MATCH")
+        .arg("NONMATCHING")
         .fails()
         .code_is(1)
         .no_output();
@@ -367,4 +367,14 @@ fn test_invalid_signal() {
         .arg("NONEXISTENT")
         .fails()
         .stderr_contains("Unknown signal 'foo'");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_too_long_pattern() {
+    new_ucmd!()
+        .arg("THIS_IS_OVER_16_CHARS")
+        .fails()
+        .code_is(1)
+        .stderr_contains("pattern that searches for process name longer than 15 characters will result in zero matches");
 }

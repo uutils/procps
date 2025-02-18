@@ -7,7 +7,7 @@
 pub mod process;
 pub mod process_matcher;
 
-use clap::{arg, crate_version, Arg, ArgAction, ArgGroup, Command};
+use clap::{arg, crate_version, Command};
 use uucore::{error::UResult, format_usage, help_about, help_usage};
 
 const ABOUT: &str = help_about!("pgrep.md");
@@ -76,61 +76,16 @@ pub fn uu_app() -> Command {
         .about(ABOUT)
         .override_usage(format_usage(USAGE))
         .args_override_self(true)
-        .group(ArgGroup::new("oldest_newest").args(["oldest", "newest", "inverse"]))
         .args([
             arg!(-d     --delimiter <string>    "specify output delimiter")
                 .default_value("\n")
                 .hide_default_value(true),
             arg!(-l     --"list-name"           "list PID and process name"),
             arg!(-a     --"list-full"           "list PID and full command line"),
-            arg!(-H     --"require-handler"     "match only if signal handler is present"),
-            arg!(-v     --inverse               "negates the matching"),
             // arg!(-w     --lightweight           "list all TID"),
-            arg!(-c     --count                 "count of matching processes"),
-            arg!(-f     --full                  "use full process name to match"),
-            // arg!(-g     --pgroup <PGID>     ... "match listed process group IDs")
-            //     .value_delimiter(',')
-            //     .value_parser(clap::value_parser!(u64)),
-            // arg!(-G     --group <GID>       ... "match real group IDs")
-            //     .value_delimiter(',')
-            //     .value_parser(clap::value_parser!(u64)),
-            arg!(-i     --"ignore-case"         "match case insensitively"),
-            arg!(-n     --newest                "select most recently started"),
-            arg!(-o     --oldest                "select least recently started"),
-            arg!(-O     --older <seconds>       "select where older than seconds")
-                .value_parser(clap::value_parser!(u64)),
-            arg!(-P     --parent <PPID>         "match only child processes of the given parent")
-                .value_delimiter(',')
-                .value_parser(clap::value_parser!(u64)),
-            // arg!(-s     --session <SID>         "match session IDs")
-            //     .value_delimiter(',')
-            //     .value_parser(clap::value_parser!(u64)),
-            arg!(--signal <sig>                 "signal to send (either number or name)")
-                .default_value("SIGTERM"),
-            arg!(-t     --terminal <tty>        "match by controlling terminal")
-                .value_delimiter(','),
-            // arg!(-u     --euid <ID>         ... "match by effective IDs")
-            //     .value_delimiter(',')
-            //     .value_parser(clap::value_parser!(u64)),
-            // arg!(-U     --uid <ID>          ... "match by real IDs")
-            //     .value_delimiter(',')
-            //     .value_parser(clap::value_parser!(u64)),
-            arg!(-x     --exact                 "match exactly with the command name"),
-            // arg!(-F     --pidfile <file>        "read PIDs from file"),
-            // arg!(-L     --logpidfile            "fail if PID file is not locked"),
-            arg!(-r     --runstates <state>     "match runstates [D,S,Z,...]"),
-            // arg!(-A     --"ignore-ancestors"    "exclude our ancestors from results"),
-            // arg!(--cgroup <grp>                 "match by cgroup v2 names")
-            //     .value_delimiter(','),
-            // arg!(       --ns <PID>              "match the processes that belong to the same namespace as <pid>"),
-            // arg!(       --nslist <ns>       ... "list which namespaces will be considered for the --ns option.")
-            //     .value_delimiter(',')
-            //     .value_parser(["ipc", "mnt", "net", "pid", "user", "uts"]),
         ])
-        .arg(
-            Arg::new("pattern")
-                .help("Name of the program to find the PID of")
-                .action(ArgAction::Append)
-                .index(1),
-        )
+        .args(process_matcher::clap_args(
+            "Name of the program to find the PID of",
+            true,
+        ))
 }
