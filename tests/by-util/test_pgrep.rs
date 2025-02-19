@@ -371,6 +371,13 @@ fn test_invalid_signal() {
 
 #[test]
 #[cfg(target_os = "linux")]
+fn test_does_not_match_pid() {
+    let our_pid = std::process::id();
+    new_ucmd!().arg(our_pid.to_string()).fails();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
 fn test_too_long_pattern() {
     new_ucmd!()
         .arg("THIS_IS_OVER_16_CHARS")

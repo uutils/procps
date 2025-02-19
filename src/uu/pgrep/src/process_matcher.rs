@@ -160,18 +160,12 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
                 name.into()
             };
             let pattern_matched = {
-                let want = if settings.exact {
-                    // Equals `Name` in /proc/<pid>/status
-                    // The `unwrap` operation must succeed
-                    // because the REGEX has been verified as correct in `uumain`.
-                    &name
-                } else if settings.full {
+                let want = if settings.full {
                     // Equals `cmdline` in /proc/<pid>/cmdline
                     &pid.cmdline
                 } else {
-                    // From manpage:
-                    // The process name used for matching is limited to the 15 characters present in the output of /proc/pid/stat.
-                    &pid.proc_stat()[..15]
+                    // Equals `Name` in /proc/<pid>/status
+                    &name
                 };
 
                 settings.regex.is_match(want)
