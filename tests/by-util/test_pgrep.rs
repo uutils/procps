@@ -391,3 +391,32 @@ fn test_too_long_pattern() {
         .code_is(1)
         .stderr_contains("pattern that searches for process name longer than 15 characters will result in zero matches");
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_invalid_username() {
+    new_ucmd!()
+        .arg("--uid=DOES_NOT_EXIST")
+        .fails()
+        .code_is(1)
+        .stderr_contains("invalid user name");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_invalid_group_name() {
+    new_ucmd!()
+        .arg("--group=DOES_NOT_EXIST")
+        .fails()
+        .code_is(1)
+        .stderr_contains("invalid group name");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_current_user() {
+    new_ucmd!()
+        .arg("-U")
+        .arg(uucore::process::getuid().to_string())
+        .succeeds();
+}
