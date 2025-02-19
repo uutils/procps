@@ -296,6 +296,16 @@ impl ProcessInformation {
         Ok(time)
     }
 
+    pub fn ppid(&mut self) -> Result<u64, io::Error> {
+        // the PPID is the fourth field in /proc/<PID>/stat
+        // (https://www.kernel.org/doc/html/latest/filesystems/proc.html#id10)
+        self.stat()
+            .get(3)
+            .ok_or(io::ErrorKind::InvalidData)?
+            .parse::<u64>()
+            .map_err(|_| io::ErrorKind::InvalidData.into())
+    }
+
     /// Fetch run state from [ProcessInformation::cached_stat]
     ///
     /// - [The /proc Filesystem: Table 1-4](https://docs.kernel.org/filesystems/proc.html#id10)

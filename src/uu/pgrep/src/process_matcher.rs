@@ -179,12 +179,8 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
             let arg_older = settings.older.unwrap_or(0);
             let older_matched = pid.start_time().unwrap() >= arg_older;
 
-            // the PPID is the fourth field in /proc/<PID>/stat
-            // (https://www.kernel.org/doc/html/latest/filesystems/proc.html#id10)
-            let stat = pid.stat();
-            let ppid = stat.get(3);
-            let parent_matched = match (&settings.parent, ppid) {
-                (Some(parents), Some(ppid)) => parents.contains(&ppid.parse::<u64>().unwrap()),
+            let parent_matched = match (&settings.parent, pid.ppid()) {
+                (Some(parents), Ok(ppid)) => parents.contains(&ppid),
                 _ => true,
             };
 
