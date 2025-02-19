@@ -78,7 +78,7 @@ pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
         ));
     }
 
-    if !settings.full && pattern.len() >= 15 {
+    if !settings.full && pattern.len() > 15 {
         let msg = format!("pattern that searches for process name longer than 15 characters will result in zero matches\n\
                            Try `{} -f' option to match against the complete command line.", uucore::util_name());
         return Err(USimpleError::new(1, msg));
