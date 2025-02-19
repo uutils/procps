@@ -6,6 +6,7 @@
 // Common process matcher logic shared by pgrep, pkill and pidwait
 
 use std::collections::HashSet;
+use std::hash::Hash;
 
 use clap::{arg, Arg, ArgAction, ArgMatches};
 use regex::Regex;
@@ -25,7 +26,7 @@ pub struct Settings {
     pub newest: bool,
     pub oldest: bool,
     pub older: Option<u64>,
-    pub parent: Option<Vec<u64>>,
+    pub parent: Option<HashSet<u64>>,
     pub runstates: Option<String>,
     pub terminal: Option<HashSet<Teletype>>,
     #[cfg(unix)]
@@ -137,6 +138,10 @@ fn try_get_pattern_from(matches: &ArgMatches) -> UResult<String> {
     Ok(pattern.to_string())
 }
 
+fn any_matches<T: Eq + Hash>(optional_ids: &Option<HashSet<T>>, id: T) -> bool {
+    optional_ids.as_ref().is_none_or(|ids| ids.contains(&id))
+}
+
 /// Collect pids with filter construct from command line arguments
 fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
     // Filtration general parameters
@@ -171,18 +176,12 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
                 settings.regex.is_match(want)
             };
 
-            let tty_matched = match &settings.terminal {
-                Some(ttys) => ttys.contains(&pid.tty()),
-                None => true,
-            };
+            let tty_matched = any_matches(&settings.terminal, pid.tty());
 
             let arg_older = settings.older.unwrap_or(0);
             let older_matched = pid.start_time().unwrap() >= arg_older;
 
-            let parent_matched = match (&settings.parent, pid.ppid()) {
-                (Some(parents), Ok(ppid)) => parents.contains(&ppid),
-                _ => true,
-            };
+            let parent_matched = any_matches(&settings.parent, pid.ppid().unwrap());
 
             if (run_state_matched
                 && pattern_matched
