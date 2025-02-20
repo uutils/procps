@@ -380,7 +380,13 @@ fn test_does_not_match_pid() {
 #[cfg(target_os = "linux")]
 fn test_too_long_pattern() {
     new_ucmd!()
-        .arg("THIS_IS_OVER_16_CHARS")
+        .arg("A".repeat(15))
+        .fails()
+        .code_is(1)
+        .no_output();
+
+    new_ucmd!()
+        .arg("A".repeat(16))
         .fails()
         .code_is(1)
         .stderr_contains("pattern that searches for process name longer than 15 characters will result in zero matches");
