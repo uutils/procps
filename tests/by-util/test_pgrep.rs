@@ -31,7 +31,7 @@ fn test_no_args() {
 #[test]
 fn test_non_matching_pattern() {
     new_ucmd!()
-        .arg("THIS_PATTERN_DOES_NOT_MATCH")
+        .arg("NONMATCHING")
         .fails()
         .code_is(1)
         .no_output();
@@ -346,4 +346,48 @@ fn test_parent_non_matching_parent() {
         .fails()
         .code_is(1)
         .no_output();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_require_handler() {
+    new_ucmd!()
+        .arg("--require-handler")
+        .arg("--signal=INT")
+        .arg("NONEXISTENT")
+        .fails()
+        .no_output();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_invalid_signal() {
+    new_ucmd!()
+        .arg("--signal=foo")
+        .arg("NONEXISTENT")
+        .fails()
+        .stderr_contains("Unknown signal 'foo'");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_does_not_match_pid() {
+    let our_pid = std::process::id();
+    new_ucmd!().arg(our_pid.to_string()).fails();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_too_long_pattern() {
+    new_ucmd!()
+        .arg("A".repeat(15))
+        .fails()
+        .code_is(1)
+        .no_output();
+
+    new_ucmd!()
+        .arg("A".repeat(16))
+        .fails()
+        .code_is(1)
+        .stderr_contains("pattern that searches for process name longer than 15 characters will result in zero matches");
 }

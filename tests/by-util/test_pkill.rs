@@ -20,7 +20,7 @@ fn test_no_args() {
 #[test]
 fn test_non_matching_pattern() {
     new_ucmd!()
-        .arg("THIS_PATTERN_DOES_NOT_MATCH")
+        .arg("NONMATCHING")
         .fails()
         .code_is(1)
         .no_output();
@@ -44,8 +44,29 @@ fn test_invalid_arg() {
     new_ucmd!().arg("--definitely-invalid").fails().code_is(1);
 }
 
+#[cfg(target_os = "linux")]
+#[test]
+fn test_inverse() {
+    new_ucmd!()
+        .arg("-0")
+        .arg("--inverse")
+        .arg("NONEXISTENT")
+        .fails()
+        .stderr_contains("Permission denied");
+}
+
 #[cfg(unix)]
 #[test]
 fn test_help() {
     new_ucmd!().arg("--help").succeeds();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_too_long_pattern() {
+    new_ucmd!()
+        .arg("THIS_IS_OVER_16_CHARS")
+        .fails()
+        .code_is(1)
+        .stderr_contains("pattern that searches for process name longer than 15 characters will result in zero matches");
 }

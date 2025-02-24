@@ -33,7 +33,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     let output = collected
         .into_iter()
-        .map(|it| it.pid.to_string())
+        .map(|it| it.to_string())
         .collect::<Vec<_>>()
         .join(arg_separator);
 
@@ -61,7 +61,7 @@ fn get_executable_name(process: &mut ProcessInformation) -> String {
         .to_string()
 }
 
-fn collect_matched_pids(matches: &ArgMatches) -> Vec<ProcessInformation> {
+fn collect_matched_pids(matches: &ArgMatches) -> Vec<usize> {
     let program_names: Vec<_> = matches
         .get_many::<String>("program-name")
         .unwrap()
@@ -84,16 +84,20 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<ProcessInformation> {
                 let should_omit = arg_omit_pid.contains(&process.pid);
 
                 if contains && !should_omit {
-                    processed.push(process);
+                    if matches.get_flag("t") {
+                        processed.extend_from_slice(&process.thread_ids());
+                    } else {
+                        processed.push(process.pid);
+                    }
                 }
             }
 
-            processed.sort_by(|a, b| b.pid.cmp(&a.pid));
+            processed.sort_by(|a, b| b.cmp(a));
 
             let flag_s = matches.get_flag("s");
             if flag_s {
                 match processed.first() {
-                    Some(first) => vec![first.clone()],
+                    Some(first) => vec![*first],
                     None => Vec::new(),
                 }
             } else {
@@ -162,6 +166,13 @@ pub fn uu_app() -> Command {
                 .short('s')
                 .long("single-shot")
                 .help("Only return one PID")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("t")
+                .short('t')
+                .long("lightweight")
+                .help("Show thread ids instead of process ids")
                 .action(ArgAction::SetTrue),
         )
     // .arg(
