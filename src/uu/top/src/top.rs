@@ -4,6 +4,7 @@
 // file that was distributed with this source code.
 
 use clap::{arg, crate_version, value_parser, ArgAction, ArgGroup, ArgMatches, Command};
+use header::header;
 use picker::pickers;
 use picker::sysinfo;
 use prettytable::{format::consts::FORMAT_CLEAN, Row, Table};
@@ -18,6 +19,7 @@ const ABOUT: &str = help_about!("top.md");
 const USAGE: &str = help_usage!("top.md");
 
 mod field;
+mod header;
 mod picker;
 
 #[allow(unused)]
@@ -97,7 +99,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         table
     };
 
-    println!("{}", header());
+    println!("{}", header(matches.get_one::<String>("scale-summary-mem")));
     println!("\n");
 
     let cutter = {
@@ -155,11 +157,6 @@ where
         result.extend(std::iter::repeat(' ').take(width - input.len()));
         result
     }
-}
-
-// TODO: Implement information collecting.
-fn header() -> String {
-    "TODO".into()
 }
 
 // TODO: Implement fields selecting
@@ -261,7 +258,7 @@ pub fn uu_app() -> Command {
             // arg!(-b  --"batch-mode"                         "run in non-interactive batch mode"),
             // arg!(-c  --"cmdline-toggle"                     "reverse last remembered 'c' state"),
             // arg!(-d  --delay                <SECS>          "iterative delay as SECS [.TENTHS]"),
-            // arg!(-E  --"scale-summary-mem"  <SCALE>         "set mem as: k,m,g,t,p,e for SCALE"),
+            arg!(-E  --"scale-summary-mem"  <SCALE>         "set mem as: k,m,g,t,p,e for SCALE"),
             // arg!(-e  --"scale-task-mem"     <SCALE>         "set mem with: k,m,g,t,p for SCALE"),
             // arg!(-H  --"threads-show"                       "show tasks plus all their threads"),
             // arg!(-i  --"idle-toggle"                        "reverse last remembered 'i' state"),
