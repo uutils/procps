@@ -22,6 +22,7 @@ Ongoing:
 * `pwdx`: Shows the current working directory of a process.
 * `slabtop`: Displays detailed kernel slab cache information in real time.
 * `snice`: Changes the scheduling priority of a running process.
+* `sysctl`: Read or write kernel parameters at run-time.
 * `top`: Displays real-time information about system processes.
 * `w`: Shows who is logged on and what they are doing.
 * `watch`: Executes a program periodically, showing output fullscreen.
@@ -29,7 +30,6 @@ Ongoing:
 TODO:
 * `hugetop`: Report hugepage usage of processes and the system as a whole.
 * `skill`: Sends a signal to processes based on criteria like user, terminal, etc.
-* `sysctl`: Read or write kernel parameters at run-time.
 * `tload`: Prints a graphical representation of system load average to the terminal.
 * `vmstat`: Reports information about processes, memory, paging, block IO, traps, and CPU activity.
 
