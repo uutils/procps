@@ -458,7 +458,17 @@ fn construct_committed_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> S
 
 // Here's the `-h` `--human` flag processing logic
 fn humanized(kib: u64, si: bool) -> String {
-    let binding = ByteSize::kib(kib).to_string_as(!si);
+    let binding = {
+        let display = ByteSize::kib(kib).display();
+
+        if si {
+            display.si()
+        } else {
+            display.iec()
+        }
+    }
+    .to_string();
+
     let split: Vec<&str> = binding.split(' ').collect();
 
     // TODO: finish the logic of automatic scale.
