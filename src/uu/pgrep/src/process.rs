@@ -296,6 +296,43 @@ impl ProcessInformation {
         Ok(time)
     }
 
+    pub fn ppid(&mut self) -> Result<u64, io::Error> {
+        // the PPID is the fourth field in /proc/<PID>/stat
+        // (https://www.kernel.org/doc/html/latest/filesystems/proc.html#id10)
+        self.stat()
+            .get(3)
+            .ok_or(io::ErrorKind::InvalidData)?
+            .parse::<u64>()
+            .map_err(|_| io::ErrorKind::InvalidData.into())
+    }
+
+    fn get_uid_or_gid_field(&mut self, field: &str, index: usize) -> Result<u32, io::Error> {
+        self.status()
+            .get(field)
+            .ok_or(io::ErrorKind::InvalidData)?
+            .split_whitespace()
+            .nth(index)
+            .ok_or(io::ErrorKind::InvalidData)?
+            .parse::<u32>()
+            .map_err(|_| io::ErrorKind::InvalidData.into())
+    }
+
+    pub fn uid(&mut self) -> Result<u32, io::Error> {
+        self.get_uid_or_gid_field("Uid", 0)
+    }
+
+    pub fn euid(&mut self) -> Result<u32, io::Error> {
+        self.get_uid_or_gid_field("Uid", 1)
+    }
+
+    pub fn gid(&mut self) -> Result<u32, io::Error> {
+        self.get_uid_or_gid_field("Gid", 0)
+    }
+
+    pub fn egid(&mut self) -> Result<u32, io::Error> {
+        self.get_uid_or_gid_field("Gid", 1)
+    }
+
     /// Fetch run state from [ProcessInformation::cached_stat]
     ///
     /// - [The /proc Filesystem: Table 1-4](https://docs.kernel.org/filesystems/proc.html#id10)
@@ -506,5 +543,18 @@ mod tests {
 
         let case = "83875 (sleep (2) .sh) S 75750 83875 75750 34824 83875 4194304 173 0 0 0 0 0 0 0 20 0 1 0 18366278 23187456 821 18446744073709551615 94424231874560 94424232638561 140734866834816 0 0 0 65536 4 65538 1 0 0 17 6 0 0 0 0 0 94424232876752 94424232924772 94424259932160 140734866837287 140734866837313 140734866837313 140734866841576 0";
         assert!(stat_split(case)[1] == "sleep (2) .sh");
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn test_uid_gid() {
+        let mut pid_entry = ProcessInformation::try_new(
+            PathBuf::from_str(&format!("/proc/{}", current_pid())).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(pid_entry.uid().unwrap(), uucore::process::getuid());
+        assert_eq!(pid_entry.euid().unwrap(), uucore::process::geteuid());
+        assert_eq!(pid_entry.gid().unwrap(), uucore::process::getgid());
+        assert_eq!(pid_entry.egid().unwrap(), uucore::process::getegid());
     }
 }

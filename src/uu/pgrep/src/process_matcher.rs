@@ -5,13 +5,19 @@
 
 // Common process matcher logic shared by pgrep, pkill and pidwait
 
-use std::collections::HashSet;
+use std::hash::Hash;
+use std::{collections::HashSet, io};
 
 use clap::{arg, Arg, ArgAction, ArgMatches};
 use regex::Regex;
-use uucore::error::{UResult, USimpleError};
 #[cfg(unix)]
-use uucore::{display::Quotable, signals::signal_by_name_or_value};
+use uucore::{
+    display::Quotable,
+    entries::{grp2gid, usr2uid},
+    signals::signal_by_name_or_value,
+};
+
+use uucore::error::{UResult, USimpleError};
 
 use crate::process::{walk_process, ProcessInformation, Teletype};
 
@@ -25,12 +31,15 @@ pub struct Settings {
     pub newest: bool,
     pub oldest: bool,
     pub older: Option<u64>,
-    pub parent: Option<Vec<u64>>,
+    pub parent: Option<HashSet<u64>>,
     pub runstates: Option<String>,
     pub terminal: Option<HashSet<Teletype>>,
     #[cfg(unix)]
     pub signal: usize,
     pub require_handler: bool,
+    pub uid: Option<HashSet<u32>>,
+    pub euid: Option<HashSet<u32>>,
+    pub gid: Option<HashSet<u32>>,
 }
 
 pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
@@ -58,14 +67,26 @@ pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
         #[cfg(unix)]
         signal: parse_signal_value(matches.get_one::<String>("signal").unwrap())?,
         require_handler: matches.get_flag("require-handler"),
+        uid: matches
+            .get_many::<u32>("uid")
+            .map(|ids| ids.cloned().collect()),
+        euid: matches
+            .get_many::<u32>("euid")
+            .map(|ids| ids.cloned().collect()),
+        gid: matches
+            .get_many::<u32>("group")
+            .map(|ids| ids.cloned().collect()),
     };
 
-    if (!settings.newest
+    if !settings.newest
         && !settings.oldest
         && settings.runstates.is_none()
         && settings.older.is_none()
         && settings.parent.is_none()
-        && settings.terminal.is_none())
+        && settings.terminal.is_none()
+        && settings.uid.is_none()
+        && settings.euid.is_none()
+        && settings.gid.is_none()
         && pattern.is_empty()
     {
         return Err(USimpleError::new(
@@ -137,6 +158,10 @@ fn try_get_pattern_from(matches: &ArgMatches) -> UResult<String> {
     Ok(pattern.to_string())
 }
 
+fn any_matches<T: Eq + Hash>(optional_ids: &Option<HashSet<T>>, id: T) -> bool {
+    optional_ids.as_ref().is_none_or(|ids| ids.contains(&id))
+}
+
 /// Collect pids with filter construct from command line arguments
 fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
     // Filtration general parameters
@@ -171,28 +196,23 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
                 settings.regex.is_match(want)
             };
 
-            let tty_matched = match &settings.terminal {
-                Some(ttys) => ttys.contains(&pid.tty()),
-                None => true,
-            };
+            let tty_matched = any_matches(&settings.terminal, pid.tty());
 
             let arg_older = settings.older.unwrap_or(0);
             let older_matched = pid.start_time().unwrap() >= arg_older;
 
-            // the PPID is the fourth field in /proc/<PID>/stat
-            // (https://www.kernel.org/doc/html/latest/filesystems/proc.html#id10)
-            let stat = pid.stat();
-            let ppid = stat.get(3);
-            let parent_matched = match (&settings.parent, ppid) {
-                (Some(parents), Some(ppid)) => parents.contains(&ppid.parse::<u64>().unwrap()),
-                _ => true,
-            };
+            let parent_matched = any_matches(&settings.parent, pid.ppid().unwrap());
+
+            let ids_matched = any_matches(&settings.uid, pid.uid().unwrap())
+                && any_matches(&settings.euid, pid.euid().unwrap())
+                && any_matches(&settings.gid, pid.gid().unwrap());
 
             if (run_state_matched
                 && pattern_matched
                 && tty_matched
                 && older_matched
-                && parent_matched)
+                && parent_matched
+                && ids_matched)
                 ^ settings.inverse
             {
                 tmp_vec.push(pid);
@@ -249,6 +269,36 @@ fn parse_signal_value(signal_name: &str) -> UResult<usize> {
         .ok_or_else(|| USimpleError::new(1, format!("Unknown signal {}", signal_name.quote())))
 }
 
+#[cfg(not(unix))]
+pub fn usr2uid(_name: &str) -> io::Result<u32> {
+    Err(io::Error::new(
+        io::ErrorKind::InvalidInput,
+        "unsupported on this platform",
+    ))
+}
+
+#[cfg(not(unix))]
+pub fn grp2gid(_name: &str) -> io::Result<u32> {
+    Err(io::Error::new(
+        io::ErrorKind::InvalidInput,
+        "unsupported on this platform",
+    ))
+}
+
+fn parse_uid_or_username(uid_or_username: &str) -> io::Result<u32> {
+    uid_or_username
+        .parse::<u32>()
+        .or_else(|_| usr2uid(uid_or_username))
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid user name"))
+}
+
+fn parse_gid_or_group_name(gid_or_group_name: &str) -> io::Result<u32> {
+    gid_or_group_name
+        .parse::<u32>()
+        .or_else(|_| grp2gid(gid_or_group_name))
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid group name"))
+}
+
 #[allow(clippy::cognitive_complexity)]
 pub fn clap_args(pattern_help: &'static str, enable_v_flag: bool) -> Vec<Arg> {
     vec![
@@ -263,9 +313,9 @@ pub fn clap_args(pattern_help: &'static str, enable_v_flag: bool) -> Vec<Arg> {
         // arg!(-g --pgroup <PGID>        "match listed process group IDs")
         //     .value_delimiter(',')
         //     .value_parser(clap::value_parser!(u64)),
-        // arg!(-G --group <GID>          "match real group IDs")
-        //     .value_delimiter(',')
-        //     .value_parser(clap::value_parser!(u64)),
+        arg!(-G --group <GID>          "match real group IDs")
+            .value_delimiter(',')
+            .value_parser(parse_gid_or_group_name),
         arg!(-i --"ignore-case"        "match case insensitively"),
         arg!(-n --newest               "select most recently started")
             .group("oldest_newest_inverse"),
@@ -282,12 +332,12 @@ pub fn clap_args(pattern_help: &'static str, enable_v_flag: bool) -> Vec<Arg> {
         arg!(--signal <sig>            "signal to send (either number or name)")
             .default_value("SIGTERM"),
         arg!(-t --terminal <tty>       "match by controlling terminal").value_delimiter(','),
-        // arg!(-u --euid <ID>            "match by effective IDs")
-        //     .value_delimiter(',')
-        //     .value_parser(clap::value_parser!(u64)),
-        // arg!(-U --uid <ID>             "match by real IDs")
-        //     .value_delimiter(',')
-        //     .value_parser(clap::value_parser!(u64)),
+        arg!(-u --euid <ID>            "match by effective IDs")
+            .value_delimiter(',')
+            .value_parser(parse_uid_or_username),
+        arg!(-U --uid <ID>             "match by real IDs")
+            .value_delimiter(',')
+            .value_parser(parse_uid_or_username),
         arg!(-x --exact                "match exactly with the command name"),
         // arg!(-F --pidfile <file>       "read PIDs from file"),
         // arg!(-L --logpidfile           "fail if PID file is not locked"),
