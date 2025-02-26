@@ -208,12 +208,11 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
                 _ => true,
             };
 
-            let binding = pid.status();
-            let name = binding.get("Name").unwrap();
+            let name = pid.name().unwrap();
             let name = if settings.ignore_case {
                 name.to_lowercase()
             } else {
-                name.into()
+                name
             };
             let pattern_matched = {
                 let want = if settings.full {

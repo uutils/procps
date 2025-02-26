@@ -274,6 +274,13 @@ impl ProcessInformation {
         Rc::clone(&result)
     }
 
+    pub fn name(&mut self) -> Result<String, io::Error> {
+        self.status()
+            .get("Name")
+            .cloned()
+            .ok_or(io::ErrorKind::InvalidData.into())
+    }
+
     fn get_numeric_stat_field(&mut self, index: usize) -> Result<u64, io::Error> {
         self.stat()
             .get(index)
