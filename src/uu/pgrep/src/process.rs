@@ -274,6 +274,14 @@ impl ProcessInformation {
         Rc::clone(&result)
     }
 
+    fn get_numeric_stat_field(&mut self, index: usize) -> Result<u64, io::Error> {
+        self.stat()
+            .get(index)
+            .ok_or(io::ErrorKind::InvalidData)?
+            .parse::<u64>()
+            .map_err(|_| io::ErrorKind::InvalidData.into())
+    }
+
     /// Fetch start time from [ProcessInformation::cached_stat]
     ///
     /// - [The /proc Filesystem: Table 1-4](https://docs.kernel.org/filesystems/proc.html#id10)
@@ -284,12 +292,7 @@ impl ProcessInformation {
 
         // Kernel doc: https://docs.kernel.org/filesystems/proc.html#process-specific-subdirectories
         // Table 1-4
-        let time = self
-            .stat()
-            .get(21)
-            .ok_or(io::ErrorKind::InvalidData)?
-            .parse::<u64>()
-            .map_err(|_| io::ErrorKind::InvalidData)?;
+        let time = self.get_numeric_stat_field(21)?;
 
         self.cached_start_time = Some(time);
 
@@ -299,11 +302,7 @@ impl ProcessInformation {
     pub fn ppid(&mut self) -> Result<u64, io::Error> {
         // the PPID is the fourth field in /proc/<PID>/stat
         // (https://www.kernel.org/doc/html/latest/filesystems/proc.html#id10)
-        self.stat()
-            .get(3)
-            .ok_or(io::ErrorKind::InvalidData)?
-            .parse::<u64>()
-            .map_err(|_| io::ErrorKind::InvalidData.into())
+        self.get_numeric_stat_field(3)
     }
 
     fn get_uid_or_gid_field(&mut self, field: &str, index: usize) -> Result<u32, io::Error> {
