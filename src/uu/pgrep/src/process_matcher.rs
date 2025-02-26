@@ -11,6 +11,8 @@ use std::{collections::HashSet, io};
 use clap::{arg, Arg, ArgAction, ArgMatches};
 use regex::Regex;
 #[cfg(unix)]
+use uucore::libc::{getpgrp, getsid};
+#[cfg(unix)]
 use uucore::{
     display::Quotable,
     entries::{grp2gid, usr2uid},
@@ -40,6 +42,8 @@ pub struct Settings {
     pub uid: Option<HashSet<u32>>,
     pub euid: Option<HashSet<u32>>,
     pub gid: Option<HashSet<u32>>,
+    pub pgroup: Option<HashSet<u64>>,
+    pub session: Option<HashSet<u64>>,
 }
 
 pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
@@ -76,6 +80,26 @@ pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
         gid: matches
             .get_many::<u32>("group")
             .map(|ids| ids.cloned().collect()),
+        pgroup: matches.get_many::<u64>("pgroup").map(|xs| {
+            xs.map(|pg| {
+                if *pg == 0 {
+                    unsafe { getpgrp() as u64 }
+                } else {
+                    *pg
+                }
+            })
+            .collect()
+        }),
+        session: matches.get_many::<u64>("session").map(|xs| {
+            xs.map(|sid| {
+                if *sid == 0 {
+                    unsafe { getsid(0) as u64 }
+                } else {
+                    *sid
+                }
+            })
+            .collect()
+        }),
     };
 
     if !settings.newest
@@ -87,6 +111,8 @@ pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
         && settings.uid.is_none()
         && settings.euid.is_none()
         && settings.gid.is_none()
+        && settings.pgroup.is_none()
+        && settings.session.is_none()
         && pattern.is_empty()
     {
         return Err(USimpleError::new(
@@ -207,6 +233,8 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
             let older_matched = pid.start_time().unwrap() >= arg_older;
 
             let parent_matched = any_matches(&settings.parent, pid.ppid().unwrap());
+            let pgroup_matched = any_matches(&settings.pgroup, pid.pgid().unwrap());
+            let session_matched = any_matches(&settings.session, pid.sid().unwrap());
 
             let ids_matched = any_matches(&settings.uid, pid.uid().unwrap())
                 && any_matches(&settings.euid, pid.euid().unwrap())
@@ -217,6 +245,8 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
                 && tty_matched
                 && older_matched
                 && parent_matched
+                && pgroup_matched
+                && session_matched
                 && ids_matched)
                 ^ settings.inverse
             {
@@ -290,6 +320,22 @@ pub fn grp2gid(_name: &str) -> io::Result<u32> {
     ))
 }
 
+/// # Safety
+///
+/// Dummy implementation for unsupported platforms.
+#[cfg(not(unix))]
+pub unsafe fn getpgrp() -> u32 {
+    panic!("unsupported on this platform");
+}
+
+/// # Safety
+///
+/// Dummy implementation for unsupported platforms.
+#[cfg(not(unix))]
+pub unsafe fn getsid(_pid: u32) -> u32 {
+    panic!("unsupported on this platform");
+}
+
 fn parse_uid_or_username(uid_or_username: &str) -> io::Result<u32> {
     uid_or_username
         .parse::<u32>()
@@ -315,9 +361,9 @@ pub fn clap_args(pattern_help: &'static str, enable_v_flag: bool) -> Vec<Arg> {
         arg!(-H --"require-handler"    "match only if signal handler is present"),
         arg!(-c --count                "count of matching processes"),
         arg!(-f --full                 "use full process name to match"),
-        // arg!(-g --pgroup <PGID>        "match listed process group IDs")
-        //     .value_delimiter(',')
-        //     .value_parser(clap::value_parser!(u64)),
+        arg!(-g --pgroup <PGID>        "match listed process group IDs")
+            .value_delimiter(',')
+            .value_parser(clap::value_parser!(u64)),
         arg!(-G --group <GID>          "match real group IDs")
             .value_delimiter(',')
             .value_parser(parse_gid_or_group_name),
@@ -331,9 +377,9 @@ pub fn clap_args(pattern_help: &'static str, enable_v_flag: bool) -> Vec<Arg> {
         arg!(-P --parent <PPID>        "match only child processes of the given parent")
             .value_delimiter(',')
             .value_parser(clap::value_parser!(u64)),
-        // arg!(-s --session <SID>        "match session IDs")
-        //     .value_delimiter(',')
-        //     .value_parser(clap::value_parser!(u64)),
+        arg!(-s --session <SID>        "match session IDs")
+            .value_delimiter(',')
+            .value_parser(clap::value_parser!(u64)),
         arg!(--signal <sig>            "signal to send (either number or name)")
             .default_value("SIGTERM"),
         arg!(-t --terminal <tty>       "match by controlling terminal").value_delimiter(','),

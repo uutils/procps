@@ -430,3 +430,51 @@ fn test_does_not_match_current_process() {
         .fails()
         .no_output();
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_pgroup() {
+    let our_pid = std::process::id();
+    let our_pgroup = unsafe { uucore::libc::getpgid(0) };
+    new_ucmd!()
+        .arg("--pgroup")
+        .arg(our_pgroup.to_string())
+        .succeeds()
+        .stdout_contains(our_pid.to_string());
+
+    new_ucmd!()
+        .arg("--pgroup")
+        .arg("0")
+        .succeeds()
+        .stdout_contains(our_pid.to_string());
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_nonexisting_pgroup() {
+    new_ucmd!().arg("--pgroup=9999999999").fails();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_session() {
+    let our_pid = std::process::id();
+    let our_sid = unsafe { uucore::libc::getsid(0) };
+    new_ucmd!()
+        .arg("--session")
+        .arg(our_sid.to_string())
+        .succeeds()
+        .stdout_contains(our_pid.to_string());
+
+    new_ucmd!()
+        .arg("--session")
+        .arg("0")
+        .succeeds()
+        .stdout_contains(our_pid.to_string());
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_nonexisting_session() {
+    new_ucmd!().arg("--session=9999999999").fails();
+}
