@@ -305,6 +305,18 @@ impl ProcessInformation {
         self.get_numeric_stat_field(3)
     }
 
+    pub fn pgid(&mut self) -> Result<u64, io::Error> {
+        // the process group ID is the fifth field in /proc/<PID>/stat
+        // (https://www.kernel.org/doc/html/latest/filesystems/proc.html#id10)
+        self.get_numeric_stat_field(4)
+    }
+
+    pub fn sid(&mut self) -> Result<u64, io::Error> {
+        // the session ID is the sixth field in /proc/<PID>/stat
+        // (https://www.kernel.org/doc/html/latest/filesystems/proc.html#id10)
+        self.get_numeric_stat_field(5)
+    }
+
     fn get_uid_or_gid_field(&mut self, field: &str, index: usize) -> Result<u32, io::Error> {
         self.status()
             .get(field)
@@ -474,6 +486,12 @@ mod tests {
             .unwrap()
     }
 
+    #[cfg(target_os = "linux")]
+    fn current_process_info() -> ProcessInformation {
+        ProcessInformation::try_new(PathBuf::from_str(&format!("/proc/{}", current_pid())).unwrap())
+            .unwrap()
+    }
+
     #[test]
     #[cfg(target_os = "linux")]
     fn test_walk_pid() {
@@ -489,11 +507,7 @@ mod tests {
     fn test_pid_entry() {
         let current_pid = current_pid();
 
-        let pid_entry = ProcessInformation::try_new(
-            PathBuf::from_str(&format!("/proc/{}", current_pid)).unwrap(),
-        )
-        .unwrap();
-
+        let pid_entry = current_process_info();
         let mut result = WalkDir::new(format!("/proc/{}/fd", current_pid))
             .into_iter()
             .flatten()
@@ -514,10 +528,7 @@ mod tests {
     fn test_thread_ids() {
         let main_tid = unsafe { uucore::libc::gettid() };
         std::thread::spawn(move || {
-            let mut pid_entry = ProcessInformation::try_new(
-                PathBuf::from_str(&format!("/proc/{}", current_pid())).unwrap(),
-            )
-            .unwrap();
+            let mut pid_entry = current_process_info();
             let thread_ids = pid_entry.thread_ids();
 
             assert!(thread_ids.contains(&(main_tid as usize)));
@@ -546,11 +557,24 @@ mod tests {
 
     #[test]
     #[cfg(target_os = "linux")]
+    fn test_ids() {
+        let mut pid_entry = current_process_info();
+        assert_eq!(
+            pid_entry.ppid().unwrap(),
+            unsafe { uucore::libc::getppid() } as u64
+        );
+        assert_eq!(
+            pid_entry.pgid().unwrap(),
+            unsafe { uucore::libc::getpgid(0) } as u64
+        );
+        assert_eq!(pid_entry.sid().unwrap(), unsafe { uucore::libc::getsid(0) }
+            as u64);
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
     fn test_uid_gid() {
-        let mut pid_entry = ProcessInformation::try_new(
-            PathBuf::from_str(&format!("/proc/{}", current_pid())).unwrap(),
-        )
-        .unwrap();
+        let mut pid_entry = current_process_info();
         assert_eq!(pid_entry.uid().unwrap(), uucore::process::getuid());
         assert_eq!(pid_entry.euid().unwrap(), uucore::process::geteuid());
         assert_eq!(pid_entry.gid().unwrap(), uucore::process::getgid());
