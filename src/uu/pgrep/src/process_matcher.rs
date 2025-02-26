@@ -168,7 +168,12 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
     let filtered: Vec<ProcessInformation> = {
         let mut tmp_vec = Vec::new();
 
+        let our_pid = std::process::id() as usize;
         for mut pid in walk_process().collect::<Vec<_>>() {
+            if pid.pid == our_pid {
+                continue;
+            }
+
             let run_state_matched = match (&settings.runstates, pid.run_state()) {
                 (Some(arg_run_states), Ok(pid_state)) => {
                     arg_run_states.contains(&pid_state.to_string())

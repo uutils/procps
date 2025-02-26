@@ -420,3 +420,15 @@ fn test_current_user() {
         .arg(uucore::process::getuid().to_string())
         .succeeds();
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_does_not_match_current_process() {
+    let our_pid = std::process::id();
+    dbg!(&our_pid);
+    new_ucmd!()
+        .arg("-f")
+        .arg("UNIQUE_STRING_THAT_DOES_NOT_MATCH_ANY_OTHER_PROCESS")
+        .fails()
+        .no_output();
+}
