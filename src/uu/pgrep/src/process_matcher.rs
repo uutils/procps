@@ -21,7 +21,7 @@ use uucore::{
 
 use uucore::error::{UResult, USimpleError};
 
-use crate::process::{walk_process, ProcessInformation, Teletype};
+use crate::process::{walk_process, walk_threads, ProcessInformation, Teletype};
 
 pub struct Settings {
     pub regex: Regex,
@@ -44,6 +44,7 @@ pub struct Settings {
     pub gid: Option<HashSet<u32>>,
     pub pgroup: Option<HashSet<u64>>,
     pub session: Option<HashSet<u64>>,
+    pub threads: bool,
 }
 
 pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
@@ -100,6 +101,7 @@ pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
             })
             .collect()
         }),
+        threads: false,
     };
 
     if !settings.newest
@@ -194,8 +196,14 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
     let filtered: Vec<ProcessInformation> = {
         let mut tmp_vec = Vec::new();
 
+        let pids = if settings.threads {
+            walk_threads().collect::<Vec<_>>()
+        } else {
+            walk_process().collect::<Vec<_>>()
+        };
         let our_pid = std::process::id() as usize;
-        for mut pid in walk_process().collect::<Vec<_>>() {
+
+        for mut pid in pids {
             if pid.pid == our_pid {
                 continue;
             }

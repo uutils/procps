@@ -478,3 +478,21 @@ fn test_session() {
 fn test_nonexisting_session() {
     new_ucmd!().arg("--session=9999999999").fails();
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_threads() {
+    std::thread::Builder::new()
+        .name("PgrepTest".to_owned())
+        .spawn(|| {
+            let thread_tid = unsafe { uucore::libc::gettid() };
+            new_ucmd!()
+                .arg("-w")
+                .arg("PgrepTest")
+                .succeeds()
+                .stdout_contains(thread_tid.to_string());
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+}
