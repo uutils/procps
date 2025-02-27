@@ -45,7 +45,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                     // pgrep from procps-ng outputs the process name inside square brackets
                     // if /proc/<PID>/cmdline is empty
                     if it.cmdline.is_empty() {
-                        format!("{} [{}]", it.pid, it.clone().status().get("Name").unwrap())
+                        format!("{} [{}]", it.pid, it.clone().name().unwrap())
                     } else {
                         format!("{} {}", it.pid, it.cmdline)
                     }
@@ -53,7 +53,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 .collect()
         } else if matches.get_flag("list-name") {
             pids.into_iter()
-                .map(|it| format!("{} {}", it.pid, it.clone().status().get("Name").unwrap()))
+                .map(|it| format!("{} {}", it.pid, it.clone().name().unwrap()))
                 .collect()
         } else {
             pids.into_iter().map(|it| format!("{}", it.pid)).collect()
