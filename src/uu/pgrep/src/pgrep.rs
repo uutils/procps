@@ -28,7 +28,8 @@ const USAGE: &str = help_usage!("pgrep.md");
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
-    let settings = process_matcher::get_match_settings(&matches)?;
+    let mut settings = process_matcher::get_match_settings(&matches)?;
+    settings.threads = matches.get_flag("lightweight");
 
     // Collect pids
     let pids = process_matcher::find_matching_pids(&settings);
@@ -82,7 +83,7 @@ pub fn uu_app() -> Command {
                 .hide_default_value(true),
             arg!(-l     --"list-name"           "list PID and process name"),
             arg!(-a     --"list-full"           "list PID and full command line"),
-            // arg!(-w     --lightweight           "list all TID"),
+            arg!(-w     --lightweight           "list all TID"),
         ])
         .args(process_matcher::clap_args(
             "Name of the program to find the PID of",

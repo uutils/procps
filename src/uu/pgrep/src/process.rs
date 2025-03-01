@@ -3,7 +3,9 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use regex::Regex;
 use std::hash::Hash;
+use std::sync::LazyLock;
 use std::{
     collections::HashMap,
     fmt::{self, Display, Formatter},
@@ -457,6 +459,22 @@ pub fn walk_process() -> impl Iterator<Item = ProcessInformation> {
         .into_iter()
         .flatten()
         .filter(|it| it.path().is_dir())
+        .flat_map(ProcessInformation::try_from)
+}
+
+static THREAD_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^/proc/[0-9]+$|^/proc/[0-9]+/task$|^/proc/[0-9]+/task/[0-9]+$").unwrap()
+});
+
+pub fn walk_threads() -> impl Iterator<Item = ProcessInformation> {
+    WalkDir::new("/proc/")
+        .min_depth(1)
+        .max_depth(3)
+        .follow_links(false)
+        .into_iter()
+        .filter_entry(|e| THREAD_REGEX.is_match(e.path().as_os_str().to_string_lossy().as_ref()))
+        .flatten()
+        .filter(|it| it.path().as_os_str().to_string_lossy().contains("/task/"))
         .flat_map(ProcessInformation::try_from)
 }
 
