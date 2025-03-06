@@ -98,19 +98,26 @@ impl TryFrom<PathBuf> for Teletype {
     }
 }
 
-/// State or process
+/// State of process
+/// https://www.man7.org/linux/man-pages//man5/proc_pid_stat.5.html
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RunState {
-    ///`R`, running
+    /// `R`, running
     Running,
-    ///`S`, sleeping
+    /// `S`, sleeping
     Sleeping,
-    ///`D`, sleeping in an uninterruptible wait
+    /// `D`, sleeping in an uninterruptible wait
     UninterruptibleWait,
-    ///`Z`, zombie
+    /// `Z`, zombie
     Zombie,
-    ///`T`, traced or stopped
+    /// `T`, stopped (on a signal)
     Stopped,
+    /// `t`, tracing stop
+    TraceStopped,
+    /// `X`, dead
+    Dead,
+    /// `I`, idle
+    Idle,
 }
 
 impl Display for RunState {
@@ -121,6 +128,9 @@ impl Display for RunState {
             Self::UninterruptibleWait => write!(f, "D"),
             Self::Zombie => write!(f, "Z"),
             Self::Stopped => write!(f, "T"),
+            Self::TraceStopped => write!(f, "t"),
+            Self::Dead => write!(f, "X"),
+            Self::Idle => write!(f, "I"),
         }
     }
 }
@@ -135,6 +145,9 @@ impl TryFrom<char> for RunState {
             'D' => Ok(Self::UninterruptibleWait),
             'Z' => Ok(Self::Zombie),
             'T' => Ok(Self::Stopped),
+            't' => Ok(Self::TraceStopped),
+            'X' => Ok(Self::Dead),
+            'I' => Ok(Self::Idle),
             _ => Err(io::ErrorKind::InvalidInput.into()),
         }
     }
@@ -494,6 +507,9 @@ mod tests {
         );
         assert_eq!(RunState::try_from("T").unwrap(), RunState::Stopped);
         assert_eq!(RunState::try_from("Z").unwrap(), RunState::Zombie);
+        assert_eq!(RunState::try_from("t").unwrap(), RunState::TraceStopped);
+        assert_eq!(RunState::try_from("X").unwrap(), RunState::Dead);
+        assert_eq!(RunState::try_from("I").unwrap(), RunState::Idle);
 
         assert!(RunState::try_from("G").is_err());
         assert!(RunState::try_from("Rg").is_err());
