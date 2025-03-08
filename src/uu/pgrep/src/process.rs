@@ -3,7 +3,9 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use regex::Regex;
 use std::hash::Hash;
+use std::sync::LazyLock;
 use std::{
     collections::HashMap,
     fmt::{self, Display, Formatter},
@@ -96,19 +98,26 @@ impl TryFrom<PathBuf> for Teletype {
     }
 }
 
-/// State or process
+/// State of process
+/// https://www.man7.org/linux/man-pages//man5/proc_pid_stat.5.html
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RunState {
-    ///`R`, running
+    /// `R`, running
     Running,
-    ///`S`, sleeping
+    /// `S`, sleeping
     Sleeping,
-    ///`D`, sleeping in an uninterruptible wait
+    /// `D`, sleeping in an uninterruptible wait
     UninterruptibleWait,
-    ///`Z`, zombie
+    /// `Z`, zombie
     Zombie,
-    ///`T`, traced or stopped
+    /// `T`, stopped (on a signal)
     Stopped,
+    /// `t`, tracing stop
+    TraceStopped,
+    /// `X`, dead
+    Dead,
+    /// `I`, idle
+    Idle,
 }
 
 impl Display for RunState {
@@ -119,6 +128,9 @@ impl Display for RunState {
             Self::UninterruptibleWait => write!(f, "D"),
             Self::Zombie => write!(f, "Z"),
             Self::Stopped => write!(f, "T"),
+            Self::TraceStopped => write!(f, "t"),
+            Self::Dead => write!(f, "X"),
+            Self::Idle => write!(f, "I"),
         }
     }
 }
@@ -133,6 +145,9 @@ impl TryFrom<char> for RunState {
             'D' => Ok(Self::UninterruptibleWait),
             'Z' => Ok(Self::Zombie),
             'T' => Ok(Self::Stopped),
+            't' => Ok(Self::TraceStopped),
+            'X' => Ok(Self::Dead),
+            'I' => Ok(Self::Idle),
             _ => Err(io::ErrorKind::InvalidInput.into()),
         }
     }
@@ -186,6 +201,8 @@ pub struct ProcessInformation {
     cached_stat: Option<Rc<Vec<String>>>,
 
     cached_start_time: Option<u64>,
+
+    cached_thread_ids: Option<Rc<Vec<usize>>>,
 }
 
 impl ProcessInformation {
@@ -272,6 +289,21 @@ impl ProcessInformation {
         Rc::clone(&result)
     }
 
+    pub fn name(&mut self) -> Result<String, io::Error> {
+        self.status()
+            .get("Name")
+            .cloned()
+            .ok_or(io::ErrorKind::InvalidData.into())
+    }
+
+    fn get_numeric_stat_field(&mut self, index: usize) -> Result<u64, io::Error> {
+        self.stat()
+            .get(index)
+            .ok_or(io::ErrorKind::InvalidData)?
+            .parse::<u64>()
+            .map_err(|_| io::ErrorKind::InvalidData.into())
+    }
+
     /// Fetch start time from [ProcessInformation::cached_stat]
     ///
     /// - [The /proc Filesystem: Table 1-4](https://docs.kernel.org/filesystems/proc.html#id10)
@@ -282,16 +314,56 @@ impl ProcessInformation {
 
         // Kernel doc: https://docs.kernel.org/filesystems/proc.html#process-specific-subdirectories
         // Table 1-4
-        let time = self
-            .stat()
-            .get(21)
-            .ok_or(io::ErrorKind::InvalidData)?
-            .parse::<u64>()
-            .map_err(|_| io::ErrorKind::InvalidData)?;
+        let time = self.get_numeric_stat_field(21)?;
 
         self.cached_start_time = Some(time);
 
         Ok(time)
+    }
+
+    pub fn ppid(&mut self) -> Result<u64, io::Error> {
+        // the PPID is the fourth field in /proc/<PID>/stat
+        // (https://www.kernel.org/doc/html/latest/filesystems/proc.html#id10)
+        self.get_numeric_stat_field(3)
+    }
+
+    pub fn pgid(&mut self) -> Result<u64, io::Error> {
+        // the process group ID is the fifth field in /proc/<PID>/stat
+        // (https://www.kernel.org/doc/html/latest/filesystems/proc.html#id10)
+        self.get_numeric_stat_field(4)
+    }
+
+    pub fn sid(&mut self) -> Result<u64, io::Error> {
+        // the session ID is the sixth field in /proc/<PID>/stat
+        // (https://www.kernel.org/doc/html/latest/filesystems/proc.html#id10)
+        self.get_numeric_stat_field(5)
+    }
+
+    fn get_uid_or_gid_field(&mut self, field: &str, index: usize) -> Result<u32, io::Error> {
+        self.status()
+            .get(field)
+            .ok_or(io::ErrorKind::InvalidData)?
+            .split_whitespace()
+            .nth(index)
+            .ok_or(io::ErrorKind::InvalidData)?
+            .parse::<u32>()
+            .map_err(|_| io::ErrorKind::InvalidData.into())
+    }
+
+    pub fn uid(&mut self) -> Result<u32, io::Error> {
+        self.get_uid_or_gid_field("Uid", 0)
+    }
+
+    pub fn euid(&mut self) -> Result<u32, io::Error> {
+        self.get_uid_or_gid_field("Uid", 1)
+    }
+
+    pub fn gid(&mut self) -> Result<u32, io::Error> {
+        self.get_uid_or_gid_field("Gid", 0)
+    }
+
+    pub fn egid(&mut self) -> Result<u32, io::Error> {
+        self.get_uid_or_gid_field("Gid", 1)
     }
 
     /// Fetch run state from [ProcessInformation::cached_stat]
@@ -327,6 +399,31 @@ impl ProcessInformation {
         }
 
         Teletype::Unknown
+    }
+
+    pub fn thread_ids(&mut self) -> Rc<Vec<usize>> {
+        if let Some(c) = &self.cached_thread_ids {
+            return Rc::clone(c);
+        }
+
+        let tids_dir = format!("/proc/{}/task", self.pid);
+        let result = Rc::new(
+            WalkDir::new(tids_dir)
+                .min_depth(1)
+                .max_depth(1)
+                .follow_links(false)
+                .into_iter()
+                .flatten()
+                .flat_map(|it| {
+                    it.path()
+                        .file_name()
+                        .map(|it| it.to_str().unwrap().parse::<usize>().unwrap())
+                })
+                .collect::<Vec<_>>(),
+        );
+
+        self.cached_thread_ids = Some(Rc::clone(&result));
+        Rc::clone(&result)
     }
 }
 impl TryFrom<DirEntry> for ProcessInformation {
@@ -378,6 +475,22 @@ pub fn walk_process() -> impl Iterator<Item = ProcessInformation> {
         .flat_map(ProcessInformation::try_from)
 }
 
+static THREAD_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^/proc/[0-9]+$|^/proc/[0-9]+/task$|^/proc/[0-9]+/task/[0-9]+$").unwrap()
+});
+
+pub fn walk_threads() -> impl Iterator<Item = ProcessInformation> {
+    WalkDir::new("/proc/")
+        .min_depth(1)
+        .max_depth(3)
+        .follow_links(false)
+        .into_iter()
+        .filter_entry(|e| THREAD_REGEX.is_match(e.path().as_os_str().to_string_lossy().as_ref()))
+        .flatten()
+        .filter(|it| it.path().as_os_str().to_string_lossy().contains("/task/"))
+        .flat_map(ProcessInformation::try_from)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -394,6 +507,9 @@ mod tests {
         );
         assert_eq!(RunState::try_from("T").unwrap(), RunState::Stopped);
         assert_eq!(RunState::try_from("Z").unwrap(), RunState::Zombie);
+        assert_eq!(RunState::try_from("t").unwrap(), RunState::TraceStopped);
+        assert_eq!(RunState::try_from("X").unwrap(), RunState::Dead);
+        assert_eq!(RunState::try_from("I").unwrap(), RunState::Idle);
 
         assert!(RunState::try_from("G").is_err());
         assert!(RunState::try_from("Rg").is_err());
@@ -408,6 +524,12 @@ mod tests {
             .to_str()
             .unwrap()
             .parse::<usize>()
+            .unwrap()
+    }
+
+    #[cfg(target_os = "linux")]
+    fn current_process_info() -> ProcessInformation {
+        ProcessInformation::try_new(PathBuf::from_str(&format!("/proc/{}", current_pid())).unwrap())
             .unwrap()
     }
 
@@ -426,11 +548,7 @@ mod tests {
     fn test_pid_entry() {
         let current_pid = current_pid();
 
-        let pid_entry = ProcessInformation::try_new(
-            PathBuf::from_str(&format!("/proc/{}", current_pid)).unwrap(),
-        )
-        .unwrap();
-
+        let pid_entry = current_process_info();
         let mut result = WalkDir::new(format!("/proc/{}/fd", current_pid))
             .into_iter()
             .flatten()
@@ -447,6 +565,23 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_os = "linux")]
+    fn test_thread_ids() {
+        let main_tid = unsafe { uucore::libc::gettid() };
+        std::thread::spawn(move || {
+            let mut pid_entry = current_process_info();
+            let thread_ids = pid_entry.thread_ids();
+
+            assert!(thread_ids.contains(&(main_tid as usize)));
+
+            let new_thread_tid = unsafe { uucore::libc::gettid() };
+            assert!(thread_ids.contains(&(new_thread_tid as usize)));
+        })
+        .join()
+        .unwrap();
+    }
+
+    #[test]
     fn test_stat_split() {
         let case = "32 (idle_inject/3) S 2 0 0 0 -1 69238848 0 0 0 0 0 0 0 0 -51 0 1 0 34 0 0 18446744073709551615 0 0 0 0 0 0 0 2147483647 0 0 0 0 17 3 50 1 0 0 0 0 0 0 0 0 0 0 0";
         assert!(stat_split(case)[1] == "idle_inject/3");
@@ -459,5 +594,31 @@ mod tests {
 
         let case = "83875 (sleep (2) .sh) S 75750 83875 75750 34824 83875 4194304 173 0 0 0 0 0 0 0 20 0 1 0 18366278 23187456 821 18446744073709551615 94424231874560 94424232638561 140734866834816 0 0 0 65536 4 65538 1 0 0 17 6 0 0 0 0 0 94424232876752 94424232924772 94424259932160 140734866837287 140734866837313 140734866837313 140734866841576 0";
         assert!(stat_split(case)[1] == "sleep (2) .sh");
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn test_ids() {
+        let mut pid_entry = current_process_info();
+        assert_eq!(
+            pid_entry.ppid().unwrap(),
+            unsafe { uucore::libc::getppid() } as u64
+        );
+        assert_eq!(
+            pid_entry.pgid().unwrap(),
+            unsafe { uucore::libc::getpgid(0) } as u64
+        );
+        assert_eq!(pid_entry.sid().unwrap(), unsafe { uucore::libc::getsid(0) }
+            as u64);
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn test_uid_gid() {
+        let mut pid_entry = current_process_info();
+        assert_eq!(pid_entry.uid().unwrap(), uucore::process::getuid());
+        assert_eq!(pid_entry.euid().unwrap(), uucore::process::geteuid());
+        assert_eq!(pid_entry.gid().unwrap(), uucore::process::getgid());
+        assert_eq!(pid_entry.egid().unwrap(), uucore::process::getegid());
     }
 }

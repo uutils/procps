@@ -31,7 +31,7 @@ fn test_no_args() {
 #[test]
 fn test_non_matching_pattern() {
     new_ucmd!()
-        .arg("THIS_PATTERN_DOES_NOT_MATCH")
+        .arg("NONMATCHING")
         .fails()
         .code_is(1)
         .no_output();
@@ -346,4 +346,153 @@ fn test_parent_non_matching_parent() {
         .fails()
         .code_is(1)
         .no_output();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_require_handler() {
+    new_ucmd!()
+        .arg("--require-handler")
+        .arg("--signal=INT")
+        .arg("NONEXISTENT")
+        .fails()
+        .no_output();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_invalid_signal() {
+    new_ucmd!()
+        .arg("--signal=foo")
+        .arg("NONEXISTENT")
+        .fails()
+        .stderr_contains("Unknown signal 'foo'");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_does_not_match_pid() {
+    let our_pid = std::process::id();
+    new_ucmd!().arg(our_pid.to_string()).fails();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_too_long_pattern() {
+    new_ucmd!()
+        .arg("A".repeat(15))
+        .fails()
+        .code_is(1)
+        .no_output();
+
+    new_ucmd!()
+        .arg("A".repeat(16))
+        .fails()
+        .code_is(1)
+        .stderr_contains("pattern that searches for process name longer than 15 characters will result in zero matches");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_invalid_username() {
+    new_ucmd!()
+        .arg("--uid=DOES_NOT_EXIST")
+        .fails()
+        .code_is(1)
+        .stderr_contains("invalid user name");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_invalid_group_name() {
+    new_ucmd!()
+        .arg("--group=DOES_NOT_EXIST")
+        .fails()
+        .code_is(1)
+        .stderr_contains("invalid group name");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_current_user() {
+    new_ucmd!()
+        .arg("-U")
+        .arg(uucore::process::getuid().to_string())
+        .succeeds();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_does_not_match_current_process() {
+    new_ucmd!()
+        .arg("-f")
+        .arg("UNIQUE_STRING_THAT_DOES_NOT_MATCH_ANY_OTHER_PROCESS")
+        .fails()
+        .no_output();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_pgroup() {
+    let our_pid = std::process::id();
+    let our_pgroup = unsafe { uucore::libc::getpgid(0) };
+    new_ucmd!()
+        .arg("--pgroup")
+        .arg(our_pgroup.to_string())
+        .succeeds()
+        .stdout_contains(our_pid.to_string());
+
+    new_ucmd!()
+        .arg("--pgroup")
+        .arg("0")
+        .succeeds()
+        .stdout_contains(our_pid.to_string());
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_nonexisting_pgroup() {
+    new_ucmd!().arg("--pgroup=9999999999").fails();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_session() {
+    let our_pid = std::process::id();
+    let our_sid = unsafe { uucore::libc::getsid(0) };
+    new_ucmd!()
+        .arg("--session")
+        .arg(our_sid.to_string())
+        .succeeds()
+        .stdout_contains(our_pid.to_string());
+
+    new_ucmd!()
+        .arg("--session")
+        .arg("0")
+        .succeeds()
+        .stdout_contains(our_pid.to_string());
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_nonexisting_session() {
+    new_ucmd!().arg("--session=9999999999").fails();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_threads() {
+    std::thread::Builder::new()
+        .name("PgrepTest".to_owned())
+        .spawn(|| {
+            let thread_tid = unsafe { uucore::libc::gettid() };
+            new_ucmd!()
+                .arg("-w")
+                .arg("PgrepTest")
+                .succeeds()
+                .stdout_contains(thread_tid.to_string());
+        })
+        .unwrap()
+        .join()
+        .unwrap();
 }

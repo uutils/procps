@@ -80,7 +80,7 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v2
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.7
+        uses: mozilla-actions/sccache-action@v0.0.8
       - if: ${{ contains(matrix.job.os, 'ubuntu') }}
         run: |
           sudo apt-get update -y
