@@ -12,17 +12,11 @@ use std::{
     sync::{OnceLock, RwLock},
 };
 use sysinfo::{Pid, System, Users};
-use systemstat::Platform;
 
 static SYSINFO: OnceLock<RwLock<System>> = OnceLock::new();
-static SYSTEMSTAT: OnceLock<RwLock<systemstat::System>> = OnceLock::new();
 
 pub fn sysinfo() -> &'static RwLock<System> {
     SYSINFO.get_or_init(|| RwLock::new(System::new_all()))
-}
-
-pub fn systemstat() -> &'static RwLock<systemstat::System> {
-    SYSTEMSTAT.get_or_init(|| RwLock::new(systemstat::System::new()))
 }
 
 pub(crate) fn pickers(fields: &[String]) -> Vec<Box<dyn Fn(u32) -> String>> {

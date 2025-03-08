@@ -12,21 +12,22 @@ keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
 categories = ["command-line-utilities"]
 
 [dependencies]
-uucore = { workspace = true, features = ["utmpx"] }
+uucore = { workspace = true, features = ["utmpx", "uptime"] }
 clap = { workspace = true }
 libc = { workspace = true }
 nix = { workspace = true }
 prettytable-rs = { workspace = true }
 sysinfo = { workspace = true }
 chrono = { workspace = true }
-systemstat = { workspace = true }
 bytesize = { workspace = true }
-
-[target.'cfg(target_os="linux")'.dependencies]
-libsystemd-sys = "0.9.3"
-
 [target.'cfg(target_os="windows")'.dependencies]
-windows = { version = "0.59.0", features = ["Win32_System_RemoteDesktop", "Wdk_System_SystemInformation"] }
+windows-sys = { workspace = true, features = [
+    "Win32_System_RemoteDesktop",
+    "Win32_System_SystemInformation",
+] }
+
+[target.'cfg(target_os="linux")'.build-dependencies]
+pkg-config = "0.3.31"
 
 [lib]
 path = "src/top.rs"

@@ -3,9 +3,11 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use crate::picker::{sysinfo, systemstat};
+use crate::picker::sysinfo;
 use bytesize::ByteSize;
-use systemstat::Platform;
+use uucore::uptime::{
+    get_formated_uptime, get_formatted_loadavg, get_formatted_nusers, get_formatted_time,
+};
 
 pub(crate) fn header(scale_summary_mem: Option<&String>) -> String {
     format!(
@@ -13,7 +15,7 @@ pub(crate) fn header(scale_summary_mem: Option<&String>) -> String {
         {task}\n\
         {cpu}\n\
         {memory}",
-        time = chrono::Local::now().format("%H:%M:%S"),
+        time = get_formatted_time(),
         uptime = uptime(),
         user = user(),
         load_average = load_average(),
@@ -23,7 +25,17 @@ pub(crate) fn header(scale_summary_mem: Option<&String>) -> String {
     )
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(target_os = "linux")]
+extern "C" {
+    pub fn sd_booted() -> libc::c_int;
+    pub fn sd_get_sessions(sessions: *mut *mut *mut libc::c_char) -> libc::c_int;
+    pub fn sd_session_get_class(
+        session: *const libc::c_char,
+        class: *mut *mut libc::c_char,
+    ) -> libc::c_int;
+}
+
+#[cfg(target_os = "macos")]
 fn todo() -> String {
     "TODO".into()
 }
@@ -33,105 +45,22 @@ fn format_memory(memory_b: u64, unit: u64) -> f64 {
 }
 
 fn uptime() -> String {
-    let binding = systemstat().read().unwrap();
-
-    let up_seconds = binding.uptime().unwrap().as_secs();
-    let up_minutes = (up_seconds % (60 * 60)) / 60;
-    let up_hours = (up_seconds % (24 * 60 * 60)) / (60 * 60);
-    let up_days = up_seconds / (24 * 60 * 60);
-
-    let mut res = String::from("up ");
-
-    if up_days > 0 {
-        res.push_str(&format!(
-            "{} day{}, ",
-            up_days,
-            if up_days > 1 { "s" } else { "" }
-        ));
-    }
-    if up_hours > 0 {
-        res.push_str(&format!("{}:{:0>2}", up_hours, up_minutes));
-    } else {
-        res.push_str(&format!("{} min", up_minutes));
-    }
-
-    res
+    get_formated_uptime(None).unwrap_or_default()
 }
 
-#[inline]
-fn format_user(user: u64) -> String {
-    match user {
-        0 => "0 user".to_string(),
-        1 => "1 user".to_string(),
-        _ => format!("{} users", user),
-    }
-}
-
-#[cfg(target_os = "windows")]
-fn user() -> String {
-    use windows::{core::*, Win32::System::RemoteDesktop::*};
-
-    let mut num_user = 0;
+#[cfg(target_os = "linux")]
+pub fn get_nusers_systemd() -> uucore::error::UResult<usize> {
+    use std::ffi::CStr;
+    use std::ptr;
+    use uucore::error::USimpleError;
+    use uucore::libc::*;
 
     unsafe {
-        let mut session_info_ptr = std::ptr::null_mut();
-        let mut session_count = 0;
-
-        WTSEnumerateSessionsW(
-            Some(WTS_CURRENT_SERVER_HANDLE),
-            0,
-            1,
-            &mut session_info_ptr,
-            &mut session_count,
-        )
-        .unwrap();
-
-        let sessions = std::slice::from_raw_parts(session_info_ptr, session_count as usize);
-
-        for session in sessions {
-            let mut buffer = PWSTR::null();
-            let mut bytes_returned = 0;
-
-            WTSQuerySessionInformationW(
-                Some(WTS_CURRENT_SERVER_HANDLE),
-                session.SessionId,
-                WTS_INFO_CLASS(5),
-                &mut buffer,
-                &mut bytes_returned,
-            )
-            .unwrap();
-
-            let username = PWSTR(buffer.0).to_string().unwrap_or_default();
-            if !username.is_empty() {
-                num_user += 1;
-            }
-
-            WTSFreeMemory(buffer.0 as _);
-        }
-
-        WTSFreeMemory(session_info_ptr as _);
-    }
-
-    format_user(num_user)
-}
-
-#[cfg(unix)]
-// see: https://gitlab.com/procps-ng/procps/-/blob/4740a0efa79cade867cfc7b32955fe0f75bf5173/library/uptime.c#L63-L115
-fn user() -> String {
-    use uucore::utmpx::Utmpx;
-
-    #[cfg(target_os = "linux")]
-    unsafe {
-        use libc::free;
-        use libsystemd_sys::daemon::sd_booted;
-        use libsystemd_sys::login::{sd_get_sessions, sd_session_get_class};
-        use std::ffi::{c_char, c_void, CStr};
-        use std::ptr;
         // systemd
         if sd_booted() > 0 {
             let mut sessions_list: *mut *mut c_char = ptr::null_mut();
             let mut num_user = 0;
-            let sessions = sd_get_sessions(&mut sessions_list); // rust-systemd does not implement this
+            let sessions = sd_get_sessions(&mut sessions_list);
 
             if sessions > 0 {
                 for i in 0..sessions {
@@ -156,34 +85,27 @@ fn user() -> String {
             }
             free(sessions_list as *mut c_void);
 
-            return format_user(num_user);
+            return Ok(num_user);
         }
     }
-
-    // utmpx
-    let mut num_user = 0;
-    Utmpx::iter_all_records().for_each(|ut| {
-        if ut.record_type() == 7 && !ut.user().is_empty() {
-            num_user += 1;
-        }
-    });
-    format_user(num_user)
+    Err(USimpleError::new(
+        1,
+        "could not retrieve number of logged users",
+    ))
 }
 
-#[cfg(not(target_os = "windows"))]
-fn load_average() -> String {
-    let binding = systemstat().read().unwrap();
+// see: https://gitlab.com/procps-ng/procps/-/blob/4740a0efa79cade867cfc7b32955fe0f75bf5173/library/uptime.c#L63-L115
+fn user() -> String {
+    #[cfg(target_os = "linux")]
+    if let Ok(nusers) = get_nusers_systemd() {
+        return uucore::uptime::format_nusers(nusers);
+    }
 
-    let load_average = binding.load_average().unwrap();
-    format!(
-        "load average: {:.2}, {:.2}, {:.2}",
-        load_average.one, load_average.five, load_average.fifteen
-    )
+    get_formatted_nusers()
 }
 
-#[cfg(target_os = "windows")]
 fn load_average() -> String {
-    todo()
+    get_formatted_loadavg().unwrap_or_default()
 }
 
 fn task() -> String {
@@ -266,7 +188,7 @@ fn cpu() -> String {
 #[cfg(target_os = "windows")]
 fn cpu() -> String {
     use libc::malloc;
-    use windows::Wdk::System::SystemInformation::NtQuerySystemInformation;
+    use windows_sys::Wdk::System::SystemInformation::NtQuerySystemInformation;
 
     #[repr(C)]
     #[derive(Debug)]
@@ -292,7 +214,7 @@ fn cpu() -> String {
         let len = n_cpu * size_of::<SystemProcessorPerformanceInformation>();
         let data = malloc(len);
         let _ = NtQuerySystemInformation(
-            windows::Wdk::System::SystemInformation::SystemProcessorPerformanceInformation,
+            windows_sys::Wdk::System::SystemInformation::SystemProcessorPerformanceInformation,
             data,
             (n_cpu * size_of::<SystemProcessorPerformanceInformation>()) as u32,
             std::ptr::null_mut(),
