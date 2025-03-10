@@ -35,11 +35,6 @@ extern "C" {
     ) -> libc::c_int;
 }
 
-#[cfg(target_os = "macos")]
-fn todo() -> String {
-    "TODO".into()
-}
-
 fn format_memory(memory_b: u64, unit: u64) -> f64 {
     ByteSize::b(memory_b).0 as f64 / unit as f64
 }
@@ -55,6 +50,7 @@ pub fn get_nusers_systemd() -> uucore::error::UResult<usize> {
     use uucore::error::USimpleError;
     use uucore::libc::*;
 
+    // SAFETY: sd_booted to check if system is booted with systemd.
     unsafe {
         // systemd
         if sd_booted() > 0 {
@@ -210,25 +206,28 @@ fn cpu() -> String {
         interrupt_time: 0,
         interrupt_count: 0,
     };
+    // SAFETY: malloc is safe to use here. We free the memory after we are done with it. If action fails, all "time" will be 0.
     unsafe {
         let len = n_cpu * size_of::<SystemProcessorPerformanceInformation>();
         let data = malloc(len);
-        let _ = NtQuerySystemInformation(
+        let status = NtQuerySystemInformation(
             windows_sys::Wdk::System::SystemInformation::SystemProcessorPerformanceInformation,
             data,
             (n_cpu * size_of::<SystemProcessorPerformanceInformation>()) as u32,
             std::ptr::null_mut(),
         );
-        for i in 0..n_cpu {
-            let cpu = data.add(i * size_of::<SystemProcessorPerformanceInformation>())
-                as *const SystemProcessorPerformanceInformation;
-            let cpu = cpu.as_ref().unwrap();
-            cpu_load.idle_time += cpu.idle_time;
-            cpu_load.kernel_time += cpu.kernel_time;
-            cpu_load.user_time += cpu.user_time;
-            cpu_load.dpc_time += cpu.dpc_time;
-            cpu_load.interrupt_time += cpu.interrupt_time;
-            cpu_load.interrupt_count += cpu.interrupt_count;
+        if status == 0 {
+            for i in 0..n_cpu {
+                let cpu = data.add(i * size_of::<SystemProcessorPerformanceInformation>())
+                    as *const SystemProcessorPerformanceInformation;
+                let cpu = cpu.as_ref().unwrap();
+                cpu_load.idle_time += cpu.idle_time;
+                cpu_load.kernel_time += cpu.kernel_time;
+                cpu_load.user_time += cpu.user_time;
+                cpu_load.dpc_time += cpu.dpc_time;
+                cpu_load.interrupt_time += cpu.interrupt_time;
+                cpu_load.interrupt_count += cpu.interrupt_count;
+            }
         }
     }
     let total = cpu_load.idle_time
@@ -249,7 +248,7 @@ fn cpu() -> String {
 //TODO: Implement for macos
 #[cfg(target_os = "macos")]
 fn cpu() -> String {
-    todo()
+    "TODO".into()
 }
 
 fn memory(scale_summary_mem: Option<&String>) -> String {
