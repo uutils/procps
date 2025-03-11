@@ -15,6 +15,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - if: ${{ contains(matrix.os, 'ubuntu') }}
+        run: |
+          sudo apt-get update -y
+          sudo apt-get -yq --no-install-suggests --no-install-recommends install libsystemd-dev
       - run: cargo check
 
   test:
@@ -26,6 +30,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - if: ${{ contains(matrix.os, 'ubuntu') }}
+        run: |
+          sudo apt-get update -y
+          sudo apt-get -yq --no-install-suggests --no-install-recommends install libsystemd-dev
       - run: cargo test --all
 
   fmt:
@@ -71,6 +79,10 @@ jobs:
       uses: dtolnay/rust-toolchain@nightly
       with:
         components: llvm-tools-preview
+    - if: ${{ contains(matrix.job.os, 'ubuntu') }}
+      run: |
+        sudo apt-get update -y
+        sudo apt-get -yq --no-install-suggests --no-install-recommends install libsystemd-dev
     - name: Test
       run: cargo test --no-fail-fast
       env:
