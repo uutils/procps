@@ -389,6 +389,16 @@ fn test_signals_that_never_match() {
 
 #[test]
 #[cfg(target_os = "linux")]
+fn test_only_require_handler() {
+    new_ucmd!()
+        .arg("--require-handler")
+        .arg("--signal=0")
+        .arg("--inverse")
+        .succeeds();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
 fn test_does_not_match_pid() {
     let our_pid = std::process::id();
     new_ucmd!().arg(our_pid.to_string()).fails();

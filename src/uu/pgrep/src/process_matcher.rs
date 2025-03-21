@@ -115,6 +115,7 @@ pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
         && settings.gid.is_none()
         && settings.pgroup.is_none()
         && settings.session.is_none()
+        && !settings.require_handler
         && pattern.is_empty()
     {
         return Err(USimpleError::new(
@@ -138,14 +139,6 @@ pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
 
 pub fn find_matching_pids(settings: &Settings) -> Vec<ProcessInformation> {
     let mut pids = collect_matched_pids(settings);
-    #[cfg(unix)]
-    if settings.require_handler {
-        pids.retain(|pid| {
-            let mask =
-                u64::from_str_radix(pid.clone().status().get("SigCgt").unwrap(), 16).unwrap();
-            settings.signal > 0 && mask & (1 << (settings.signal - 1)) != 0
-        });
-    }
     if pids.is_empty() {
         uucore::error::set_exit_code(1);
         pids
@@ -247,6 +240,17 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
                 && any_matches(&settings.euid, pid.euid().unwrap())
                 && any_matches(&settings.gid, pid.gid().unwrap());
 
+            #[cfg(unix)]
+            let handler_matched = if settings.require_handler {
+                let mask =
+                    u64::from_str_radix(pid.clone().status().get("SigCgt").unwrap(), 16).unwrap();
+                settings.signal > 0 && mask & (1 << (settings.signal - 1)) != 0
+            } else {
+                true
+            };
+            #[cfg(not(unix))]
+            let handler_matched = true;
+
             if (run_state_matched
                 && pattern_matched
                 && tty_matched
@@ -254,7 +258,8 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
                 && parent_matched
                 && pgroup_matched
                 && session_matched
-                && ids_matched)
+                && ids_matched
+                && handler_matched)
                 ^ settings.inverse
             {
                 tmp_vec.push(pid);
