@@ -26,7 +26,7 @@ fn test_find_kthreadd() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_no_program() {
-    new_ucmd!().fails().code_is(1);
+    new_ucmd!().fails().code_is(1).no_output();
 }
 
 #[test]
