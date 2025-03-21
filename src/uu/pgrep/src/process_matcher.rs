@@ -143,7 +143,7 @@ pub fn find_matching_pids(settings: &Settings) -> Vec<ProcessInformation> {
         pids.retain(|pid| {
             let mask =
                 u64::from_str_radix(pid.clone().status().get("SigCgt").unwrap(), 16).unwrap();
-            mask & (1 << settings.signal) != 0
+            settings.signal > 0 && mask & (1 << (settings.signal - 1)) != 0
         });
     }
     if pids.is_empty() {
