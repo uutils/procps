@@ -140,10 +140,17 @@ pub fn find_matching_pids(settings: &Settings) -> Vec<ProcessInformation> {
     let mut pids = collect_matched_pids(settings);
     #[cfg(unix)]
     if settings.require_handler {
+        // Bits in SigCgt are off by one (ie. bit 0 represents signal 1, etc.)
+        let mask_to_test = if settings.signal == 0 {
+            // In original pgrep, testing for signal 0 seems to return results for signal 64 instead.
+            1 << (64 - 1)
+        } else {
+            1 << (settings.signal - 1)
+        };
         pids.retain(|pid| {
             let mask =
                 u64::from_str_radix(pid.clone().status().get("SigCgt").unwrap(), 16).unwrap();
-            mask & (1 << settings.signal) != 0
+            mask & mask_to_test != 0
         });
     }
     if pids.is_empty() {
