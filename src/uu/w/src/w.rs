@@ -11,7 +11,12 @@ use clap::{Arg, ArgAction, Command};
 use libc::{sysconf, _SC_CLK_TCK};
 use std::process;
 #[cfg(target_os = "linux")]
-use std::{collections::HashMap, fs, path::Path};
+use std::{
+    collections::HashMap,
+    fs,
+    path::Path,
+    time::{Duration, SystemTime},
+};
 #[cfg(target_os = "linux")]
 use uucore::utmpx::Utmpx;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
@@ -23,7 +28,7 @@ struct UserInfo {
     user: String,
     terminal: String,
     login_time: String,
-    idle_time: String,
+    idle_time: Duration, // for better compatiability with old-style outputs
     jcpu: String,
     pcpu: String,
     command: String,
@@ -84,6 +89,52 @@ fn fetch_pcpu_time(pid: i32) -> Result<f64, std::io::Error> {
 }
 
 #[cfg(target_os = "linux")]
+fn fetch_idle_time(tty: String) -> Result<Duration, std::io::Error> {
+    let path = Path::new("/dev/").join(tty);
+    let stat = fs::metadata(path)?;
+    if let Ok(time) = stat.accessed() {
+        Ok(SystemTime::now().duration_since(time).unwrap_or_default())
+    } else {
+        Ok(Duration::ZERO)
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn format_time_elapsed(
+    time: Duration,
+    old_style: bool,
+) -> Result<String, chrono::format::ParseError> {
+    let t = chrono::Duration::from_std(time).unwrap();
+    if t.num_days() >= 2 {
+        Ok(format!("{}days", t.num_days()))
+    } else if t.num_hours() >= 1 {
+        Ok(format!(
+            "{}:{:02}{}",
+            t.num_hours(),
+            t.num_minutes() % 60,
+            if old_style { "" } else { "m" }
+        ))
+    } else if t.num_minutes() >= 1 {
+        Ok(format!(
+            "{}:{:02}{}",
+            t.num_minutes() % 60,
+            t.num_seconds() % 60,
+            if old_style { "m" } else { "" }
+        ))
+    } else {
+        if old_style {
+            Ok(format!(""))
+        } else {
+            Ok(format!(
+                "{}.{:02}s",
+                t.num_seconds() % 60,
+                (t.num_milliseconds() % 1000) / 10
+            ))
+        }
+    }
+}
+
+#[cfg(target_os = "linux")]
 fn format_time(time: String) -> Result<String, chrono::format::ParseError> {
     let mut t: String = time;
     // Trim the seconds off of timezone offset, as chrono can't parse the time with it present
@@ -127,7 +178,7 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
                 user: entry.user(),
                 terminal: entry.tty_device(),
                 login_time: format_time(entry.login_time().to_string()).unwrap_or_default(),
-                idle_time: "TODO".into(), // Placeholder, needs actual implementation
+                idle_time: fetch_idle_time(entry.tty_device())?,
                 jcpu: format!("{:.2}", jcpu),
                 pcpu: fetch_pcpu_time(entry.pid()).unwrap_or_default().to_string(),
                 command: fetch_cmdline(entry.pid()).unwrap_or_default(),
@@ -150,6 +201,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     let no_header = matches.get_flag("no-header");
     let short = matches.get_flag("short");
+    let old_style = matches.get_flag("old-style");
 
     match fetch_user_info() {
         Ok(user_info) => {
@@ -167,7 +219,10 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 if short {
                     println!(
                         "{:<9}{:<9}{:<7}{:<}",
-                        user.user, user.terminal, user.idle_time, user.command
+                        user.user,
+                        user.terminal,
+                        format_time_elapsed(user.idle_time, old_style).unwrap_or_default(),
+                        user.command
                     );
                 } else {
                     println!(
@@ -175,7 +230,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                         user.user,
                         user.terminal,
                         user.login_time,
-                        user.idle_time,
+                        format_time_elapsed(user.idle_time, old_style).unwrap_or_default(),
                         user.jcpu,
                         user.pcpu,
                         user.command
