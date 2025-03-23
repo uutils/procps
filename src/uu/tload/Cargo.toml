@@ -1,0 +1,25 @@
+[package]
+name = "uu_tload"
+version = "0.0.1"
+edition = "2021"
+authors = ["uutils developers"]
+license = "MIT"
+description = "tload ~ (uutils) graphic representation of system load average"
+
+homepage = "https://github.com/uutils/procps"
+repository = "https://github.com/uutils/procps/tree/main/src/uu/tload"
+keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
+categories = ["command-line-utilities"]
+
+[dependencies]
+clap = { workspace = true }
+crossterm = { workspace = true }
+ratatui = { workspace = true }
+uucore = { workspace = true }
+
+[lib]
+path = "src/tload.rs"
+
+[[bin]]
+name = "tload"
+path = "src/main.rs"
