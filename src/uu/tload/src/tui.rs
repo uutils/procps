@@ -1,9 +1,7 @@
-use std::{thread, time};
-
 use ratatui::{
     layout::{Constraint, Direction, Layout},
     style::{Style, Stylize},
-    symbols,
+    symbols::Marker,
     text::{Line, Text},
     widgets::{Axis, Block, Borders, Chart, Dataset, GraphType, Paragraph, Widget},
 };
@@ -66,7 +64,10 @@ impl Widget for ModernTui<'_> {
                 .map(|(index, load)| (index as f64, load.last_1 as f64))
                 .collect::<Vec<_>>();
 
-            let data = Dataset::default().data(result);
+            let data = Dataset::default()
+                .graph_type(GraphType::Line)
+                .marker(Marker::Braille)
+                .data(result);
 
             let x_axis = {
                 let start = Line::from("0");
@@ -74,7 +75,7 @@ impl Widget for ModernTui<'_> {
                 let end = Line::from(area.width.to_string());
                 Axis::default()
                     .title("Time(per delay)")
-                    .bounds([0.0, 10.0])
+                    .bounds([0.0, area.width.into()])
                     .labels(vec![start, middle, end])
             };
             let y_axis = Axis::default().bounds([0.0, 10.0]).title("System Load");
