@@ -48,7 +48,7 @@ impl SystemLoadAvg {
     }
 
     #[cfg(not(target_os = "linux"))]
-    fn new() -> UResult<()> {
+    fn new() -> UResult<SystemLoadAvg> {
         Ok(SystemLoadAvg::default())
     }
 }
