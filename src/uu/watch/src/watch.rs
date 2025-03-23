@@ -118,6 +118,7 @@ pub fn uu_app() -> Command {
                 .long("interval")
                 .help("Seconds to wait between updates")
                 .default_value("2")
+                .env("WATCH_INTERVAL")
                 .value_name("SECONDS"),
         )
         .arg(
