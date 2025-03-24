@@ -60,3 +60,7 @@ mod test_pkill;
 #[cfg(feature = "sysctl")]
 #[path = "by-util/test_sysctl.rs"]
 mod test_sysctl;
+
+#[cfg(feature = "skill")]
+#[path = "by-util/test_skill.rs"]
+mod test_skill;

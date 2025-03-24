@@ -1,0 +1,25 @@
+[package]
+name = "uu_skill"
+version = "0.0.1"
+edition = "2021"
+authors = ["uutils developers"]
+license = "MIT"
+description = "skill ~ (uutils) Sends a signal to processes based on criteria"
+
+homepage = "https://github.com/uutils/procps"
+repository = "https://github.com/uutils/procps/tree/main/src/uu/skill"
+keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
+categories = ["command-line-utilities"]
+
+[dependencies]
+uucore = { workspace = true }
+clap = { workspace = true }
+nix = { workspace = true }
+
+
+[lib]
+path = "src/skill.rs"
+
+[[bin]]
+name = "skill"
+path = "src/main.rs"

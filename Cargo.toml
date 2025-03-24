@@ -40,6 +40,7 @@ feat_common_core = [
     "top",
     "w",
     "watch",
+    "skill",
 ]
 
 [workspace.dependencies]
@@ -90,6 +91,7 @@ sysctl = { optional = true, version = "0.0.1", package = "uu_sysctl", path = "sr
 top = { optional = true, version = "0.0.1", package = "uu_top", path = "src/uu/top" }
 w = { optional = true, version = "0.0.1", package = "uu_w", path = "src/uu/w" }
 watch = { optional = true, version = "0.0.1", package = "uu_watch", path = "src/uu/watch" }
+skill = { optional = true, version = "0.0.1", package = "uu_skill", path = "src/uu/skill" }
 
 [dev-dependencies]
 chrono = { workspace = true }
