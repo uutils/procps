@@ -3,20 +3,16 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use std::time::Duration;
+
 #[cfg(target_os = "linux")]
 use chrono::Datelike;
 use clap::crate_version;
 use clap::{Arg, ArgAction, Command};
 #[cfg(target_os = "linux")]
 use libc::{sysconf, _SC_CLK_TCK};
-use std::process;
 #[cfg(target_os = "linux")]
-use std::{
-    collections::HashMap,
-    fs,
-    path::Path,
-    time::{Duration, SystemTime},
-};
+use std::{collections::HashMap, fs, path::Path, process, time::SystemTime};
 #[cfg(target_os = "linux")]
 use uucore::utmpx::Utmpx;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
@@ -99,7 +95,11 @@ fn fetch_idle_time(tty: String) -> Result<Duration, std::io::Error> {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(not(target_os = "linux"))]
+fn fetch_idle_time(tty: String) -> Result<Duration, std::io::Error> {
+    Ok(Duration::ZERO)
+}
+
 fn format_time_elapsed(
     time: Duration,
     old_style: bool,
@@ -121,16 +121,14 @@ fn format_time_elapsed(
             t.num_seconds() % 60,
             if old_style { "m" } else { "" }
         ))
+    } else if old_style {
+        Ok(String::new())
     } else {
-        if old_style {
-            Ok(format!(""))
-        } else {
-            Ok(format!(
-                "{}.{:02}s",
-                t.num_seconds() % 60,
-                (t.num_milliseconds() % 1000) / 10
-            ))
-        }
+        Ok(format!(
+            "{}.{:02}s",
+            t.num_seconds() % 60,
+            (t.num_milliseconds() % 1000) / 10
+        ))
     }
 }
 
