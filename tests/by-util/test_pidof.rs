@@ -24,8 +24,9 @@ fn test_find_init() {
 
 #[test]
 #[cfg(target_os = "linux")]
-fn test_find_kthreadd() {
-    new_ucmd!().arg("kthreadd").succeeds();
+fn test_find_kthreadd_only_with_w_flag() {
+    new_ucmd!().arg("kthreadd").fails();
+    new_ucmd!().arg("-w").arg("kthreadd").succeeds();
 }
 
 #[test]
@@ -37,7 +38,12 @@ fn test_no_pid_found() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_quiet() {
-    new_ucmd!().arg("kthreadd").arg("-q").succeeds().no_output();
+    new_ucmd!()
+        .arg("kthreadd")
+        .arg("-q")
+        .arg("-w")
+        .succeeds()
+        .no_output();
 }
 
 #[test]
@@ -45,7 +51,7 @@ fn test_quiet() {
 fn test_single_shot() {
     for arg in ["-s", "--single-shot"] {
         let binding = new_ucmd!()
-            .args(&[arg, "kthreadd", "kthreadd", "kthreadd"])
+            .args(&[arg, "-w", "kthreadd", "kthreadd", "kthreadd"])
             .succeeds();
         let output = binding.stdout_str().trim_end();
 
@@ -63,7 +69,7 @@ fn test_single_shot() {
 #[cfg(target_os = "linux")]
 fn test_omit_pid() {
     for arg in ["-o=1000", "--omit-pid=1000"] {
-        new_ucmd!().arg(arg).arg("kthreadd").succeeds();
+        new_ucmd!().arg(arg).arg("-w").arg("kthreadd").succeeds();
     }
 }
 
@@ -76,7 +82,7 @@ fn test_separator() {
 
     for arg in ["-S", "-d", "--separator"] {
         new_ucmd!()
-            .args(&[arg, "separator", "kthreadd", "kthreadd"])
+            .args(&[arg, "separator", "-w", "kthreadd", "kthreadd"])
             .succeeds()
             .stdout_matches(re);
     }

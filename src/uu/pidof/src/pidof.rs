@@ -45,20 +45,22 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     Ok(())
 }
 
-fn get_executable_name(process: &mut ProcessInformation) -> String {
+fn match_process_name(
+    process: &mut ProcessInformation,
+    name_to_match: &str,
+    with_workers: bool,
+) -> bool {
     let binding = process.cmdline.split(' ').collect::<Vec<_>>();
     let mut path = binding.first().unwrap().to_string();
 
     if path.is_empty() {
+        if !with_workers {
+            return false;
+        }
         path.clone_from(&process.status()["Name"]);
     };
 
-    PathBuf::from(path)
-        .file_name()
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_string()
+    PathBuf::from(path).file_name().unwrap().to_str().unwrap() == name_to_match
 }
 
 fn collect_matched_pids(matches: &ArgMatches) -> Vec<usize> {
@@ -67,6 +69,7 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<usize> {
         .unwrap()
         .cloned()
         .collect();
+    let with_workers = matches.get_flag("with-workers");
 
     let collected = walk_process().collect::<Vec<_>>();
     let arg_omit_pid = matches
@@ -80,7 +83,7 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<usize> {
         .flat_map(|program| {
             let mut processed = Vec::new();
             for mut process in collected.clone() {
-                let contains = program == get_executable_name(&mut process);
+                let contains = match_process_name(&mut process, &program, with_workers);
                 let should_omit = arg_omit_pid.contains(&process.pid);
 
                 if contains && !should_omit {
@@ -172,6 +175,13 @@ pub fn uu_app() -> Command {
                 .short('t')
                 .long("lightweight")
                 .help("Show thread ids instead of process ids")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("with-workers")
+                .short('w')
+                .long("with-workers")
+                .help("Show kernel worker threads as well")
                 .action(ArgAction::SetTrue),
         )
     // .arg(
