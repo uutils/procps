@@ -189,7 +189,7 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
 
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
-    Ok(Vec::new())process, 
+    Ok(Vec::new())
 }
 
 #[uucore::main]
