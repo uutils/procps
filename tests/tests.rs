@@ -60,3 +60,7 @@ mod test_pkill;
 #[cfg(feature = "sysctl")]
 #[path = "by-util/test_sysctl.rs"]
 mod test_sysctl;
+
+#[cfg(feature = "tload")]
+#[path = "by-util/test_tload.rs"]
+mod test_tload;
