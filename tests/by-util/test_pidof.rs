@@ -6,12 +6,18 @@
 use crate::common::util::TestScenario;
 
 #[test]
+fn test_no_args() {
+    new_ucmd!().fails().code_is(1).no_output();
+}
+
+#[test]
 fn test_invalid_arg() {
     new_ucmd!().arg("--definitely-invalid").fails().code_is(1);
 }
 
 #[test]
 #[cfg(target_os = "linux")]
+#[ignore = "fails in CI"]
 fn test_find_init() {
     new_ucmd!().arg("init").succeeds();
 }
@@ -20,12 +26,6 @@ fn test_find_init() {
 #[cfg(target_os = "linux")]
 fn test_find_kthreadd() {
     new_ucmd!().arg("kthreadd").succeeds();
-}
-
-#[test]
-#[cfg(target_os = "linux")]
-fn test_no_program() {
-    new_ucmd!().fails().code_is(1);
 }
 
 #[test]

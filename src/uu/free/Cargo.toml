@@ -11,13 +11,13 @@ repository = "https://github.com/uutils/procps/tree/main/src/uu/free"
 keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
 categories = ["command-line-utilities"]
 
-
 [dependencies]
-uucore = { workspace = true }
-clap = { workspace = true }
 bytesize = { workspace = true }
-
+clap = { workspace = true }
 sysinfo = { workspace = true }
+uucore = { workspace = true }
+
+[target.'cfg(target_os="windows")'.dependencies]
 windows = { workspace = true, features = ["Wdk_System_SystemInformation", "Win32_System_ProcessStatus", "Win32_System_SystemInformation"] }
 
 [lib]
