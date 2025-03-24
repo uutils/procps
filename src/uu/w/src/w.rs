@@ -3,8 +3,6 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use std::time::Duration;
-
 #[cfg(target_os = "linux")]
 use chrono::Datelike;
 use clap::crate_version;
@@ -12,7 +10,8 @@ use clap::{Arg, ArgAction, Command};
 #[cfg(target_os = "linux")]
 use libc::{sysconf, _SC_CLK_TCK};
 #[cfg(target_os = "linux")]
-use std::{collections::HashMap, fs, path::Path, process, time::SystemTime};
+use std::{collections::HashMap, fs, path::Path, time::SystemTime};
+use std::{process, time::Duration};
 #[cfg(target_os = "linux")]
 use uucore::utmpx::Utmpx;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
@@ -96,7 +95,7 @@ fn fetch_idle_time(tty: String) -> Result<Duration, std::io::Error> {
 }
 
 #[cfg(not(target_os = "linux"))]
-fn fetch_idle_time(tty: String) -> Result<Duration, std::io::Error> {
+fn fetch_idle_time(_tty: String) -> Result<Duration, std::io::Error> {
     Ok(Duration::ZERO)
 }
 
@@ -190,7 +189,7 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
 
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
-    Ok(Vec::new())
+    Ok(Vec::new())process, 
 }
 
 #[uucore::main]
