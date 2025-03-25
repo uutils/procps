@@ -95,7 +95,7 @@ fn fetch_idle_time(tty: String) -> Result<Duration, std::io::Error> {
 }
 
 #[cfg(not(target_os = "linux"))]
-fn fetch_idle_time(_tty: String) -> Result<Duration, std::io::Error> {
+fn _fetch_idle_time(_tty: String) -> Result<Duration, std::io::Error> {
     Ok(Duration::ZERO)
 }
 
@@ -312,9 +312,10 @@ pub fn uu_app() -> Command {
 #[cfg(target_os = "linux")]
 mod tests {
     use crate::{
-        fetch_cmdline, fetch_pcpu_time, fetch_terminal_number, format_time, get_clock_tick,
+        fetch_cmdline, fetch_pcpu_time, fetch_terminal_number, format_time, format_time_elapsed,
+        get_clock_tick,
     };
-    use std::{fs, path::Path, process};
+    use std::{fs, path::Path, process, time::Duration};
 
     #[test]
     fn test_format_time() {
@@ -333,6 +334,15 @@ mod tests {
             format_time(pre_formatted).unwrap(),
             td.format("%a%d").to_string()
         )
+    }
+
+    #[test]
+    fn test_format_time_elapsed() {
+        let td = Duration::new(60 * 60 * 18 + 60 * 18, 0);
+        assert_eq!(
+            format_time_elapsed(td, false).unwrap(),
+            String::from("18:18m")
+        );
     }
 
     #[test]
