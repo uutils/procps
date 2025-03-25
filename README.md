@@ -36,8 +36,7 @@ TODO:
 Elsewhere:
 
  * `kill` is already implemented in https://github.com/uutils/coreutils
- * `uptime`: Shows how long the system has been running, including load average.
-   is already implemented in https://github.com/uutils/coreutils
+ * `uptime`: Shows how long the system has been running, including load average. It is already implemented in https://github.com/uutils/coreutils
 
 ## Installation
 
