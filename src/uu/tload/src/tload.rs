@@ -95,25 +95,25 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
         let mut data = cloned_data.write().unwrap();
         if data.iter().len() >= 10240 {
-            // Keep this VecDeque small than 10240
+            // Keep this VecDeque smaller than 10240
             data.pop_front();
         }
         data.push_back(SystemLoadAvg::new().unwrap());
     });
 
     loop {
-        // Now only accept `Ctrl+C` for compatible with GNU implementation
+        // Now only accept `Ctrl+C` for compatibility with the original implementation
         //
         // Use `event::poll` for non-blocking event reading
         if let Ok(true) = event::poll(Duration::from_millis(10)) {
-            // If event avaliable, break this loop
+            // If event available, break this loop
             if let Ok(event::Event::Key(KeyEvent {
                 code: KeyCode::Char('c'),
                 modifiers: KeyModifiers::CONTROL,
                 ..
             })) = event::read()
             {
-                // GNU compatible
+                // compatibility with the original implementation
                 uucore::error::set_exit_code(130);
                 break;
             }
@@ -146,7 +146,6 @@ pub fn uu_app() -> Command {
         .about(ABOUT)
         .override_usage(format_usage(USAGE))
         .infer_long_args(true)
-        .disable_help_flag(true)
         .args([
             arg!(-d --delay     <secs>  "update delay in seconds")
                 .value_parser(value_parser!(u64))
