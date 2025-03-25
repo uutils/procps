@@ -32,7 +32,7 @@ impl SystemLoadAvg {
         use uucore::error::USimpleError;
 
         let result = fs::read_to_string("/proc/loadavg")?;
-        let splited = result.split(" ").collect::<Vec<_>>();
+        let split = result.split(" ").collect::<Vec<_>>();
 
         // Helper function to keep code clean
         fn f(s: &str) -> UResult<f32> {
@@ -41,9 +41,9 @@ impl SystemLoadAvg {
         }
 
         Ok(SystemLoadAvg {
-            last_1: f(splited[0])?,
-            last_5: f(splited[1])?,
-            last_10: f(splited[2])?,
+            last_1: f(split[0])?,
+            last_5: f(split[1])?,
+            last_10: f(split[2])?,
         })
     }
 
@@ -56,7 +56,7 @@ impl SystemLoadAvg {
 #[allow(unused)]
 #[derive(Debug)]
 struct Settings {
-    delay: u64,   // Not used
+    delay: u64,
     scale: usize, // Not used
 
     is_modern: bool, // For modern display
