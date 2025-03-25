@@ -52,7 +52,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         }
 
         if matches.get_flag(options::EXTENDED) {
-            output_extended_format(pid).map_err(|_| set_exit_code(1)).ok();
+            output_extended_format(pid)
+                .map_err(|_| set_exit_code(1))
+                .ok();
         } else if matches.get_flag(options::DEVICE) {
             output_device_format(pid).map_err(|_| set_exit_code(1)).ok();
         } else {

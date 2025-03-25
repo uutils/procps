@@ -66,7 +66,8 @@ pub fn parse_smap_entries(contents: &str) -> Result<Vec<SmapEntry>, Error> {
                 }
                 "THPeligible" => smap_entry.thp_eligible = get_smap_item_value(val)?,
                 _ => {
-                    let val = val.strip_suffix(" kB")
+                    let val = val
+                        .strip_suffix(" kB")
                         .ok_or_else(|| Error::from(ErrorKind::InvalidData))?;
                     let val = get_smap_item_value(val)?;
                     match key {
@@ -90,7 +91,7 @@ pub fn parse_smap_entries(contents: &str) -> Result<Vec<SmapEntry>, Error> {
                         "Swap" => smap_entry.swap_in_kb = val,
                         "SwapPss" => smap_entry.swap_pss_in_kb = val,
                         "Locked" => smap_entry.locked_in_kb = val,
-                        _ => ()
+                        _ => (),
                     }
                 }
             }
@@ -105,8 +106,7 @@ pub fn parse_smap_entries(contents: &str) -> Result<Vec<SmapEntry>, Error> {
 }
 
 fn get_smap_item_value(val: &str) -> Result<u64, Error> {
-    u64::from_str_radix(val, 10)
-        .map_err(|_| Error::from(ErrorKind::InvalidData))
+    u64::from_str_radix(val, 10).map_err(|_| Error::from(ErrorKind::InvalidData))
 }
 
 #[cfg(test)]
