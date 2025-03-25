@@ -141,7 +141,7 @@ fn assert_format(pid: u32, s: &str) {
 // 00007ffd588fc000     132       3      13 rw---   [ stack ]
 // ffffffffff600000       4       0       1 --x--   [ anon ]
 // ...
-// ---------------- ------- ------- ------- 
+// ---------------- ------- ------- ------- (one intentional trailing space)
 // total kB             144       7      14
 #[cfg(target_os = "linux")]
 fn assert_extended_format(pid: u32, s: &str) {
