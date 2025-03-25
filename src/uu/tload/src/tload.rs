@@ -37,7 +37,7 @@ impl SystemLoadAvg {
         // Helper function to keep code clean
         fn f(s: &str) -> UResult<f32> {
             s.parse::<f32>()
-                .map_err(|e| USimpleError::new(-1, e.to_string()))
+                .map_err(|e| USimpleError::new(1, e.to_string()))
         }
 
         Ok(SystemLoadAvg {
@@ -113,6 +113,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 ..
             })) = event::read()
             {
+                // GNU compatible
+                uucore::error::set_exit_code(130);
                 break;
             }
         }
