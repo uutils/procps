@@ -64,14 +64,10 @@ mod linux {
         var_or_assignment: &str,
         quiet: bool,
     ) -> Result<Option<(String, String)>, Box<UIoError>> {
-        let mut splitted = var_or_assignment.splitn(2, '=');
-        let var = normalize_var(
-            splitted
-                .next()
-                .expect("Split always returns at least 1 value"),
-        );
+        let mut split = var_or_assignment.splitn(2, '=');
+        let var = normalize_var(split.next().expect("Split always returns at least 1 value"));
 
-        if let Some(value_to_set) = splitted.next() {
+        if let Some(value_to_set) = split.next() {
             set_sysctl(&var, value_to_set)
                 .map_err(|e| e.map_err_context(|| format!("error writing key '{}'", var)))?;
             if quiet {
