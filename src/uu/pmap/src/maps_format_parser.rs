@@ -87,7 +87,9 @@ pub fn parse_map_line(line: &str) -> Result<MapLine, Error> {
     let (inode, mapping) = rest
         .split_once(' ')
         .ok_or_else(|| Error::from(ErrorKind::InvalidData))?;
-    let inode = u64::from_str_radix(inode, 10).map_err(|_| Error::from(ErrorKind::InvalidData))?;
+    let inode = inode
+        .parse::<u64>()
+        .map_err(|_| Error::from(ErrorKind::InvalidData))?;
     let mapping = mapping.trim_ascii_start();
     let mapping = parse_mapping(mapping);
 

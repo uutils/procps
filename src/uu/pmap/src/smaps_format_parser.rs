@@ -43,7 +43,7 @@ pub struct SmapEntry {
 // Will return an `Error` if the format is incorrect.
 pub fn parse_smap_entries(contents: &str) -> Result<Vec<SmapEntry>, Error> {
     let mut smap_entries = Vec::new();
-    let mut smap_entry: SmapEntry = Default::default();
+    let mut smap_entry = SmapEntry::default();
     let mut is_entry_moified = false;
 
     for line in contents.lines() {
@@ -61,7 +61,7 @@ pub fn parse_smap_entries(contents: &str) -> Result<Vec<SmapEntry>, Error> {
                 "VmFlags" => {
                     smap_entry.vmflags = val.into();
                     smap_entries.push(smap_entry.clone());
-                    smap_entry = Default::default();
+                    smap_entry = SmapEntry::default();
                     is_entry_moified = false;
                 }
                 "THPeligible" => smap_entry.thp_eligible = get_smap_item_value(val)?,
@@ -106,7 +106,8 @@ pub fn parse_smap_entries(contents: &str) -> Result<Vec<SmapEntry>, Error> {
 }
 
 fn get_smap_item_value(val: &str) -> Result<u64, Error> {
-    u64::from_str_radix(val, 10).map_err(|_| Error::from(ErrorKind::InvalidData))
+    val.parse::<u64>()
+        .map_err(|_| Error::from(ErrorKind::InvalidData))
 }
 
 #[cfg(test)]
