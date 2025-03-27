@@ -25,6 +25,10 @@ mod test_watch;
 #[path = "by-util/test_pmap.rs"]
 mod test_pmap;
 
+#[cfg(feature = "skill")]
+#[path = "by-util/test_skill.rs"]
+mod test_skill;
+
 #[cfg(feature = "slabtop")]
 #[path = "by-util/test_slabtop.rs"]
 mod test_slabtop;
@@ -61,6 +65,6 @@ mod test_pkill;
 #[path = "by-util/test_sysctl.rs"]
 mod test_sysctl;
 
-#[cfg(feature = "skill")]
-#[path = "by-util/test_skill.rs"]
-mod test_skill;
+#[cfg(feature = "tload")]
+#[path = "by-util/test_tload.rs"]
+mod test_tload;
