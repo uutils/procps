@@ -10,7 +10,6 @@ use std::io::{Error, ErrorKind};
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct SmapEntry {
     pub map_line: MapLine,
-    pub size_in_kb: u64,
     pub kernel_page_size_in_kb: u64,
     pub mmu_page_size_in_kb: u64,
     pub rss_in_kb: u64,
@@ -46,13 +45,15 @@ pub struct SmapEntry {
 pub fn parse_smap_entries(contents: &str) -> Result<Vec<SmapEntry>, Error> {
     let mut smap_entries = Vec::new();
     let mut smap_entry = SmapEntry::default();
-    let mut is_entry_modified = false;
 
-    for line in contents.lines() {
+    for (i, line) in contents.lines().enumerate() {
         let map_line = parse_map_line(line);
         if let Ok(map_line) = map_line {
+            if i > 0 {
+                smap_entries.push(smap_entry.clone());
+                smap_entry = SmapEntry::default();
+            }
             smap_entry.map_line = map_line;
-            is_entry_modified = true;
         } else {
             let (key, val) = line
                 .split_once(':')
@@ -60,12 +61,7 @@ pub fn parse_smap_entries(contents: &str) -> Result<Vec<SmapEntry>, Error> {
             let val = val.trim();
 
             match key {
-                "VmFlags" => {
-                    smap_entry.vmflags = val.into();
-                    smap_entries.push(smap_entry.clone());
-                    smap_entry = SmapEntry::default();
-                    is_entry_modified = false;
-                }
+                "VmFlags" => smap_entry.vmflags = val.into(),
                 "THPeligible" => smap_entry.thp_eligible = get_smap_item_value(val)?,
                 _ => {
                     let val = val
@@ -73,7 +69,11 @@ pub fn parse_smap_entries(contents: &str) -> Result<Vec<SmapEntry>, Error> {
                         .ok_or_else(|| Error::from(ErrorKind::InvalidData))?;
                     let val = get_smap_item_value(val)?;
                     match key {
-                        "Size" => smap_entry.size_in_kb = val,
+                        "Size" => {
+                            if smap_entry.map_line.size_in_kb != val {
+                                return Err(Error::from(ErrorKind::InvalidData));
+                            }
+                        }
                         "KernelPageSize" => smap_entry.kernel_page_size_in_kb = val,
                         "MMUPageSize" => smap_entry.mmu_page_size_in_kb = val,
                         "Rss" => smap_entry.rss_in_kb = val,
@@ -102,7 +102,7 @@ pub fn parse_smap_entries(contents: &str) -> Result<Vec<SmapEntry>, Error> {
         }
     }
 
-    if is_entry_modified {
+    if !contents.is_empty() {
         smap_entries.push(smap_entry);
     }
 
@@ -161,7 +161,6 @@ mod test {
                 inode,
                 mapping: mapping.to_string(),
             },
-            size_in_kb,
             kernel_page_size_in_kb,
             mmu_page_size_in_kb,
             rss_in_kb,
@@ -452,6 +451,74 @@ mod test {
                     "Locked:                0 kB\n",
                     "THPeligible:            0\n",
                     "VmFlags: rd wr mr mw me ac sd\n",
+                    "71af6cf0c000-71af6d286000 rw-s 00000000 00:01 256481                     /memfd:wayland-shm (deleted)\n",
+                    "Size:               3560 kB\n",
+                    "KernelPageSize:        4 kB\n",
+                    "MMUPageSize:           4 kB\n",
+                    "Rss:                 532 kB\n",
+                    "Pss:                 108 kB\n",
+                    "Pss_Dirty:             0 kB\n",
+                    "Shared_Clean:        524 kB\n",
+                    "Shared_Dirty:          0 kB\n",
+                    "Private_Clean:         8 kB\n",
+                    "Private_Dirty:         0 kB\n",
+                    "Referenced:          532 kB\n",
+                    "Anonymous:             0 kB\n",
+                    "KSM:                   0 kB\n",
+                    "LazyFree:              0 kB\n",
+                    "AnonHugePages:         0 kB\n",
+                    "ShmemPmdMapped:        0 kB\n",
+                    "FilePmdMapped:         0 kB\n",
+                    "Shared_Hugetlb:        0 kB\n",
+                    "Private_Hugetlb:       0 kB\n",
+                    "Swap:                  0 kB\n",
+                    "SwapPss:               0 kB\n",
+                    "Locked:                0 kB\n",
+                    "THPeligible:            0\n",
+                    "VmFlags: rd mr mw me sd \n")
+            ),
+            (
+                vec![
+                    create_smap_entry(
+                        "000071af8c9e6000", Perms::from("rw-s"), "0000000105830000", "000:00010", 1075, "  [ anon ]",
+                        16, 4, 4, 16, 16, 16, 0, 0, 0, 16, 16, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, "rd wr mr mw me ac sd"),
+                    create_smap_entry(
+                        "0000560880413000", Perms::from("r--p"), "0000000000000000", "008:00008", 10813151, "konsole",
+                        180, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, ""),
+                    create_smap_entry(
+                        "000071af6cf0c000", Perms::from("rw-s"), "0000000000000000", "000:00001", 256481, "memfd:wayland-shm (deleted)",
+                        3560, 4, 4, 532, 108, 0, 524, 0, 8, 0, 532, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, "rd mr mw me sd"),
+                ],
+                concat!(
+                    "71af8c9e6000-71af8c9ea000 rw-s 105830000 00:10 1075                      anon_inode:i915.gem\n",
+                    "Size:                 16 kB\n",
+                    "KernelPageSize:        4 kB\n",
+                    "MMUPageSize:           4 kB\n",
+                    "Rss:                  16 kB\n",
+                    "Pss:                  16 kB\n",
+                    "Pss_Dirty:            16 kB\n",
+                    "Shared_Clean:          0 kB\n",
+                    "Shared_Dirty:          0 kB\n",
+                    "Private_Clean:         0 kB\n",
+                    "Private_Dirty:        16 kB\n",
+                    "Referenced:           16 kB\n",
+                    "Anonymous:            16 kB\n",
+                    "KSM:                   0 kB\n",
+                    "LazyFree:              0 kB\n",
+                    "AnonHugePages:         0 kB\n",
+                    "ShmemPmdMapped:        0 kB\n",
+                    "FilePmdMapped:         0 kB\n",
+                    "Shared_Hugetlb:        0 kB\n",
+                    "Private_Hugetlb:       0 kB\n",
+                    "Swap:                  0 kB\n",
+                    "SwapPss:               0 kB\n",
+                    "Locked:                0 kB\n",
+                    "THPeligible:            0\n",
+                    "VmFlags: rd wr mr mw me ac sd\n",
+                    "560880413000-560880440000 r--p 00000000 08:08 10813151                   /usr/bin/konsole\n",
                     "71af6cf0c000-71af6d286000 rw-s 00000000 00:01 256481                     /memfd:wayland-shm (deleted)\n",
                     "Size:               3560 kB\n",
                     "KernelPageSize:        4 kB\n",
