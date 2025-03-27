@@ -23,7 +23,7 @@ struct UserInfo {
     user: String,
     terminal: String,
     login_time: String,
-    idle_time: Duration, // for better compatiability with old-style outputs
+    idle_time: Duration, // for better compatibility with old-style outputs
     jcpu: String,
     pcpu: String,
     command: String,
@@ -99,11 +99,8 @@ fn _fetch_idle_time(_tty: String) -> Result<Duration, std::io::Error> {
     Ok(Duration::ZERO)
 }
 
-fn format_time_elapsed(
-    time: Duration,
-    old_style: bool,
-) -> Result<String, chrono::format::ParseError> {
-    let t = chrono::Duration::from_std(time).unwrap();
+fn format_time_elapsed(time: Duration, old_style: bool) -> Result<String, chrono::OutOfRangeError> {
+    let t = chrono::Duration::from_std(time)?;
     if t.num_days() >= 2 {
         Ok(format!("{}days", t.num_days()))
     } else if t.num_hours() >= 1 {
@@ -342,6 +339,10 @@ mod tests {
         assert_eq!(
             format_time_elapsed(td, false).unwrap(),
             String::from("18:18m")
+        );
+        assert_eq!(
+            format_time_elapsed(td, true).unwrap(),
+            String::from("18:18")
         );
     }
 
