@@ -1,19 +1,19 @@
+// This file is part of the uutils procps package.
+//
+// For the full copyright and license information, please view the LICENSE
+// file that was distributed with this source code.
+
 mod command;
 mod util;
 
-use crate::command::Cli;
-use crate::command::SIGNALS;
-use clap::Arg;
-use clap::ArgAction;
-use clap::{crate_version, Command};
-use command::parse_command;
-use command::Expr;
-use nix::sys::signal;
-use nix::sys::signal::Signal;
-use nix::unistd::Pid;
-use uucore::error::UResult;
-use uucore::format_usage;
-use uucore::{help_about, help_usage};
+use crate::command::{parse_command, Cli, Expr};
+use clap::{crate_version, Arg, ArgAction, Command};
+use nix::{
+    sys::signal::{self, Signal},
+    unistd::Pid,
+};
+use uucore::signals::ALL_SIGNALS;
+use uucore::{error::UResult, format_usage, help_about, help_usage};
 
 const ABOUT: &str = help_about!("skill.md");
 const USAGE: &str = help_usage!("skill.md");
@@ -37,6 +37,7 @@ pub fn uumain(mut args: impl uucore::Args) -> UResult<()> {
 
     let signal = parse_signal_str(&cli.signal);
 
+    // parse the expression if not specify its type
     parse_expression(&mut cli);
 
     let matching_pids = find_matching_pids(&cli.expression);
@@ -48,7 +49,7 @@ pub fn uumain(mut args: impl uucore::Args) -> UResult<()> {
 
     if cli.verbose || cli.no_action {
         for pid in &matching_pids {
-            println!("Would send signal {} to process {}", &cli.signal.as_str()[1..], pid);
+            println!("Would send signal {} to process {}", &cli.signal, pid);
         }
         if cli.no_action {
             return Ok(());
@@ -162,9 +163,9 @@ fn confirm_action(tty: &str, owner: &str, pid: i32, cmd: &str) -> bool {
 
 fn list_signals(cli: &Cli) {
     if cli.list {
-        for signal in SIGNALS.iter() {
+        for signal in ALL_SIGNALS[1..].iter() {
             print!("{} ", signal);
-            if signal == SIGNALS.last().unwrap() {
+            if signal == ALL_SIGNALS.last().unwrap() {
                 println!();
             }
         }
@@ -173,7 +174,7 @@ fn list_signals(cli: &Cli) {
         let mut signal_num = 1;
 
         // Group signals into rows of 7
-        for chunk in SIGNALS.chunks(SIGNALS_PER_ROW) {
+        for chunk in ALL_SIGNALS[1..].chunks(SIGNALS_PER_ROW) {
             let mut row = String::new();
             // Format each signal with number in the row
             for signal in chunk.iter() {
@@ -191,37 +192,37 @@ fn list_signals(cli: &Cli) {
 
 fn parse_signal_str(signal: &str) -> Signal {
     match signal {
-        "-HUP" => Signal::SIGHUP,
-        "-INT" => Signal::SIGINT,
-        "-QUIT" => Signal::SIGQUIT,
-        "-ILL" => Signal::SIGILL,
-        "-TRAP" => Signal::SIGTRAP,
-        "-ABRT" => Signal::SIGABRT,
-        "-BUS" => Signal::SIGBUS,
-        "-FPE" => Signal::SIGFPE,
-        "-KILL" => Signal::SIGKILL,
-        "-USR1" => Signal::SIGUSR1,
-        "-SEGV" => Signal::SIGSEGV,
-        "-USR2" => Signal::SIGUSR2,
-        "-PIPE" => Signal::SIGPIPE,
-        "-ALRM" => Signal::SIGALRM,
-        "-TERM" => Signal::SIGTERM,
-        "-STKFLT" => Signal::SIGSTKFLT,
-        "-CHLD" => Signal::SIGCHLD,
-        "-CONT" => Signal::SIGCONT,
-        "-STOP" => Signal::SIGSTOP,
-        "-TSTP" => Signal::SIGTSTP,
-        "-TTIN" => Signal::SIGTTIN,
-        "-TTOU" => Signal::SIGTTOU,
-        "-URG" => Signal::SIGURG,
-        "-XCPU" => Signal::SIGXCPU,
-        "-XFSZ" => Signal::SIGXFSZ,
-        "-VTALRM" => Signal::SIGVTALRM,
-        "-PROF" => Signal::SIGPROF,
-        "-WINCH" => Signal::SIGWINCH,
-        "-POLL" => Signal::SIGIO,
-        "-PWR" => Signal::SIGPWR,
-        "-SYS" => Signal::SIGSYS,
+        "HUP" => Signal::SIGHUP,
+        "INT" => Signal::SIGINT,
+        "QUIT" => Signal::SIGQUIT,
+        "ILL" => Signal::SIGILL,
+        "TRAP" => Signal::SIGTRAP,
+        "ABRT" => Signal::SIGABRT,
+        "BUS" => Signal::SIGBUS,
+        "FPE" => Signal::SIGFPE,
+        "KILL" => Signal::SIGKILL,
+        "USR1" => Signal::SIGUSR1,
+        "SEGV" => Signal::SIGSEGV,
+        "USR2" => Signal::SIGUSR2,
+        "PIPE" => Signal::SIGPIPE,
+        "ALRM" => Signal::SIGALRM,
+        "TERM" => Signal::SIGTERM,
+        "STKFLT" => Signal::SIGSTKFLT,
+        "CHLD" => Signal::SIGCHLD,
+        "CONT" => Signal::SIGCONT,
+        "STOP" => Signal::SIGSTOP,
+        "TSTP" => Signal::SIGTSTP,
+        "TTIN" => Signal::SIGTTIN,
+        "TTOU" => Signal::SIGTTOU,
+        "URG" => Signal::SIGURG,
+        "XCPU" => Signal::SIGXCPU,
+        "XFSZ" => Signal::SIGXFSZ,
+        "VTALRM" => Signal::SIGVTALRM,
+        "PROF" => Signal::SIGPROF,
+        "WINCH" => Signal::SIGWINCH,
+        "POLL" => Signal::SIGIO,
+        "PWR" => Signal::SIGPWR,
+        "SYS" => Signal::SIGSYS,
         _ => panic!("Unknown signal: {}", signal),
     }
 }

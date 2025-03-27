@@ -33,6 +33,7 @@ feat_common_core = [
     "pmap",
     "ps",
     "pwdx",
+    "skill",
     "slabtop",
     "snice",
     "pkill",
@@ -40,7 +41,6 @@ feat_common_core = [
     "top",
     "w",
     "watch",
-    "skill",
 ]
 
 [workspace.dependencies]
@@ -84,6 +84,7 @@ pidwait = { optional = true, version = "0.0.1", package = "uu_pidwait", path = "
 pmap = { optional = true, version = "0.0.1", package = "uu_pmap", path = "src/uu/pmap" }
 ps = { optional = true, version = "0.0.1", package = "uu_ps", path = "src/uu/ps" }
 pwdx = { optional = true, version = "0.0.1", package = "uu_pwdx", path = "src/uu/pwdx" }
+skill = { optional = true, version = "0.0.1", package = "uu_skill", path = "src/uu/skill" }
 slabtop = { optional = true, version = "0.0.1", package = "uu_slabtop", path = "src/uu/slabtop" }
 snice = { optional = true, version = "0.0.1", package = "uu_snice", path = "src/uu/snice" }
 pkill = { optional = true, version = "0.0.1", package = "uu_pkill", path = "src/uu/pkill" }
@@ -91,7 +92,6 @@ sysctl = { optional = true, version = "0.0.1", package = "uu_sysctl", path = "sr
 top = { optional = true, version = "0.0.1", package = "uu_top", path = "src/uu/top" }
 w = { optional = true, version = "0.0.1", package = "uu_w", path = "src/uu/w" }
 watch = { optional = true, version = "0.0.1", package = "uu_watch", path = "src/uu/watch" }
-skill = { optional = true, version = "0.0.1", package = "uu_skill", path = "src/uu/skill" }
 
 [dev-dependencies]
 chrono = { workspace = true }

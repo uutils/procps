@@ -12,10 +12,9 @@ keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
 categories = ["command-line-utilities"]
 
 [dependencies]
-uucore = { workspace = true }
+uucore = { workspace = true , features = ["signals"]}
 clap = { workspace = true }
 nix = { workspace = true }
-
 
 [lib]
 path = "src/skill.rs"

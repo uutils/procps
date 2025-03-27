@@ -9,6 +9,15 @@ fn test_missing_expression() {
   <expression>...",
     );
 }
+#[cfg(target_os = "linux")]
+#[test]
+fn test_default_signal() {
+    new_ucmd!()
+        .arg("-nv")
+        .arg("1234")
+        .succeeds()
+        .stdout_contains("Would send signal TERM to process 1234");
+}
 
 #[cfg(target_os = "linux")]
 #[test]
@@ -51,15 +60,51 @@ fn test_list_option() {
         .no_stderr()
         .stdout_contains("HUP INT QUIT ILL TRAP ABRT BUS FPE KILL USR1 SEGV USR2 PIPE ALRM TERM STKFLT CHLD CONT STOP TSTP TTIN TTOU URG XCPU XFSZ VTALRM PROF WINCH POLL PWR SYS");
 }
+
+#[cfg(target_os = "linux")]
+#[test]
+fn test_list_option_long() {
+    new_ucmd!()
+        .arg("--list")
+        .succeeds()
+        .no_stderr()
+        .stdout_contains("HUP INT QUIT ILL TRAP ABRT BUS FPE KILL USR1 SEGV USR2 PIPE ALRM TERM STKFLT CHLD CONT STOP TSTP TTIN TTOU URG XCPU XFSZ VTALRM PROF WINCH POLL PWR SYS");
+}
+
 #[cfg(target_os = "linux")]
 #[test]
 fn test_table_option() {
-    new_ucmd!().arg("-L")
-    .succeeds()
-    .no_stderr()
-    .stdout_contains("1 HUP     2 INT     3 QUIT    4 ILL     5 TRAP    6 ABRT    7 BUS")
-    .stdout_contains("8 FPE     9 KILL   10 USR1   11 SEGV   12 USR2   13 PIPE   14 ALRM")
-    .stdout_contains("15 TERM   16 STKFLT 17 CHLD   18 CONT   19 STOP   20 TSTP   21 TTIN")
-    .stdout_contains("22 TTOU   23 URG    24 XCPU   25 XFSZ   26 VTALRM 27 PROF   28 WINCH")
-    .stdout_contains("29 POLL   30 PWR    31 SYS");
+    new_ucmd!()
+        .arg("-L")
+        .succeeds()
+        .no_stderr()
+        .stdout_contains("1 HUP     2 INT     3 QUIT    4 ILL     5 TRAP    6 ABRT    7 BUS")
+        .stdout_contains("8 FPE     9 KILL   10 USR1   11 SEGV   12 USR2   13 PIPE   14 ALRM")
+        .stdout_contains("15 TERM   16 STKFLT 17 CHLD   18 CONT   19 STOP   20 TSTP   21 TTIN")
+        .stdout_contains("22 TTOU   23 URG    24 XCPU   25 XFSZ   26 VTALRM 27 PROF   28 WINCH")
+        .stdout_contains("29 POLL   30 PWR    31 SYS");
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn test_table_option_long() {
+    new_ucmd!()
+        .arg("--table")
+        .succeeds()
+        .no_stderr()
+        .stdout_contains("1 HUP     2 INT     3 QUIT    4 ILL     5 TRAP    6 ABRT    7 BUS")
+        .stdout_contains("8 FPE     9 KILL   10 USR1   11 SEGV   12 USR2   13 PIPE   14 ALRM")
+        .stdout_contains("15 TERM   16 STKFLT 17 CHLD   18 CONT   19 STOP   20 TSTP   21 TTIN")
+        .stdout_contains("22 TTOU   23 URG    24 XCPU   25 XFSZ   26 VTALRM 27 PROF   28 WINCH")
+        .stdout_contains("29 POLL   30 PWR    31 SYS");
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn test_mutiple_options() {
+    new_ucmd!()
+        .arg("-nv")
+        .arg("1234")
+        .succeeds()
+        .stdout_contains("Would send signal TERM to process 1234");
 }
