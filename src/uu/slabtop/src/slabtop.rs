@@ -3,8 +3,21 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use std::{
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    thread::{self, sleep},
+    time::Duration,
+};
+
 use crate::parse::SlabInfo;
-use clap::{arg, crate_version, ArgAction, Command};
+use clap::{arg, crate_version, value_parser, ArgAction, ArgMatches, Command};
+use crossterm::event::{self, KeyCode, KeyEvent, KeyModifiers};
+use parking_lot::RwLock;
+use ratatui::widgets::Widget;
+use tui::Tui;
 use uucore::{error::UResult, format_usage, help_about, help_section, help_usage};
 
 const ABOUT: &str = help_about!("slabtop.md");
@@ -12,114 +25,97 @@ const AFTER_HELP: &str = help_section!("after help", "slabtop.md");
 const USAGE: &str = help_usage!("slabtop.md");
 
 mod parse;
+mod tui;
+
+#[derive(Debug)]
+struct Settings {
+    pub(crate) delay: u64,
+    pub(crate) once: bool,
+    pub(crate) short_by: char,
+}
+
+impl Settings {
+    fn new(arg: &ArgMatches) -> Settings {
+        Settings {
+            delay: *arg.get_one::<u64>("delay").unwrap_or(&3),
+            once: arg.get_flag("once"),
+            short_by: *arg.get_one::<char>("sort").unwrap_or(&'o'),
+        }
+    }
+}
 
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
+    let settings = Settings::new(&matches);
 
-    let sort_flag = matches
-        .try_get_one::<char>("sort")
-        .ok()
-        .unwrap_or(Some(&'o'))
-        .unwrap_or(&'o');
+    let slabinfo = Arc::new(RwLock::new(SlabInfo::new()?.sort(settings.short_by, false)));
+    let should_update = Arc::new(AtomicBool::new(true));
 
-    let slabinfo = SlabInfo::new()?.sort(*sort_flag, false);
+    // Timer
+    {
+        let should_update = should_update.clone();
+        thread::spawn(move || loop {
+            sleep(Duration::from_secs(settings.delay));
+            should_update.store(true, Ordering::Relaxed);
+        });
+    }
+    // Update
+    {
+        let should_update = should_update.clone();
+        let slabinfo = slabinfo.clone();
+        thread::spawn(move || loop {
+            if should_update.load(Ordering::Relaxed) {
+                *slabinfo.write() = SlabInfo::new().unwrap().sort(settings.short_by, false);
+                should_update.store(false, Ordering::Relaxed);
+            }
+            sleep(Duration::from_millis(20));
+        });
+    }
 
-    if matches.get_flag("once") {
-        output_header(&slabinfo);
-        println!();
-        output_list(&slabinfo);
-    } else {
-        // TODO: implement TUI
-        output_header(&slabinfo);
-        println!();
-        output_list(&slabinfo);
+    let mut terminal = ratatui::init();
+    loop {
+        if let Ok(true) = event::poll(Duration::from_millis(10)) {
+            // If event available, break this loop
+            if let Ok(e) = event::read() {
+                match e {
+                    event::Event::Key(KeyEvent {
+                        code: KeyCode::Char('c'),
+                        modifiers: KeyModifiers::CONTROL,
+                        ..
+                    })
+                    | event::Event::Key(KeyEvent {
+                        code: KeyCode::Char('q'),
+                        ..
+                    }) => {
+                        uucore::error::set_exit_code(0);
+                        break;
+                    }
+                    event::Event::Key(KeyEvent {
+                        code: KeyCode::Char(' '),
+                        ..
+                    }) => should_update.store(true, Ordering::Relaxed),
+                    _ => {}
+                }
+            }
+        }
+
+        terminal.draw(|frame| {
+            Tui::new(&slabinfo.read()).render(frame.area(), frame.buffer_mut());
+        })?;
+
+        if settings.once {
+            break;
+        } else {
+            sleep(Duration::from_millis(10));
+        }
+    }
+
+    if !settings.once {
+        ratatui::restore();
     }
 
     Ok(())
-}
-
-fn to_kb(byte: u64) -> f64 {
-    byte as f64 / 1024.0
-}
-
-fn percentage(numerator: u64, denominator: u64) -> f64 {
-    if denominator == 0 {
-        return 0.0;
-    }
-
-    let numerator = numerator as f64;
-    let denominator = denominator as f64;
-
-    (numerator / denominator) * 100.0
-}
-
-fn output_header(slabinfo: &SlabInfo) {
-    println!(
-        r" Active / Total Objects (% used)    : {} / {} ({:.1}%)",
-        slabinfo.total_active_objs(),
-        slabinfo.total_objs(),
-        percentage(slabinfo.total_active_objs(), slabinfo.total_objs())
-    );
-
-    println!(
-        r" Active / Total Slabs (% used)      : {} / {} ({:.1}%)",
-        slabinfo.total_active_slabs(),
-        slabinfo.total_slabs(),
-        percentage(slabinfo.total_active_slabs(), slabinfo.total_slabs(),)
-    );
-
-    // TODO: I don't know the 'cache' meaning.
-    println!(
-        r" Active / Total Caches (% used)     : {} / {} ({:.1}%)",
-        slabinfo.total_active_cache(),
-        slabinfo.total_cache(),
-        percentage(slabinfo.total_active_cache(), slabinfo.total_cache())
-    );
-
-    println!(
-        r" Active / Total Size (% used)       : {:.2}K / {:.2}K ({:.1}%)",
-        to_kb(slabinfo.total_active_size()),
-        to_kb(slabinfo.total_size()),
-        percentage(slabinfo.total_active_size(), slabinfo.total_size())
-    );
-
-    println!(
-        r" Minimum / Average / Maximum Object : {:.2}K / {:.2}K / {:.2}K",
-        to_kb(slabinfo.object_minimum()),
-        to_kb(slabinfo.object_avg()),
-        to_kb(slabinfo.object_maximum())
-    );
-}
-
-fn output_list(info: &SlabInfo) {
-    let title = format!(
-        "{:>6} {:>6} {:>4} {:>8} {:>6} {:>8} {:>10} {:<}",
-        "OBJS", "ACTIVE", "USE", "OBJ SIZE", "SLABS", "OBJ/SLAB", "CACHE SIZE", "NAME"
-    );
-    println!("{}", title);
-
-    for name in info.names() {
-        let objs = info.fetch(name, "num_objs").unwrap_or_default();
-        let active = info.fetch(name, "active_objs").unwrap_or_default();
-        let used = format!("{:.0}%", percentage(active, objs));
-        let objsize = {
-            let size = info.fetch(name, "objsize").unwrap_or_default(); // Byte to KB :1024
-            size as f64 / 1024.0
-        };
-        let slabs = info.fetch(name, "num_slabs").unwrap_or_default();
-        let obj_per_slab = info.fetch(name, "objperslab").unwrap_or_default();
-
-        let cache_size = (objsize * (objs as f64)) as u64;
-        let objsize = format!("{:.2}", objsize);
-
-        let content = format!(
-            "{:>6} {:>6} {:>4} {:>7}K {:>6} {:>8} {:>10} {:<}",
-            objs, active, used, objsize, slabs, obj_per_slab, cache_size, name
-        );
-
-        println!("{}", content);
-    }
 }
 
 #[allow(clippy::cognitive_complexity)]
@@ -130,9 +126,12 @@ pub fn uu_app() -> Command {
         .override_usage(format_usage(USAGE))
         .infer_long_args(true)
         .args([
-            // arg!(-d --delay <secs>  "delay updates"),
+            arg!(-d --delay <secs>  "delay updates")
+                .value_parser(value_parser!(u64))
+                .default_value("3"),
             arg!(-o --once          "only display once, then exit").action(ArgAction::SetTrue),
-            arg!(-s --sort  <char>  "specify sort criteria by character (see below)"),
+            arg!(-s --sort  <char>  "specify sort criteria by character (see below)")
+                .value_parser(value_parser!(char)),
         ])
         .after_help(AFTER_HELP)
 }
