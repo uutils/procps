@@ -3,11 +3,13 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+mod parser;
+
 use clap::{crate_version, Command};
+#[allow(unused_imports)]
+pub use parser::*;
 #[cfg(target_os = "linux")]
 use procfs::{Current, CurrentSI};
-#[cfg(target_os = "linux")]
-use std::collections::HashMap;
 use uucore::error::UResult;
 use uucore::{format_usage, help_about, help_usage};
 
@@ -73,22 +75,6 @@ fn up_secs_proc() -> f64 {
     let n_proc = stat.keys().filter(|k| k.starts_with("cpu")).count() - 1; // exclude the line `cpu`
 
     n_proc as f64 * up_secs()
-}
-
-#[cfg(target_os = "linux")]
-fn parse_proc_file(path: &str) -> HashMap<String, String> {
-    let file = std::fs::File::open(std::path::Path::new(path)).unwrap();
-    let content = std::io::read_to_string(file).unwrap();
-    let mut map: HashMap<String, String> = HashMap::new();
-
-    for line in content.lines() {
-        let parts = line.split_once(char::is_whitespace);
-        if let Some(parts) = parts {
-            map.insert(parts.0.to_string(), parts.1.trim_start().to_string());
-        }
-    }
-
-    map
 }
 
 #[cfg(target_os = "linux")]
@@ -180,45 +166,14 @@ fn get_system_info() -> (String, String, String) {
 
 #[cfg(target_os = "linux")]
 fn get_cpu_info() -> (String, String, String) {
-    let stat = parse_proc_file("/proc/stat");
-    let load = stat
-        .get("cpu")
-        .unwrap()
-        .split(' ')
-        .filter(|s| !s.is_empty())
-        .collect::<Vec<_>>();
-    let user = load[0].parse::<f64>().unwrap();
-    let nice = load[1].parse::<f64>().unwrap();
-    let system = load[2].parse::<f64>().unwrap();
-    let idle = load[3].parse::<f64>().unwrap_or_default(); // since 2.5.41
-    let io_wait = load[4].parse::<f64>().unwrap_or_default(); // since 2.5.41
-    let hardware_interrupt = load[5].parse::<f64>().unwrap_or_default(); // since 2.6.0
-    let software_interrupt = load[6].parse::<f64>().unwrap_or_default(); // since 2.6.0
-    let steal_time = load[7].parse::<f64>().unwrap_or_default(); // since 2.6.11
-                                                                 // GNU do not show guest and guest_nice
-    let guest = load[8].parse::<f64>().unwrap_or_default(); // since 2.6.24
-    let guest_nice = load[9].parse::<f64>().unwrap_or_default(); // since 2.6.33
-    let total = user
-        + nice
-        + system
-        + idle
-        + io_wait
-        + hardware_interrupt
-        + software_interrupt
-        + steal_time
-        + guest
-        + guest_nice;
+    let cpu_load = CpuLoad::current();
 
     (
         "------cpu-----".into(),
         "us sy id wa st".into(),
         format!(
             "{:>2.0} {:>2.0} {:>2.0} {:>2.0} {:>2.0}",
-            user / total * 100.0,
-            system / total * 100.0,
-            idle / total * 100.0,
-            io_wait / total * 100.0,
-            steal_time / total * 100.0,
+            cpu_load.user, cpu_load.system, cpu_load.idle, cpu_load.io_wait, cpu_load.steal_time
         ),
     )
 }

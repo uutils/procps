@@ -1598,6 +1598,7 @@ dependencies = [
  "pkg-config",
  "prettytable-rs",
  "sysinfo",
+ "uu_vmstat",
  "uucore",
  "windows-sys 0.59.0",
 ]

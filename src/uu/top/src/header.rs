@@ -135,49 +135,18 @@ fn task() -> String {
 
 #[cfg(target_os = "linux")]
 fn cpu() -> String {
-    let file = std::fs::File::open(std::path::Path::new("/proc/stat")).unwrap();
-    let content = std::io::read_to_string(file).unwrap();
-    let load = content
-        .lines()
-        .next()
-        .unwrap()
-        .strip_prefix("cpu")
-        .unwrap()
-        .split(' ')
-        .filter(|s| !s.is_empty())
-        .collect::<Vec<_>>();
-    let user = load[0].parse::<f64>().unwrap();
-    let nice = load[1].parse::<f64>().unwrap();
-    let system = load[2].parse::<f64>().unwrap();
-    let idle = load[3].parse::<f64>().unwrap_or_default(); // since 2.5.41
-    let io_wait = load[4].parse::<f64>().unwrap_or_default(); // since 2.5.41
-    let hardware_interrupt = load[5].parse::<f64>().unwrap_or_default(); // since 2.6.0
-    let software_interrupt = load[6].parse::<f64>().unwrap_or_default(); // since 2.6.0
-    let steal_time = load[7].parse::<f64>().unwrap_or_default(); // since 2.6.11
-                                                                 // GNU do not show guest and guest_nice
-    let guest = load[8].parse::<f64>().unwrap_or_default(); // since 2.6.24
-    let guest_nice = load[9].parse::<f64>().unwrap_or_default(); // since 2.6.33
-    let total = user
-        + nice
-        + system
-        + idle
-        + io_wait
-        + hardware_interrupt
-        + software_interrupt
-        + steal_time
-        + guest
-        + guest_nice;
+    let cpu_load = uu_vmstat::CpuLoad::current();
 
     format!(
         "%Cpu(s):  {:.1} us, {:.1} sy, {:.1} ni, {:.1} id, {:.1} wa, {:.1} hi, {:.1} si, {:.1} st",
-        user / total * 100.0,
-        system / total * 100.0,
-        nice / total * 100.0,
-        idle / total * 100.0,
-        io_wait / total * 100.0,
-        hardware_interrupt / total * 100.0,
-        software_interrupt / total * 100.0,
-        steal_time / total * 100.0,
+        cpu_load.user,
+        cpu_load.system,
+        cpu_load.nice,
+        cpu_load.idle,
+        cpu_load.io_wait,
+        cpu_load.hardware_interrupt,
+        cpu_load.software_interrupt,
+        cpu_load.steal_time,
     )
 }
 
