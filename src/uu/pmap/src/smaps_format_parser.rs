@@ -15,12 +15,14 @@ pub struct SmapEntry {
     pub mmu_page_size_in_kb: u64,
     pub rss_in_kb: u64,
     pub pss_in_kb: u64,
+    pub pss_dirty_in_kb: u64,
     pub shared_clean_in_kb: u64,
     pub shared_dirty_in_kb: u64,
     pub private_clean_in_kb: u64,
     pub private_dirty_in_kb: u64,
     pub referenced_in_kb: u64,
     pub anonymous_in_kb: u64,
+    pub ksm_in_kb: u64,
     pub lazy_free_in_kb: u64,
     pub anon_huge_pages_in_kb: u64,
     pub shmem_pmd_mapped_in_kb: u64,
@@ -44,13 +46,13 @@ pub struct SmapEntry {
 pub fn parse_smap_entries(contents: &str) -> Result<Vec<SmapEntry>, Error> {
     let mut smap_entries = Vec::new();
     let mut smap_entry = SmapEntry::default();
-    let mut is_entry_moified = false;
+    let mut is_entry_modified = false;
 
     for line in contents.lines() {
         let map_line = parse_map_line(line);
         if let Ok(map_line) = map_line {
             smap_entry.map_line = map_line;
-            is_entry_moified = true;
+            is_entry_modified = true;
         } else {
             let (key, val) = line
                 .split_once(':')
@@ -62,7 +64,7 @@ pub fn parse_smap_entries(contents: &str) -> Result<Vec<SmapEntry>, Error> {
                     smap_entry.vmflags = val.into();
                     smap_entries.push(smap_entry.clone());
                     smap_entry = SmapEntry::default();
-                    is_entry_moified = false;
+                    is_entry_modified = false;
                 }
                 "THPeligible" => smap_entry.thp_eligible = get_smap_item_value(val)?,
                 _ => {
@@ -76,12 +78,14 @@ pub fn parse_smap_entries(contents: &str) -> Result<Vec<SmapEntry>, Error> {
                         "MMUPageSize" => smap_entry.mmu_page_size_in_kb = val,
                         "Rss" => smap_entry.rss_in_kb = val,
                         "Pss" => smap_entry.pss_in_kb = val,
+                        "Pss_Dirty" => smap_entry.pss_dirty_in_kb = val,
                         "Shared_Clean" => smap_entry.shared_clean_in_kb = val,
                         "Shared_Dirty" => smap_entry.shared_dirty_in_kb = val,
                         "Private_Clean" => smap_entry.private_clean_in_kb = val,
                         "Private_Dirty" => smap_entry.private_dirty_in_kb = val,
                         "Referenced" => smap_entry.referenced_in_kb = val,
                         "Anonymous" => smap_entry.anonymous_in_kb = val,
+                        "KSM" => smap_entry.ksm_in_kb = val,
                         "LazyFree" => smap_entry.lazy_free_in_kb = val,
                         "AnonHugePages" => smap_entry.anon_huge_pages_in_kb = val,
                         "ShmemPmdMapped" => smap_entry.shmem_pmd_mapped_in_kb = val,
@@ -98,7 +102,7 @@ pub fn parse_smap_entries(contents: &str) -> Result<Vec<SmapEntry>, Error> {
         }
     }
 
-    if is_entry_moified {
+    if is_entry_modified {
         smap_entries.push(smap_entry);
     }
 
@@ -127,12 +131,14 @@ mod test {
         mmu_page_size_in_kb: u64,
         rss_in_kb: u64,
         pss_in_kb: u64,
+        pss_dirty_in_kb: u64,
         shared_clean_in_kb: u64,
         shared_dirty_in_kb: u64,
         private_clean_in_kb: u64,
         private_dirty_in_kb: u64,
         referenced_in_kb: u64,
         anonymous_in_kb: u64,
+        ksm_in_kb: u64,
         lazy_free_in_kb: u64,
         anon_huge_pages_in_kb: u64,
         shmem_pmd_mapped_in_kb: u64,
@@ -160,12 +166,14 @@ mod test {
             mmu_page_size_in_kb,
             rss_in_kb,
             pss_in_kb,
+            pss_dirty_in_kb,
             shared_clean_in_kb,
             shared_dirty_in_kb,
             private_clean_in_kb,
             private_dirty_in_kb,
             referenced_in_kb,
             anonymous_in_kb,
+            ksm_in_kb,
             lazy_free_in_kb,
             anon_huge_pages_in_kb,
             shmem_pmd_mapped_in_kb,
@@ -186,8 +194,8 @@ mod test {
             (
                 vec![create_smap_entry(
                     "0000560880413000", Perms::from("r--p"), "0000000000000000", "008:00008", 10813151, "konsole",
-                    180, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-                    20, "rd mr mw me dw sd")],
+                    180, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+                    22, "rd mr mw me dw sd")],
                 concat!(
                     "560880413000-560880440000 r--p 00000000 08:08 10813151                   /usr/bin/konsole\n",
                     "Size:                180 kB\n",
@@ -195,28 +203,30 @@ mod test {
                     "MMUPageSize:           2 kB\n",
                     "Rss:                   3 kB\n",
                     "Pss:                   4 kB\n",
-                    "Shared_Clean:          5 kB\n",
-                    "Shared_Dirty:          6 kB\n",
-                    "Private_Clean:         7 kB\n",
-                    "Private_Dirty:         8 kB\n",
-                    "Referenced:            9 kB\n",
-                    "Anonymous:            10 kB\n",
-                    "LazyFree:             11 kB\n",
-                    "AnonHugePages:        12 kB\n",
-                    "ShmemPmdMapped:       13 kB\n",
-                    "FilePmdMapped:        14 kB\n",
-                    "Shared_Hugetlb:       15 kB\n",
-                    "Private_Hugetlb:      16 kB\n",
-                    "Swap:                 17 kB\n",
-                    "SwapPss:              18 kB\n",
-                    "Locked:               19 kB\n",
-                    "THPeligible:           20\n",
+                    "Pss_Dirty:             5 kB\n",
+                    "Shared_Clean:          6 kB\n",
+                    "Shared_Dirty:          7 kB\n",
+                    "Private_Clean:         8 kB\n",
+                    "Private_Dirty:         9 kB\n",
+                    "Referenced:           10 kB\n",
+                    "Anonymous:            11 kB\n",
+                    "KSM:                  12 kB\n",
+                    "LazyFree:             13 kB\n",
+                    "AnonHugePages:        14 kB\n",
+                    "ShmemPmdMapped:       15 kB\n",
+                    "FilePmdMapped:        16 kB\n",
+                    "Shared_Hugetlb:       17 kB\n",
+                    "Private_Hugetlb:      18 kB\n",
+                    "Swap:                 19 kB\n",
+                    "SwapPss:              20 kB\n",
+                    "Locked:               21 kB\n",
+                    "THPeligible:           22\n",
                     "VmFlags: rd mr mw me dw sd \n")
             ),
             (
                 vec![create_smap_entry(
                     "000071af50000000", Perms::from("rw-p"), "0000000000000000", "000:00000", 0, "  [ anon ]",
-                    132, 4, 4, 128, 9, 128, 0, 0, 0, 128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    132, 4, 4, 128, 9, 9, 128, 0, 0, 0, 128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, "rd mr mw me sd")],
                 concat!(
                     "71af50000000-71af50021000 rw-p 00000000 00:00 0 \n",
@@ -225,16 +235,18 @@ mod test {
                     "MMUPageSize:           4 kB\n",
                     "Rss:                 128 kB\n",
                     "Pss:                   9 kB\n",
+                    "Pss_Dirty:             9 kB\n",
                     "Shared_Clean:        128 kB\n",
                     "Shared_Dirty:          0 kB\n",
                     "Private_Clean:         0 kB\n",
                     "Private_Dirty:         0 kB\n",
                     "Referenced:          128 kB\n",
                     "Anonymous:             0 kB\n",
+                    "KSM:                   0 kB\n",
                     "LazyFree:              0 kB\n",
                     "AnonHugePages:         0 kB\n",
                     "ShmemPmdMapped:        0 kB\n",
-                    "FilePmdMapped:        0 kB\n",
+                    "FilePmdMapped:         0 kB\n",
                     "Shared_Hugetlb:        0 kB\n",
                     "Private_Hugetlb:       0 kB\n",
                     "Swap:                  0 kB\n",
@@ -246,7 +258,7 @@ mod test {
             (
                 vec![create_smap_entry(
                     "00007ffc3f8df000", Perms::from("rw-p"), "0000000000000000", "000:00000", 0, "  [ stack ]",
-                    132, 4, 4, 108, 108, 0, 0, 0, 108, 108, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    132, 4, 4, 108, 108, 108, 0, 0, 0, 108, 108, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, "rd wr mr mw me gd ac")],
                 concat!(
                     "7ffc3f8df000-7ffc3f900000 rw-p 00000000 00:00 0                          [stack]\n",
@@ -255,16 +267,18 @@ mod test {
                     "MMUPageSize:           4 kB\n",
                     "Rss:                 108 kB\n",
                     "Pss:                 108 kB\n",
+                    "Pss_Dirty:           108 kB\n",
                     "Shared_Clean:          0 kB\n",
                     "Shared_Dirty:          0 kB\n",
                     "Private_Clean:         0 kB\n",
                     "Private_Dirty:       108 kB\n",
                     "Referenced:          108 kB\n",
                     "Anonymous:           108 kB\n",
+                    "KSM:                   0 kB\n",
                     "LazyFree:              0 kB\n",
                     "AnonHugePages:         0 kB\n",
                     "ShmemPmdMapped:        0 kB\n",
-                    "FilePmdMapped:        0 kB\n",
+                    "FilePmdMapped:         0 kB\n",
                     "Shared_Hugetlb:        0 kB\n",
                     "Private_Hugetlb:       0 kB\n",
                     "Swap:                  0 kB\n",
@@ -276,7 +290,7 @@ mod test {
             (
                 vec![create_smap_entry(
                     "000071af8c9e6000", Perms::from("rw-s"), "0000000105830000", "000:00010", 1075, "  [ anon ]",
-                    16, 4, 4, 16, 16, 0, 0, 0, 16, 16, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    16, 4, 4, 16, 16, 16, 0, 0, 0, 16, 16, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, "rd wr mr mw me ac sd")],
                 concat!(
                     "71af8c9e6000-71af8c9ea000 rw-s 105830000 00:10 1075                      anon_inode:i915.gem\n",
@@ -285,16 +299,18 @@ mod test {
                     "MMUPageSize:           4 kB\n",
                     "Rss:                  16 kB\n",
                     "Pss:                  16 kB\n",
+                    "Pss_Dirty:            16 kB\n",
                     "Shared_Clean:          0 kB\n",
                     "Shared_Dirty:          0 kB\n",
                     "Private_Clean:         0 kB\n",
                     "Private_Dirty:        16 kB\n",
                     "Referenced:           16 kB\n",
                     "Anonymous:            16 kB\n",
+                    "KSM:                   0 kB\n",
                     "LazyFree:              0 kB\n",
                     "AnonHugePages:         0 kB\n",
                     "ShmemPmdMapped:        0 kB\n",
-                    "FilePmdMapped:        0 kB\n",
+                    "FilePmdMapped:         0 kB\n",
                     "Shared_Hugetlb:        0 kB\n",
                     "Private_Hugetlb:       0 kB\n",
                     "Swap:                  0 kB\n",
@@ -306,7 +322,7 @@ mod test {
             (
                 vec![create_smap_entry(
                     "000071af6cf0c000", Perms::from("rw-s"), "0000000000000000", "000:00001", 256481, "memfd:wayland-shm (deleted)",
-                    3560, 4, 4, 532, 108, 524, 0, 8, 0, 532, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    3560, 4, 4, 532, 108, 0, 524, 0, 8, 0, 532, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, "rd mr mw me sd")],
                 concat!(
                     "71af6cf0c000-71af6d286000 rw-s 00000000 00:01 256481                     /memfd:wayland-shm (deleted)\n",
@@ -315,16 +331,18 @@ mod test {
                     "MMUPageSize:           4 kB\n",
                     "Rss:                 532 kB\n",
                     "Pss:                 108 kB\n",
+                    "Pss_Dirty:             0 kB\n",
                     "Shared_Clean:        524 kB\n",
                     "Shared_Dirty:          0 kB\n",
                     "Private_Clean:         8 kB\n",
                     "Private_Dirty:         0 kB\n",
                     "Referenced:          532 kB\n",
                     "Anonymous:             0 kB\n",
+                    "KSM:                   0 kB\n",
                     "LazyFree:              0 kB\n",
                     "AnonHugePages:         0 kB\n",
                     "ShmemPmdMapped:        0 kB\n",
-                    "FilePmdMapped:        0 kB\n",
+                    "FilePmdMapped:         0 kB\n",
                     "Shared_Hugetlb:        0 kB\n",
                     "Private_Hugetlb:       0 kB\n",
                     "Swap:                  0 kB\n",
@@ -336,7 +354,7 @@ mod test {
             (
                 vec![create_smap_entry(
                     "ffffffffff600000", Perms::from("--xp"), "0000000000000000", "000:00000", 0, "  [ anon ]",
-                    4, 4, 4, 4, 4, 0, 0, 0, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    4, 4, 4, 4, 4, 4, 0, 0, 0, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, "rd wr mr mw me ac sd")],
                 concat!(
                     "ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]\n",
@@ -345,16 +363,18 @@ mod test {
                     "MMUPageSize:           4 kB\n",
                     "Rss:                   4 kB\n",
                     "Pss:                   4 kB\n",
+                    "Pss_Dirty:             4 kB\n",
                     "Shared_Clean:          0 kB\n",
                     "Shared_Dirty:          0 kB\n",
                     "Private_Clean:         0 kB\n",
                     "Private_Dirty:         4 kB\n",
                     "Referenced:            4 kB\n",
                     "Anonymous:             4 kB\n",
+                    "KSM:                   0 kB\n",
                     "LazyFree:              0 kB\n",
                     "AnonHugePages:         0 kB\n",
                     "ShmemPmdMapped:        0 kB\n",
-                    "FilePmdMapped:        0 kB\n",
+                    "FilePmdMapped:         0 kB\n",
                     "Shared_Hugetlb:        0 kB\n",
                     "Private_Hugetlb:       0 kB\n",
                     "Swap:                  0 kB\n",
@@ -366,7 +386,7 @@ mod test {
             (
                 vec![create_smap_entry(
                     "00005e8187da8000", Perms::from("r--p"), "0000000000000000", "008:00008", 9524160, "hello   world",
-                    24, 4, 4, 24, 0, 24, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    24, 4, 4, 24, 0, 0, 24, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, "rd ex mr mw me sd")],
                 concat!(
                     "5e8187da8000-5e8187dae000 r--p 00000000 08:08 9524160                    /usr/bin/hello   world\n",
@@ -375,16 +395,18 @@ mod test {
                     "MMUPageSize:           4 kB\n",
                     "Rss:                  24 kB\n",
                     "Pss:                   0 kB\n",
+                    "Pss_Dirty:             0 kB\n",
                     "Shared_Clean:         24 kB\n",
                     "Shared_Dirty:          0 kB\n",
                     "Private_Clean:         0 kB\n",
                     "Private_Dirty:         0 kB\n",
                     "Referenced:           24 kB\n",
                     "Anonymous:             0 kB\n",
+                    "KSM:                   0 kB\n",
                     "LazyFree:              0 kB\n",
                     "AnonHugePages:         0 kB\n",
                     "ShmemPmdMapped:        0 kB\n",
-                    "FilePmdMapped:        0 kB\n",
+                    "FilePmdMapped:         0 kB\n",
                     "Shared_Hugetlb:        0 kB\n",
                     "Private_Hugetlb:       0 kB\n",
                     "Swap:                  0 kB\n",
@@ -397,11 +419,11 @@ mod test {
                 vec![
                     create_smap_entry(
                         "000071af8c9e6000", Perms::from("rw-s"), "0000000105830000", "000:00010", 1075, "  [ anon ]",
-                        16, 4, 4, 16, 16, 0, 0, 0, 16, 16, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        16, 4, 4, 16, 16, 16, 0, 0, 0, 16, 16, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                         0, "rd wr mr mw me ac sd"),
                     create_smap_entry(
                         "000071af6cf0c000", Perms::from("rw-s"), "0000000000000000", "000:00001", 256481, "memfd:wayland-shm (deleted)",
-                        3560, 4, 4, 532, 108, 524, 0, 8, 0, 532, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        3560, 4, 4, 532, 108, 0, 524, 0, 8, 0, 532, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                         0, "rd mr mw me sd"),
                 ],
                 concat!(
@@ -411,16 +433,18 @@ mod test {
                     "MMUPageSize:           4 kB\n",
                     "Rss:                  16 kB\n",
                     "Pss:                  16 kB\n",
+                    "Pss_Dirty:            16 kB\n",
                     "Shared_Clean:          0 kB\n",
                     "Shared_Dirty:          0 kB\n",
                     "Private_Clean:         0 kB\n",
                     "Private_Dirty:        16 kB\n",
                     "Referenced:           16 kB\n",
                     "Anonymous:            16 kB\n",
+                    "KSM:                   0 kB\n",
                     "LazyFree:              0 kB\n",
                     "AnonHugePages:         0 kB\n",
                     "ShmemPmdMapped:        0 kB\n",
-                    "FilePmdMapped:        0 kB\n",
+                    "FilePmdMapped:         0 kB\n",
                     "Shared_Hugetlb:        0 kB\n",
                     "Private_Hugetlb:       0 kB\n",
                     "Swap:                  0 kB\n",
@@ -434,16 +458,18 @@ mod test {
                     "MMUPageSize:           4 kB\n",
                     "Rss:                 532 kB\n",
                     "Pss:                 108 kB\n",
+                    "Pss_Dirty:             0 kB\n",
                     "Shared_Clean:        524 kB\n",
                     "Shared_Dirty:          0 kB\n",
                     "Private_Clean:         8 kB\n",
                     "Private_Dirty:         0 kB\n",
                     "Referenced:          532 kB\n",
                     "Anonymous:             0 kB\n",
+                    "KSM:                   0 kB\n",
                     "LazyFree:              0 kB\n",
                     "AnonHugePages:         0 kB\n",
                     "ShmemPmdMapped:        0 kB\n",
-                    "FilePmdMapped:        0 kB\n",
+                    "FilePmdMapped:         0 kB\n",
                     "Shared_Hugetlb:        0 kB\n",
                     "Private_Hugetlb:       0 kB\n",
                     "Swap:                  0 kB\n",
