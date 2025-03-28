@@ -58,7 +58,7 @@ prettytable-rs = "0.10.0"
 rand = { version = "0.9.0", features = ["small_rng"] }
 ratatui = "0.29.0"
 regex = "1.10.4"
-sysinfo = "0.33.0"
+sysinfo = "0.34.0"
 tempfile = "3.10.1"
 textwrap = { version = "0.16.1", features = ["terminal_size"] }
 thiserror = "2.0.4"
