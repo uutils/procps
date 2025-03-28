@@ -61,7 +61,7 @@ pub fn parse_smap_entries(contents: &str) -> Result<Vec<SmapEntry>, Error> {
             let val = val.trim();
 
             if key == "VmFlags" {
-                smap_entry.vmflags = val.into()
+                smap_entry.vmflags = val.into();
             } else {
                 let val = if let Some(val) = val.strip_suffix(" kB") {
                     get_smap_item_value(val)?
