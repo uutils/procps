@@ -74,8 +74,13 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     }
 
     let mut terminal = ratatui::init();
+    // Initial output
+    terminal.draw(|frame| {
+        Tui::new(&slabinfo.read()).render(frame.area(), frame.buffer_mut());
+    })?;
+
     loop {
-        if let Ok(true) = event::poll(Duration::from_millis(10)) {
+        if let Ok(true) = event::poll(Duration::from_millis(20)) {
             // If event available, break this loop
             if let Ok(e) = event::read() {
                 match e {
@@ -91,23 +96,22 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                         uucore::error::set_exit_code(0);
                         break;
                     }
-                    event::Event::Key(KeyEvent {
-                        code: KeyCode::Char(' '),
-                        ..
-                    }) => should_update.store(true, Ordering::Relaxed),
+                    event::Event::Resize(_, _) => should_update.store(true, Ordering::Relaxed),
                     _ => {}
                 }
             }
         }
 
-        terminal.draw(|frame| {
-            Tui::new(&slabinfo.read()).render(frame.area(), frame.buffer_mut());
-        })?;
+        if should_update.load(Ordering::Relaxed) {
+            terminal.draw(|frame| {
+                Tui::new(&slabinfo.read()).render(frame.area(), frame.buffer_mut());
+            })?;
+        }
 
         if settings.once {
             break;
         } else {
-            sleep(Duration::from_millis(10));
+            sleep(Duration::from_millis(20));
         }
     }
 
