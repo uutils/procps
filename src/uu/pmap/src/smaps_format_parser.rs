@@ -60,43 +60,43 @@ pub fn parse_smap_entries(contents: &str) -> Result<Vec<SmapEntry>, Error> {
                 .ok_or_else(|| Error::from(ErrorKind::InvalidData))?;
             let val = val.trim();
 
-            match key {
-                "VmFlags" => smap_entry.vmflags = val.into(),
-                "THPeligible" => smap_entry.thp_eligible = get_smap_item_value(val)?,
-                _ => {
-                    let val = val
-                        .strip_suffix(" kB")
-                        .ok_or_else(|| Error::from(ErrorKind::InvalidData))?;
-                    let val = get_smap_item_value(val)?;
-                    match key {
-                        "Size" => {
-                            if smap_entry.map_line.size_in_kb != val {
-                                return Err(Error::from(ErrorKind::InvalidData));
-                            }
+            if key == "VmFlags" {
+                smap_entry.vmflags = val.into()
+            } else {
+                let val = if let Some(val) = val.strip_suffix(" kB") {
+                    get_smap_item_value(val)?
+                } else {
+                    get_smap_item_value(val)?
+                };
+                match key {
+                    "Size" => {
+                        if smap_entry.map_line.size_in_kb != val {
+                            return Err(Error::from(ErrorKind::InvalidData));
                         }
-                        "KernelPageSize" => smap_entry.kernel_page_size_in_kb = val,
-                        "MMUPageSize" => smap_entry.mmu_page_size_in_kb = val,
-                        "Rss" => smap_entry.rss_in_kb = val,
-                        "Pss" => smap_entry.pss_in_kb = val,
-                        "Pss_Dirty" => smap_entry.pss_dirty_in_kb = val,
-                        "Shared_Clean" => smap_entry.shared_clean_in_kb = val,
-                        "Shared_Dirty" => smap_entry.shared_dirty_in_kb = val,
-                        "Private_Clean" => smap_entry.private_clean_in_kb = val,
-                        "Private_Dirty" => smap_entry.private_dirty_in_kb = val,
-                        "Referenced" => smap_entry.referenced_in_kb = val,
-                        "Anonymous" => smap_entry.anonymous_in_kb = val,
-                        "KSM" => smap_entry.ksm_in_kb = val,
-                        "LazyFree" => smap_entry.lazy_free_in_kb = val,
-                        "AnonHugePages" => smap_entry.anon_huge_pages_in_kb = val,
-                        "ShmemPmdMapped" => smap_entry.shmem_pmd_mapped_in_kb = val,
-                        "FilePmdMapped" => smap_entry.file_pmd_mapped_in_kb = val,
-                        "Shared_Hugetlb" => smap_entry.shared_hugetlb_in_kb = val,
-                        "Private_Hugetlb" => smap_entry.private_hugetlb_in_kb = val,
-                        "Swap" => smap_entry.swap_in_kb = val,
-                        "SwapPss" => smap_entry.swap_pss_in_kb = val,
-                        "Locked" => smap_entry.locked_in_kb = val,
-                        _ => (),
                     }
+                    "KernelPageSize" => smap_entry.kernel_page_size_in_kb = val,
+                    "MMUPageSize" => smap_entry.mmu_page_size_in_kb = val,
+                    "Rss" => smap_entry.rss_in_kb = val,
+                    "Pss" => smap_entry.pss_in_kb = val,
+                    "Pss_Dirty" => smap_entry.pss_dirty_in_kb = val,
+                    "Shared_Clean" => smap_entry.shared_clean_in_kb = val,
+                    "Shared_Dirty" => smap_entry.shared_dirty_in_kb = val,
+                    "Private_Clean" => smap_entry.private_clean_in_kb = val,
+                    "Private_Dirty" => smap_entry.private_dirty_in_kb = val,
+                    "Referenced" => smap_entry.referenced_in_kb = val,
+                    "Anonymous" => smap_entry.anonymous_in_kb = val,
+                    "KSM" => smap_entry.ksm_in_kb = val,
+                    "LazyFree" => smap_entry.lazy_free_in_kb = val,
+                    "AnonHugePages" => smap_entry.anon_huge_pages_in_kb = val,
+                    "ShmemPmdMapped" => smap_entry.shmem_pmd_mapped_in_kb = val,
+                    "FilePmdMapped" => smap_entry.file_pmd_mapped_in_kb = val,
+                    "Shared_Hugetlb" => smap_entry.shared_hugetlb_in_kb = val,
+                    "Private_Hugetlb" => smap_entry.private_hugetlb_in_kb = val,
+                    "Swap" => smap_entry.swap_in_kb = val,
+                    "SwapPss" => smap_entry.swap_pss_in_kb = val,
+                    "Locked" => smap_entry.locked_in_kb = val,
+                    "THPeligible" => smap_entry.thp_eligible = val,
+                    _ => (),
                 }
             }
         }
@@ -220,6 +220,8 @@ mod test {
                     "SwapPss:              20 kB\n",
                     "Locked:               21 kB\n",
                     "THPeligible:           22\n",
+                    "SomeUnknownFieldKB:   23 kB\n",
+                    "SomeUnknownField:      24\n",
                     "VmFlags: rd mr mw me dw sd \n")
             ),
             (
