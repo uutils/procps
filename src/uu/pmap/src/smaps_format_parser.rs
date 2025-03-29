@@ -63,11 +63,8 @@ pub fn parse_smap_entries(contents: &str) -> Result<Vec<SmapEntry>, Error> {
             if key == "VmFlags" {
                 smap_entry.vmflags = val.into();
             } else {
-                let val = if let Some(val) = val.strip_suffix(" kB") {
-                    get_smap_item_value(val)?
-                } else {
-                    get_smap_item_value(val)?
-                };
+                let val = val.strip_suffix(" kB").unwrap_or(val);
+                let val = get_smap_item_value(val)?;
                 match key {
                     "Size" => {
                         if smap_entry.map_line.size_in_kb != val {
