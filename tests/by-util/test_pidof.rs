@@ -111,3 +111,40 @@ fn test_threads() {
     .join()
     .unwrap();
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_script() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let temp_dir = tempfile::tempdir().unwrap();
+    let script_path = temp_dir
+        .path()
+        .join("dummy_test_script_with_very_long_name");
+    std::fs::write(&script_path, "#!/bin/sh\nsleep 2").unwrap();
+    std::fs::set_permissions(&script_path, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+    let mut directly_executed_child = std::process::Command::new(&script_path).spawn().unwrap();
+    new_ucmd!()
+        .arg("dummy_test_script_with_very_long_name")
+        .fails();
+    new_ucmd!()
+        .args(&["-x", "dummy_test_script_with_very_long_name"])
+        .succeeds()
+        .stdout_contains(directly_executed_child.id().to_string());
+    directly_executed_child.kill().unwrap();
+    directly_executed_child.wait().unwrap();
+
+    let mut executed_via_sh_child = std::process::Command::new("/bin/sh")
+        .arg(&script_path)
+        .spawn()
+        .unwrap();
+    new_ucmd!()
+        .arg("dummy_test_script_with_very_long_name")
+        .fails();
+    new_ucmd!()
+        .args(&["-x", "dummy_test_script_with_very_long_name"])
+        .fails();
+    executed_via_sh_child.kill().unwrap();
+    executed_via_sh_child.wait().unwrap();
+}

@@ -49,18 +49,33 @@ fn match_process_name(
     process: &mut ProcessInformation,
     name_to_match: &str,
     with_workers: bool,
+    match_scripts: bool,
 ) -> bool {
     let binding = process.cmdline.split(' ').collect::<Vec<_>>();
-    let mut path = binding.first().unwrap().to_string();
+    let path = binding.first().unwrap().to_string();
 
     if path.is_empty() {
         if !with_workers {
             return false;
         }
-        path.clone_from(&process.status()["Name"]);
+        return process.name().unwrap() == name_to_match;
     };
 
-    PathBuf::from(path).file_name().unwrap().to_str().unwrap() == name_to_match
+    if PathBuf::from(path).file_name().unwrap().to_str().unwrap() == name_to_match {
+        return true;
+    }
+
+    // When a script (ie. file starting with e.g. #!/bin/sh) is run like `./script.sh`, then
+    // its cmdline will look like `/bin/sh ./script.sh` but its .name() will be `script.sh`.
+    // As name() gets truncated to 15 characters, the original pidof seems to always do a prefix match.
+    if match_scripts && binding.len() > 1 {
+        return PathBuf::from(binding[1])
+            .file_name()
+            .map(|f| f.to_str().unwrap())
+            .is_some_and(|f| f == name_to_match && f.starts_with(&process.name().unwrap()));
+    }
+
+    false
 }
 
 fn collect_matched_pids(matches: &ArgMatches) -> Vec<usize> {
@@ -70,6 +85,7 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<usize> {
         .cloned()
         .collect();
     let with_workers = matches.get_flag("with-workers");
+    let match_scripts = matches.get_flag("x");
 
     let collected = walk_process().collect::<Vec<_>>();
     let arg_omit_pid = matches
@@ -83,7 +99,8 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<usize> {
         .flat_map(|program| {
             let mut processed = Vec::new();
             for mut process in collected.clone() {
-                let contains = match_process_name(&mut process, &program, with_workers);
+                let contains =
+                    match_process_name(&mut process, &program, with_workers, match_scripts);
                 let should_omit = arg_omit_pid.contains(&process.pid);
 
                 if contains && !should_omit {
@@ -184,10 +201,10 @@ pub fn uu_app() -> Command {
                 .help("Show kernel worker threads as well")
                 .action(ArgAction::SetTrue),
         )
-    // .arg(
-    //     Arg::new("x")
-    //         .short('x')
-    //         .help("Return PIDs of shells running scripts with a matching name")
-    //         .action(ArgAction::SetTrue),
-    // )
+        .arg(
+            Arg::new("x")
+                .short('x')
+                .help("Return PIDs of shells running scripts with a matching name")
+                .action(ArgAction::SetTrue),
+        )
 }
