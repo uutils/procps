@@ -9,9 +9,9 @@ use clap::crate_version;
 use clap::{Arg, ArgAction, Command};
 #[cfg(target_os = "linux")]
 use libc::{sysconf, _SC_CLK_TCK};
-use std::process;
 #[cfg(target_os = "linux")]
-use std::{collections::HashMap, fs, path::Path};
+use std::{collections::HashMap, fs, path::Path, time::SystemTime};
+use std::{process, time::Duration};
 #[cfg(target_os = "linux")]
 use uucore::utmpx::Utmpx;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
@@ -23,7 +23,7 @@ struct UserInfo {
     user: String,
     terminal: String,
     login_time: String,
-    idle_time: String,
+    idle_time: Duration, // for better compatibility with old-style outputs
     jcpu: String,
     pcpu: String,
     command: String,
@@ -84,6 +84,51 @@ fn fetch_pcpu_time(pid: i32) -> Result<f64, std::io::Error> {
 }
 
 #[cfg(target_os = "linux")]
+fn fetch_idle_time(tty: String) -> Result<Duration, std::io::Error> {
+    let path = Path::new("/dev/").join(tty);
+    let stat = fs::metadata(path)?;
+    if let Ok(time) = stat.accessed() {
+        Ok(SystemTime::now().duration_since(time).unwrap_or_default())
+    } else {
+        Ok(Duration::ZERO)
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn _fetch_idle_time(_tty: String) -> Result<Duration, std::io::Error> {
+    Ok(Duration::ZERO)
+}
+
+fn format_time_elapsed(time: Duration, old_style: bool) -> Result<String, chrono::OutOfRangeError> {
+    let t = chrono::Duration::from_std(time)?;
+    if t.num_days() >= 2 {
+        Ok(format!("{}days", t.num_days()))
+    } else if t.num_hours() >= 1 {
+        Ok(format!(
+            "{}:{:02}{}",
+            t.num_hours(),
+            t.num_minutes() % 60,
+            if old_style { "" } else { "m" }
+        ))
+    } else if t.num_minutes() >= 1 {
+        Ok(format!(
+            "{}:{:02}{}",
+            t.num_minutes() % 60,
+            t.num_seconds() % 60,
+            if old_style { "m" } else { "" }
+        ))
+    } else if old_style {
+        Ok(String::new())
+    } else {
+        Ok(format!(
+            "{}.{:02}s",
+            t.num_seconds() % 60,
+            (t.num_milliseconds() % 1000) / 10
+        ))
+    }
+}
+
+#[cfg(target_os = "linux")]
 fn format_time(time: String) -> Result<String, chrono::format::ParseError> {
     let mut t: String = time;
     // Trim the seconds off of timezone offset, as chrono can't parse the time with it present
@@ -127,7 +172,7 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
                 user: entry.user(),
                 terminal: entry.tty_device(),
                 login_time: format_time(entry.login_time().to_string()).unwrap_or_default(),
-                idle_time: "TODO".into(), // Placeholder, needs actual implementation
+                idle_time: fetch_idle_time(entry.tty_device())?,
                 jcpu: format!("{:.2}", jcpu),
                 pcpu: fetch_pcpu_time(entry.pid()).unwrap_or_default().to_string(),
                 command: fetch_cmdline(entry.pid()).unwrap_or_default(),
@@ -150,6 +195,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     let no_header = matches.get_flag("no-header");
     let short = matches.get_flag("short");
+    let old_style = matches.get_flag("old-style");
 
     match fetch_user_info() {
         Ok(user_info) => {
@@ -167,7 +213,10 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 if short {
                     println!(
                         "{:<9}{:<9}{:<7}{:<}",
-                        user.user, user.terminal, user.idle_time, user.command
+                        user.user,
+                        user.terminal,
+                        format_time_elapsed(user.idle_time, old_style).unwrap_or_default(),
+                        user.command
                     );
                 } else {
                     println!(
@@ -175,7 +224,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                         user.user,
                         user.terminal,
                         user.login_time,
-                        user.idle_time,
+                        format_time_elapsed(user.idle_time, old_style).unwrap_or_default(),
                         user.jcpu,
                         user.pcpu,
                         user.command
@@ -260,9 +309,10 @@ pub fn uu_app() -> Command {
 #[cfg(target_os = "linux")]
 mod tests {
     use crate::{
-        fetch_cmdline, fetch_pcpu_time, fetch_terminal_number, format_time, get_clock_tick,
+        fetch_cmdline, fetch_pcpu_time, fetch_terminal_number, format_time, format_time_elapsed,
+        get_clock_tick,
     };
-    use std::{fs, path::Path, process};
+    use std::{fs, path::Path, process, time::Duration};
 
     #[test]
     fn test_format_time() {
@@ -281,6 +331,19 @@ mod tests {
             format_time(pre_formatted).unwrap(),
             td.format("%a%d").to_string()
         )
+    }
+
+    #[test]
+    fn test_format_time_elapsed() {
+        let td = Duration::new(60 * 60 * 18 + 60 * 18, 0);
+        assert_eq!(
+            format_time_elapsed(td, false).unwrap(),
+            String::from("18:18m")
+        );
+        assert_eq!(
+            format_time_elapsed(td, true).unwrap(),
+            String::from("18:18")
+        );
     }
 
     #[test]
