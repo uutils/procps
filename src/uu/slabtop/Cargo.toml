@@ -13,8 +13,12 @@ categories = ["command-line-utilities"]
 
 
 [dependencies]
-uucore = { workspace = true }
 clap = { workspace = true }
+crossterm = { workspace = true }
+im = { workspace = true }
+parking_lot = { workspace = true }
+ratatui = { workspace = true }
+uucore = { workspace = true }
 
 [lib]
 path = "src/slabtop.rs"
