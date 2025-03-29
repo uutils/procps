@@ -9,6 +9,7 @@ use regex::Regex;
 #[cfg(target_os = "linux")]
 use std::process;
 
+const INIT_PID: &str = "1";
 const NON_EXISTING_PID: &str = "999999";
 
 #[test]
@@ -75,6 +76,20 @@ fn test_non_existing_pid() {
 
 #[test]
 #[cfg(target_os = "linux")]
+fn test_permission_denied() {
+    let result = new_ucmd!()
+        .arg(INIT_PID)
+        .fails()
+        .code_is(1)
+        .no_stderr()
+        .clone()
+        .stdout_move_str();
+
+    assert_cmdline_only(INIT_PID, &result);
+}
+
+#[test]
+#[cfg(target_os = "linux")]
 fn test_extended() {
     let pid = process::id();
 
@@ -86,6 +101,23 @@ fn test_extended() {
             .stdout_move_str();
 
         assert_extended_format(pid, &result);
+    }
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_extended_permission_denied() {
+    for arg in ["-x", "--extended"] {
+        let result = new_ucmd!()
+            .arg(arg)
+            .arg(INIT_PID)
+            .fails()
+            .code_is(1)
+            .no_stderr()
+            .clone()
+            .stdout_move_str();
+
+        assert_cmdline_only(INIT_PID, &result);
     }
 }
 
@@ -106,8 +138,35 @@ fn test_device() {
 }
 
 #[test]
+#[cfg(target_os = "linux")]
+fn test_device_permission_denied() {
+    for arg in ["-d", "--device"] {
+        let result = new_ucmd!()
+            .arg(arg)
+            .arg(INIT_PID)
+            .fails()
+            .code_is(1)
+            .no_stderr()
+            .clone()
+            .stdout_move_str();
+
+        assert_cmdline_only(INIT_PID, &result);
+    }
+}
+
+#[test]
 fn test_invalid_arg() {
     new_ucmd!().arg("--definitely-invalid").fails().code_is(1);
+}
+
+// Ensure `s` has the following format:
+//
+// 1234:   /some/path
+#[cfg(target_os = "linux")]
+fn assert_cmdline_only(pid: &str, s: &str) {
+    let s = s.trim_end();
+    let re = Regex::new(&format!("^{pid}:   .+[^ ]$")).unwrap();
+    assert!(re.is_match(s));
 }
 
 // Ensure `s` has the following format:
