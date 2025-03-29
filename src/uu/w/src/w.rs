@@ -204,7 +204,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                     println!("{:<9}{:<9}{:<7}{:<}", "USER", "TTY", "IDLE", "WHAT");
                 } else {
                     println!(
-                        "{:<9}{:<9}{:<9}{:<6} {:<7}{:<5}{:<}",
+                        "{:<9}{:<10}{:<9}{:<6} {:<7}{:<6}{:<}",
                         "USER", "TTY", "LOGIN@", "IDLE", "JCPU", "PCPU", "WHAT"
                     );
                 }
@@ -220,7 +220,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                     );
                 } else {
                     println!(
-                        "{:<9}{:<9}{:<9}{:<6} {:<7}{:<5}{:<}",
+                        "{:<9}{:<10}{:<9}{:<6} {:<7}{:<6}{:<}",
                         user.user,
                         user.terminal,
                         user.login_time,
