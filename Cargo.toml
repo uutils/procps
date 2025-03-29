@@ -39,6 +39,7 @@ feat_common_core = [
     "sysctl",
     "tload",
     "top",
+    "vmstat",
     "w",
     "watch",
 ]
@@ -55,6 +56,7 @@ nix = { version = "0.29", default-features = false, features = ["process"] }
 phf = "0.11.2"
 phf_codegen = "0.11.2"
 prettytable-rs = "0.10.0"
+procfs = "0.17.0"
 rand = { version = "0.9.0", features = ["small_rng"] }
 ratatui = "0.29.0"
 regex = "1.10.4"
@@ -92,6 +94,7 @@ snice = { optional = true, version = "0.0.1", package = "uu_snice", path = "src/
 sysctl = { optional = true, version = "0.0.1", package = "uu_sysctl", path = "src/uu/sysctl" }
 tload = { optional = true, version = "0.0.1", package = "uu_tload", path = "src/uu/tload" }
 top = { optional = true, version = "0.0.1", package = "uu_top", path = "src/uu/top" }
+vmstat = { optional = true, version = "0.0.1", package = "uu_vmstat", path = "src/uu/vmstat" }
 w = { optional = true, version = "0.0.1", package = "uu_w", path = "src/uu/w" }
 watch = { optional = true, version = "0.0.1", package = "uu_watch", path = "src/uu/watch" }
 

@@ -1,0 +1,26 @@
+[package]
+name = "uu_vmstat"
+version = "0.0.1"
+edition = "2021"
+authors = ["uutils developers"]
+license = "MIT"
+description = "vmstat ~ (uutils) Report virtual memory statistics."
+
+homepage = "https://github.com/uutils/procps"
+repository = "https://github.com/uutils/procps/tree/main/src/uu/vmstat"
+keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
+categories = ["command-line-utilities"]
+
+[dependencies]
+uucore = { workspace = true }
+clap = { workspace = true }
+
+[target.'cfg(target_os="linux")'.dependencies]
+procfs = { workspace = true }
+
+[lib]
+path = "src/vmstat.rs"
+
+[[bin]]
+name = "vmstat"
+path = "src/main.rs"

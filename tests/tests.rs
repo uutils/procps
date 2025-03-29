@@ -49,6 +49,10 @@ mod test_pidwait;
 #[path = "by-util/test_top.rs"]
 mod test_top;
 
+#[cfg(feature = "vmstat")]
+#[path = "by-util/test_vmstat.rs"]
+mod test_vmstat;
+
 #[cfg(feature = "snice")]
 #[path = "by-util/test_snice.rs"]
 mod test_snice;

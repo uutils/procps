@@ -20,11 +20,15 @@ prettytable-rs = { workspace = true }
 sysinfo = { workspace = true }
 chrono = { workspace = true }
 bytesize = { workspace = true }
+
+uu_vmstat = { path = "../vmstat" }
+
 [target.'cfg(target_os="windows")'.dependencies]
 windows-sys = { workspace = true, features = [
     "Win32_System_RemoteDesktop",
     "Win32_System_SystemInformation",
 ] }
+
 
 [target.'cfg(target_os="linux")'.build-dependencies]
 pkg-config = "0.3.31"
