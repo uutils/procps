@@ -9,8 +9,9 @@ use regex::Regex;
 #[cfg(target_os = "linux")]
 use std::process;
 
-const INIT_PID: &str = "1";
 const NON_EXISTING_PID: &str = "999999";
+#[cfg(target_os = "linux")]
+const INIT_PID: &str = "1";
 
 #[test]
 fn test_no_args() {
