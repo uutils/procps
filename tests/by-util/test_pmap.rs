@@ -75,6 +75,22 @@ fn test_non_existing_pid() {
 
 #[test]
 #[cfg(target_os = "linux")]
+fn test_extended() {
+    let pid = process::id();
+
+    for arg in ["-x", "--extended"] {
+        let result = new_ucmd!()
+            .arg(arg)
+            .arg(pid.to_string())
+            .succeeds()
+            .stdout_move_str();
+
+        assert_extended_format(pid, &result);
+    }
+}
+
+#[test]
+#[cfg(target_os = "linux")]
 fn test_device() {
     let pid = process::id();
 
@@ -115,6 +131,47 @@ fn assert_format(pid: u32, s: &str) {
 
     let re = Regex::new("^ total +[1-9][0-9]*K$").unwrap();
     assert!(re.is_match(last_line));
+}
+
+// Ensure `s` has the following extended format (--extended):
+//
+// 1234:   /some/path
+// Address           Kbytes     RSS   Dirty Mode  Mapping
+// 000073eb5f4c7000       8       4       0 rw--- ld-linux-x86-64.so.2
+// 00007ffd588fc000     132       3      13 rw---   [ stack ]
+// ffffffffff600000       4       0       1 --x--   [ anon ]
+// ...
+// ---------------- ------- ------- ------- (one intentional trailing space)
+// total kB             144       7      14
+#[cfg(target_os = "linux")]
+fn assert_extended_format(pid: u32, s: &str) {
+    let lines: Vec<_> = s.lines().collect();
+    let line_count = lines.len();
+
+    let re = Regex::new(&format!("^{pid}:   .+[^ ]$")).unwrap();
+    assert!(re.is_match(lines[0]));
+
+    let expected_header = "Address           Kbytes     RSS   Dirty Mode  Mapping";
+    assert_eq!(expected_header, lines[1]);
+
+    let re = Regex::new(
+        r"^[0-9a-f]{16} +[1-9][0-9]* +\d+ +\d+ (-|r)(-|w)(-|x)(-|s)- (  \[ (anon|stack) \]|[a-zA-Z0-9._-]+)$",
+    )
+    .unwrap();
+
+    for line in lines.iter().take(line_count - 2).skip(2) {
+        assert!(re.is_match(line), "failing line: {line}");
+    }
+
+    let expected_separator = "---------------- ------- ------- ------- ";
+    assert_eq!(expected_separator, lines[line_count - 2]);
+
+    let re = Regex::new(r"^total kB +[1-9][0-9]* +\d+ +\d+$").unwrap();
+    assert!(
+        re.is_match(lines[line_count - 1]),
+        "failing line: {}",
+        lines[line_count - 1]
+    );
 }
 
 // Ensure `s` has the following device format (--device):
