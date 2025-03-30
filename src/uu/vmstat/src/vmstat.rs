@@ -92,7 +92,7 @@ fn get_memory_info() -> (String, String, String) {
     (
         "-----------memory----------".into(),
         "  swpd   free   buff  cache".into(),
-        format!("{:>6} {:>6} {:>6} {:>6}", swap_used, free, buffer, cache),
+        format!("{:>6} {:>6} {:>5} {:>6}", swap_used, free, buffer, cache),
     )
 }
 
@@ -106,7 +106,7 @@ fn get_swap_info() -> (String, String, String) {
         "---swap--".into(),
         "  si   so".into(),
         format!(
-            "{:>4} {:>4}",
+            "{:>2} {:>4}",
             *swap_in as f64 / uptime,
             *swap_out as f64 / uptime
         ),
@@ -123,7 +123,7 @@ fn get_io_info() -> (String, String, String) {
         "-----io----".into(),
         "   bi    bo".into(),
         format!(
-            "{:>4.0} {:>4.0}",
+            "{:>5.0} {:>5.0}",
             *read_bytes as f64 / uptime,
             *write_bytes as f64 / uptime
         ),
