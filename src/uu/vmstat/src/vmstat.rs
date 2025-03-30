@@ -70,14 +70,6 @@ fn up_secs() -> f64 {
 }
 
 #[cfg(target_os = "linux")]
-fn up_secs_proc() -> f64 {
-    let stat = parse_proc_file("/proc/stat");
-    let n_proc = stat.keys().filter(|k| k.starts_with("cpu")).count() - 1; // exclude the line `cpu`
-
-    n_proc as f64 * up_secs()
-}
-
-#[cfg(target_os = "linux")]
 fn get_process_info() -> (String, String, String) {
     let stat = procfs::KernelStats::current().unwrap();
     let runnable = stat.procs_running.unwrap_or_default();
@@ -106,7 +98,7 @@ fn get_memory_info() -> (String, String, String) {
 
 #[cfg(target_os = "linux")]
 fn get_swap_info() -> (String, String, String) {
-    let uptime = up_secs_proc();
+    let uptime = up_secs();
     let vmstat = procfs::vmstat().unwrap();
     let swap_in = vmstat.get("pswpin").unwrap();
     let swap_out = vmstat.get("pswpout").unwrap();
@@ -123,13 +115,13 @@ fn get_swap_info() -> (String, String, String) {
 
 #[cfg(target_os = "linux")]
 fn get_io_info() -> (String, String, String) {
-    let uptime = up_secs_proc();
+    let uptime = up_secs();
     let vmstat = procfs::vmstat().unwrap();
     let read_bytes = vmstat.get("pgpgin").unwrap();
     let write_bytes = vmstat.get("pgpgout").unwrap();
     (
-        "----io----".into(),
-        "  bi    bo".into(),
+        "-----io----".into(),
+        "   bi    bo".into(),
         format!(
             "{:>4.0} {:>4.0}",
             *read_bytes as f64 / uptime,
@@ -140,7 +132,7 @@ fn get_io_info() -> (String, String, String) {
 
 #[cfg(target_os = "linux")]
 fn get_system_info() -> (String, String, String) {
-    let uptime = up_secs_proc();
+    let uptime = up_secs();
     let stat = parse_proc_file("/proc/stat");
 
     let interrupts = stat
@@ -169,11 +161,16 @@ fn get_cpu_info() -> (String, String, String) {
     let cpu_load = CpuLoad::current();
 
     (
-        "------cpu-----".into(),
-        "us sy id wa st".into(),
+        "-------cpu-------".into(),
+        "us sy id wa st gu".into(),
         format!(
-            "{:>2.0} {:>2.0} {:>2.0} {:>2.0} {:>2.0}",
-            cpu_load.user, cpu_load.system, cpu_load.idle, cpu_load.io_wait, cpu_load.steal_time
+            "{:>2.0} {:>2.0} {:>2.0} {:>2.0} {:>2.0} {:>2.0}",
+            cpu_load.user,
+            cpu_load.system,
+            cpu_load.idle,
+            cpu_load.io_wait,
+            cpu_load.steal_time,
+            cpu_load.guest
         ),
     )
 }
