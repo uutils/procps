@@ -25,13 +25,13 @@ Ongoing:
 * `sysctl`: Read or write kernel parameters at run-time.
 * `tload`: Prints a graphical representation of system load average to the terminal.
 * `top`: Displays real-time information about system processes.
+* `vmstat`: Reports information about processes, memory, paging, block IO, traps, and CPU activity.
 * `w`: Shows who is logged on and what they are doing.
 * `watch`: Executes a program periodically, showing output fullscreen.
 
 TODO:
 * `hugetop`: Report hugepage usage of processes and the system as a whole.
 * `skill`: Sends a signal to processes based on criteria like user, terminal, etc.
-* `vmstat`: Reports information about processes, memory, paging, block IO, traps, and CPU activity.
 
 Elsewhere:
 

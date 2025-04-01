@@ -5,6 +5,7 @@
 
 use clap::{crate_version, Arg, ArgAction, Command};
 use maps_format_parser::{parse_map_line, MapLine};
+use smaps_format_parser::{parse_smap_entries, SmapEntry};
 use std::env;
 use std::fs;
 use std::io::Error;
@@ -12,6 +13,7 @@ use uucore::error::{set_exit_code, UResult};
 use uucore::{format_usage, help_about, help_usage};
 
 mod maps_format_parser;
+mod smaps_format_parser;
 
 const ABOUT: &str = help_about!("pmap.md");
 const USAGE: &str = help_usage!("pmap.md");
@@ -49,7 +51,11 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             }
         }
 
-        if matches.get_flag(options::DEVICE) {
+        if matches.get_flag(options::EXTENDED) {
+            output_extended_format(pid)
+                .map_err(|_| set_exit_code(1))
+                .ok();
+        } else if matches.get_flag(options::DEVICE) {
             output_device_format(pid).map_err(|_| set_exit_code(1)).ok();
         } else {
             output_default_format(pid)
@@ -75,12 +81,16 @@ fn parse_cmdline(pid: &str) -> Result<String, Error> {
     Ok(cmdline.into())
 }
 
-fn process_maps<F>(pid: &str, mut process_line: F) -> Result<(), Error>
+fn process_maps<F>(pid: &str, header: Option<&str>, mut process_line: F) -> Result<(), Error>
 where
     F: FnMut(&MapLine),
 {
     let path = format!("/proc/{pid}/maps");
     let contents = fs::read_to_string(path)?;
+
+    if let Some(header) = header {
+        println!("{header}");
+    }
 
     for line in contents.lines() {
         let map_line = parse_map_line(line)?;
@@ -90,10 +100,29 @@ where
     Ok(())
 }
 
+fn process_smaps<F>(pid: &str, header: Option<&str>, mut process_entry: F) -> Result<(), Error>
+where
+    F: FnMut(&SmapEntry),
+{
+    let path = format!("/proc/{pid}/smaps");
+    let contents = fs::read_to_string(path)?;
+    let smap_entries = parse_smap_entries(&contents)?;
+
+    if let Some(header) = header {
+        println!("{header}");
+    }
+
+    for entry in smap_entries {
+        process_entry(&entry);
+    }
+
+    Ok(())
+}
+
 fn output_default_format(pid: &str) -> Result<(), Error> {
     let mut total = 0;
 
-    process_maps(pid, |map_line| {
+    process_maps(pid, None, |map_line| {
         println!(
             "{} {:>6}K {} {}",
             map_line.address, map_line.size_in_kb, map_line.perms, map_line.mapping
@@ -106,33 +135,65 @@ fn output_default_format(pid: &str) -> Result<(), Error> {
     Ok(())
 }
 
+fn output_extended_format(pid: &str) -> Result<(), Error> {
+    let mut total_mapped = 0;
+    let mut total_rss = 0;
+    let mut total_dirty = 0;
+
+    process_smaps(
+        pid,
+        Some("Address           Kbytes     RSS   Dirty Mode  Mapping"),
+        |smap_entry| {
+            println!(
+                "{} {:>7} {:>7} {:>7} {} {}",
+                smap_entry.map_line.address,
+                smap_entry.map_line.size_in_kb,
+                smap_entry.rss_in_kb,
+                smap_entry.shared_dirty_in_kb + smap_entry.private_dirty_in_kb,
+                smap_entry.map_line.perms,
+                smap_entry.map_line.mapping
+            );
+            total_mapped += smap_entry.map_line.size_in_kb;
+            total_rss += smap_entry.rss_in_kb;
+            total_dirty += smap_entry.shared_dirty_in_kb + smap_entry.private_dirty_in_kb;
+        },
+    )?;
+
+    println!("---------------- ------- ------- ------- ");
+    println!("total kB         {total_mapped:>7} {total_rss:>7} {total_dirty:>7}");
+
+    Ok(())
+}
+
 fn output_device_format(pid: &str) -> Result<(), Error> {
     let mut total_mapped = 0;
     let mut total_writeable_private = 0;
     let mut total_shared = 0;
 
-    println!("Address           Kbytes Mode  Offset           Device    Mapping");
+    process_maps(
+        pid,
+        Some("Address           Kbytes Mode  Offset           Device    Mapping"),
+        |map_line| {
+            println!(
+                "{} {:>7} {} {} {} {}",
+                map_line.address,
+                map_line.size_in_kb,
+                map_line.perms,
+                map_line.offset,
+                map_line.device,
+                map_line.mapping
+            );
+            total_mapped += map_line.size_in_kb;
 
-    process_maps(pid, |map_line| {
-        println!(
-            "{} {:>7} {} {} {} {}",
-            map_line.address,
-            map_line.size_in_kb,
-            map_line.perms,
-            map_line.offset,
-            map_line.device,
-            map_line.mapping
-        );
-        total_mapped += map_line.size_in_kb;
+            if map_line.perms.writable && !map_line.perms.shared {
+                total_writeable_private += map_line.size_in_kb;
+            }
 
-        if map_line.perms.writable && !map_line.perms.shared {
-            total_writeable_private += map_line.size_in_kb;
-        }
-
-        if map_line.perms.shared {
-            total_shared += map_line.size_in_kb;
-        }
-    })?;
+            if map_line.perms.shared {
+                total_shared += map_line.size_in_kb;
+            }
+        },
+    )?;
 
     println!(
         "mapped: {total_mapped}K    writeable/private: {total_writeable_private}K    shared: {total_shared}K"
