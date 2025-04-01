@@ -1,28 +1,36 @@
+// This file is part of the uutils procps package.
+//
+// For the full copyright and license information, please view the LICENSE
+// file that was distributed with this source code.
+
 use std::collections::HashSet;
-
+use uu_pgrep::process::{walk_process, ProcessInformation};
 #[cfg(target_os = "linux")]
-pub fn get_all_process_ids() -> Vec<i32> {
-    let mut pids = Vec::new();
-
-    if let Ok(entries) = std::fs::read_dir("/proc") {
-        for entry in entries.filter_map(Result::ok) {
-            if let Ok(pid) = entry.file_name().to_string_lossy().parse::<i32>() {
-                pids.push(pid);
-            }
-        }
-    }
-
-    pids
+pub fn get_all_processes() -> Vec<ProcessInformation> {
+    walk_process().collect()
 }
 
 #[cfg(target_os = "linux")]
-pub fn filter_processes_by_user(users: &[String]) -> Vec<i32> {
+pub fn filter_processes_by_pid(pids: &[i32]) -> Vec<ProcessInformation> {
     let mut matching_pids = Vec::new();
 
-    for pid in get_all_process_ids() {
-        if let Some(owner) = get_process_owner(pid) {
+    for process in get_all_processes() {
+        if pids.iter().any(|pid| *pid == process.pid as i32) {
+            matching_pids.push(process);
+        }
+    }
+
+    matching_pids
+}
+
+#[cfg(target_os = "linux")]
+pub fn filter_processes_by_user(users: &[String]) -> Vec<ProcessInformation> {
+    let mut matching_pids = Vec::new();
+
+    for mut process in get_all_processes() {
+        if let Some(owner) = get_process_owner(&mut process) {
             if users.iter().any(|u| *u == owner) {
-                matching_pids.push(pid);
+                matching_pids.push(process);
             }
         }
     }
@@ -31,117 +39,75 @@ pub fn filter_processes_by_user(users: &[String]) -> Vec<i32> {
 }
 
 #[cfg(target_os = "linux")]
-pub fn filter_processes_by_command(commands: &[String]) -> Vec<i32> {
-    let mut matching_pids = Vec::new();
+pub fn filter_processes_by_command(commands: &[String]) -> Vec<ProcessInformation> {
+    let mut matching_processes = Vec::new();
 
-    for pid in get_all_process_ids() {
-        if let Some(cmd_name) = get_process_command_name(pid) {
-            if commands.iter().any(|c| cmd_name.contains(c)) {
-                matching_pids.push(pid);
-            }
+    for process in get_all_processes() {
+        let cmdline = process.cmdline.split(" ").collect::<Vec<_>>()[0];
+        let cmd_name = cmdline.split("/").last().unwrap_or(cmdline);
+        if commands.iter().any(|c| c == cmd_name) {
+            matching_processes.push(process);
         }
     }
 
-    matching_pids
+    matching_processes
 }
 
 #[cfg(target_os = "linux")]
-pub fn filter_processes_by_terminal(terminals: &[String]) -> Vec<i32> {
-    let mut matching_pids = Vec::new();
+pub fn filter_processes_by_terminal(terminals: &[String]) -> Vec<ProcessInformation> {
+    let mut matching_processes = Vec::new();
 
-    for pid in get_all_process_ids() {
-        if let Some(tty) = get_process_terminal(pid) {
+    for process in get_all_processes() {
+        if let Some(tty) = get_process_terminal(&process) {
             if terminals.iter().any(|t| tty.contains(t)) {
-                matching_pids.push(pid);
+                matching_processes.push(process);
             }
         }
     }
 
-    matching_pids
+    matching_processes
 }
 
 #[cfg(target_os = "linux")]
-pub fn get_process_owner(pid: i32) -> Option<String> {
-    let status_path = format!("/proc/{}/status", pid);
+pub fn get_process_owner(process: &mut ProcessInformation) -> Option<String> {
+    // let status_path = format!("/proc/{}/status", pid);
+    let uid = process.uid().ok()?;
 
-    if let Ok(status_content) = std::fs::read_to_string(&status_path) {
-        for line in status_content.lines() {
-            if line.starts_with("Uid:") {
-                let uid = line.split_whitespace().nth(1)?;
-
-                if let Ok(output) = std::process::Command::new("id")
-                    .args(["-n", "-u", uid])
-                    .output()
-                {
-                    let username = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                    return Some(username);
-                }
-                break;
-            }
-        }
-    }
-
-    None
-}
-
-#[cfg(target_os = "linux")]
-pub fn get_process_command_name(pid: i32) -> Option<String> {
-    let cmdline_path = format!("/proc/{}/cmdline", pid);
-
-    if let Ok(cmdline_content) = std::fs::read_to_string(&cmdline_path) {
-        let cmd_parts: Vec<&str> = cmdline_content.split('\0').collect();
-
-        if !cmd_parts.is_empty() {
-            let cmd_with_path = cmd_parts[0];
-            let cmd_name = cmd_with_path.split('/').last().unwrap_or(cmd_with_path);
-            return Some(cmd_name.to_string());
-        }
-    }
-
-    None
-}
-
-#[cfg(target_os = "linux")]
-pub fn get_process_terminal(pid: i32) -> Option<String> {
-    let stat_path = format!("/proc/{}/stat", pid);
-
-    if let Ok(stat_content) = std::fs::read_to_string(&stat_path) {
-        let fields: Vec<&str> = stat_content.split_whitespace().collect();
-
-        if fields.len() >= 7 {
-            let tty_nr = fields[6];
-
-            if tty_nr != "0" {
-                if let Ok(tty_num) = tty_nr.parse::<u32>() {
-                    let major = tty_num >> 8;
-                    let minor = tty_num & 0xFF;
-
-                    return Some(if major == 136 {
-                        format!("pts/{}", minor)
-                    } else if major == 4 {
-                        format!("tty{}", minor)
-                    } else {
-                        format!("unknown{}", tty_num)
-                    });
+    // Read /etc/passwd to look up the username for this UID
+    std::fs::read_to_string("/etc/passwd")
+        .ok()?
+        .lines()
+        .find_map(|line| {
+            let parts: Vec<&str> = line.split(':').collect();
+            if parts.len() >= 3 {
+                if let Ok(entry_uid) = parts[2].parse::<u32>() {
+                    if entry_uid == uid {
+                        return Some(parts[0].to_string());
+                    }
                 }
             }
-        }
-    }
-
-    None
+            None
+        })
 }
 
 #[cfg(target_os = "linux")]
-pub fn get_active_users() -> HashSet<String> {
+pub fn get_process_terminal(process: &ProcessInformation) -> Option<String> {
+    use uu_pgrep::process::Teletype;
+    match process.tty() {
+        Teletype::Tty(id) => Some(format!("tty{}", id)),
+        Teletype::TtyS(id) => Some(format!("ttyS{}", id)),
+        Teletype::Pts(id) => Some(format!("pts/{}", id)),
+        Teletype::Unknown => None,
+    }
+}
+
+#[cfg(target_os = "linux")]
+pub fn get_active_users(processes: &mut [ProcessInformation]) -> HashSet<String> {
     let mut users = HashSet::new();
 
-    if let Ok(entries) = std::fs::read_dir("/proc") {
-        for entry in entries.filter_map(Result::ok) {
-            if let Ok(pid) = entry.file_name().to_string_lossy().parse::<i32>() {
-                if let Some(user) = get_process_owner(pid) {
-                    users.insert(user);
-                }
-            }
+    for process in processes {
+        if let Some(user) = get_process_owner(process) {
+            users.insert(user);
         }
     }
 
@@ -149,18 +115,12 @@ pub fn get_active_users() -> HashSet<String> {
 }
 
 #[cfg(target_os = "linux")]
-pub fn get_active_terminals() -> HashSet<String> {
+pub fn get_active_terminals(processes: &[ProcessInformation]) -> HashSet<String> {
     let mut terminals = HashSet::new();
 
-    if let Ok(entries) = std::fs::read_dir("/proc") {
-        for entry in entries.filter_map(Result::ok) {
-            if let Ok(pid) = entry.file_name().to_string_lossy().parse::<i32>() {
-                if let Some(tty) = get_process_terminal(pid) {
-                    if !tty.contains("unknown") {
-                        terminals.insert(tty);
-                    }
-                }
-            }
+    for process in processes {
+        if let Some(tty) = get_process_terminal(process) {
+            terminals.insert(tty);
         }
     }
 
@@ -168,17 +128,11 @@ pub fn get_active_terminals() -> HashSet<String> {
 }
 
 #[cfg(target_os = "linux")]
-pub fn get_active_commands() -> HashSet<String> {
+pub fn get_active_commands(processes: &[ProcessInformation]) -> HashSet<String> {
     let mut commands = HashSet::new();
 
-    if let Ok(entries) = std::fs::read_dir("/proc") {
-        for entry in entries.filter_map(Result::ok) {
-            if let Ok(pid) = entry.file_name().to_string_lossy().parse::<i32>() {
-                if let Some(cmd) = get_process_command_name(pid) {
-                    commands.insert(cmd);
-                }
-            }
-        }
+    for process in processes {
+        commands.insert(process.cmdline.to_string());
     }
 
     commands

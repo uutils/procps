@@ -15,6 +15,7 @@ categories = ["command-line-utilities"]
 uucore = { workspace = true , features = ["signals"]}
 clap = { workspace = true }
 nix = { workspace = true }
+uu_pgrep = { path = "../pgrep" }
 
 [lib]
 path = "src/skill.rs"

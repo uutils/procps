@@ -8,7 +8,7 @@ use std::collections::HashSet;
 use uucore::signals::{ALL_SIGNALS, DEFAULT_SIGNAL};
 
 #[derive(Debug, Clone)]
-pub struct Cli {
+pub struct Settings {
     // Arguments
     pub signal: String,
     pub expression: Expr,
@@ -31,7 +31,7 @@ pub enum Expr {
     Raw(Vec<String>),
 }
 
-impl Cli {
+impl Settings {
     pub fn new(args: ArgMatches) -> Self {
         let mut signal = args.get_one::<String>("signal").unwrap().to_string();
         if signal.starts_with("-") {
@@ -69,6 +69,7 @@ impl Cli {
 }
 
 // Pre-parses the command line arguments and returns a vector of OsString
+
 // Mainly used to parse the signal to make sure it is valid
 // and insert the default signal if it's not present
 pub fn parse_command(args: &mut impl uucore::Args) -> Vec<String> {

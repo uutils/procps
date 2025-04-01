@@ -1,3 +1,8 @@
+// This file is part of the uutils procps package.
+//
+// For the full copyright and license information, please view the LICENSE
+// file that was distributed with this source code.
+
 #[cfg(unix)]
 use crate::common::util::TestScenario;
 
@@ -13,10 +18,10 @@ fn test_missing_expression() {
 #[test]
 fn test_default_signal() {
     new_ucmd!()
-        .arg("-nv")
-        .arg("1234")
+        .arg("-nv") // no action + verbose
+        .arg("1")
         .succeeds()
-        .stdout_contains("Would send signal TERM to process 1234");
+        .stdout_contains("Would send signal TERM to process 1");
 }
 
 #[cfg(target_os = "linux")]
@@ -44,11 +49,11 @@ fn test_mutiple_signal() {
 #[test]
 fn test_verbose_option() {
     new_ucmd!()
+        .arg("-n") // no action
         .arg("-v")
-        .arg("-WINCH") // will not produce side effects
-        .arg("123")
+        .arg("1")
         .succeeds()
-        .stdout_contains("Would send signal WINCH")
+        .stdout_contains("Would send signal TERM to process 1")
         .no_stderr();
 }
 #[cfg(target_os = "linux")]
@@ -103,8 +108,45 @@ fn test_table_option_long() {
 #[test]
 fn test_mutiple_options() {
     new_ucmd!()
-        .arg("-nv")
-        .arg("1234")
+        .arg("-nv") // no action + verbose
+        .arg("1")
         .succeeds()
-        .stdout_contains("Would send signal TERM to process 1234");
+        .stdout_contains("Would send signal TERM to process 1");
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn test_command_option() {
+    use std::process::Command;
+
+    Command::new("sleep")
+        .arg("5")
+        .spawn()
+        .expect("Failed to start sleep process");
+
+    new_ucmd!()
+        .arg("-n") // no action
+        .arg("-c")
+        .arg("sleep")
+        .succeeds();
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn test_user_option() {
+    use std::process::Command;
+    let output = Command::new("whoami")
+        .output()
+        .expect("Failed to execute whoami");
+    let current_user = String::from_utf8(output.stdout)
+        .expect("Invalid UTF-8 output")
+        .trim()
+        .to_string();
+
+    new_ucmd!()
+        .arg("-n") // no action
+        .arg("-u")
+        .arg(&current_user)
+        .succeeds()
+        .no_stderr();
 }

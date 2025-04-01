@@ -6,12 +6,13 @@
 mod command;
 mod util;
 
-use crate::command::{parse_command, Cli, Expr};
+use crate::command::{parse_command, Expr, Settings};
 use clap::{crate_version, Arg, ArgAction, Command};
 use nix::{
     sys::signal::{self, Signal},
     unistd::Pid,
 };
+use uu_pgrep::process::ProcessInformation;
 use uucore::signals::ALL_SIGNALS;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
 
@@ -23,7 +24,7 @@ const SIGNALS_PER_ROW: usize = 7; // Be consistent with procps-ng
 pub fn uumain(mut args: impl uucore::Args) -> UResult<()> {
     let new = parse_command(&mut args);
     let matches = uu_app().try_get_matches_from(new)?;
-    let mut cli = Cli::new(matches);
+    let mut cli = Settings::new(matches);
 
     // If list or table is specified, print the list of signals and return
     if cli.list || cli.table {
@@ -40,16 +41,19 @@ pub fn uumain(mut args: impl uucore::Args) -> UResult<()> {
     // parse the expression if not specify its type
     parse_expression(&mut cli);
 
-    let matching_pids = find_matching_pids(&cli.expression);
+    let matching_processes = find_matching_processes(&cli.expression);
 
-    if matching_pids.is_empty() {
+    if matching_processes.is_empty() {
         eprintln!("No matching processes found");
         return Ok(());
     }
 
     if cli.verbose || cli.no_action {
-        for pid in &matching_pids {
-            println!("Would send signal {} to process {}", &cli.signal, pid);
+        for process in &matching_processes {
+            println!(
+                "Would send signal {} to process {} with cmd {}",
+                &cli.signal, process.pid, process.cmdline
+            );
         }
         if cli.no_action {
             return Ok(());
@@ -57,26 +61,27 @@ pub fn uumain(mut args: impl uucore::Args) -> UResult<()> {
     }
 
     if cli.interactive {
-        for pid in matching_pids {
-            let cmd =
-                util::get_process_command_name(pid).unwrap_or_else(|| "<unknown>".to_string());
-            let owner = util::get_process_owner(pid).unwrap_or_else(|| "<unknown>".to_string());
-            let tty = util::get_process_terminal(pid).unwrap_or_else(|| "<unknown>".to_string());
-            if confirm_action(&tty, &owner, pid, &cmd) {
-                if let Err(e) = send_signal(pid, signal) {
+        for mut process in matching_processes {
+            let cmd = process.cmdline.clone();
+            let owner =
+                util::get_process_owner(&mut process).unwrap_or_else(|| "<unknown>".to_string());
+            let tty =
+                util::get_process_terminal(&process).unwrap_or_else(|| "<unknown>".to_string());
+            if confirm_action(&tty, &owner, process.pid as i32, &cmd) {
+                if let Err(e) = send_signal(process.pid as i32, signal) {
                     if cli.warnings {
-                        eprintln!("Failed to send signal to process {}: {}", pid, e);
+                        eprintln!("Failed to send signal to process {}: {}", process.pid, e);
                     }
                 }
             } else {
-                println!("Skipping process {}", pid);
+                println!("Skipping process {}", process.pid);
             }
         }
     } else {
-        for pid in matching_pids {
-            if let Err(e) = send_signal(pid, signal) {
+        for process in matching_processes {
+            if let Err(e) = send_signal(process.pid as i32, signal) {
                 if cli.warnings {
-                    eprintln!("Failed to send signal to process {}: {}", pid, e);
+                    eprintln!("Failed to send signal to process {}: {}", process.pid, e);
                 }
             }
         }
@@ -86,22 +91,23 @@ pub fn uumain(mut args: impl uucore::Args) -> UResult<()> {
 }
 
 // TODO: add more strict check according to the usage
-fn parse_expression(cli: &mut Cli) {
+fn parse_expression(cli: &mut Settings) {
     if let Expr::Raw(raw_expr) = &cli.expression {
         // Check if any strings in the raw expression match active users, commands, or terminals
         if raw_expr.iter().all(|s| s.parse::<i32>().is_ok()) {
             cli.expression =
                 Expr::Pid(raw_expr.iter().map(|s| s.parse::<i32>().unwrap()).collect());
         } else {
+            let mut processes = util::get_all_processes();
             let is_user_expr = raw_expr
                 .iter()
-                .any(|s| util::get_active_users().contains(s));
+                .any(|s| util::get_active_users(&mut processes).contains(s));
             let is_command_expr = raw_expr
                 .iter()
-                .any(|s| util::get_active_commands().contains(s));
+                .any(|s| util::get_active_commands(&processes).contains(s));
             let is_terminal_expr = raw_expr
                 .iter()
-                .any(|s| util::get_active_terminals().contains(s));
+                .any(|s| util::get_active_terminals(&processes).contains(s));
             // Only perform the replacement if we found matching users
             let raw_clone = raw_expr.clone();
             if is_user_expr {
@@ -122,28 +128,27 @@ fn send_signal(pid: i32, signal: Signal) -> UResult<()> {
     }
 }
 
-fn find_matching_pids(expression: &Expr) -> Vec<i32> {
-    let mut pids = Vec::new();
+fn find_matching_processes(expression: &Expr) -> Vec<ProcessInformation> {
+    let mut processes = Vec::new();
 
     match expression {
         Expr::Pid(p) => {
-            pids.extend_from_slice(p);
+            processes.extend(util::filter_processes_by_pid(p));
         }
         Expr::User(u) => {
-            pids.extend_from_slice(&util::filter_processes_by_user(u));
+            processes.extend(util::filter_processes_by_user(u));
         }
         Expr::Command(c) => {
-            pids.extend_from_slice(&util::filter_processes_by_command(c));
+            processes.extend(util::filter_processes_by_command(c));
         }
         Expr::Terminal(t) => {
-            pids.extend_from_slice(&util::filter_processes_by_terminal(t));
+            processes.extend(util::filter_processes_by_terminal(t));
         }
         _ => {
-            eprintln!("Invalid expression");
             return Vec::new();
         }
     }
-    pids
+    processes
 }
 
 fn confirm_action(tty: &str, owner: &str, pid: i32, cmd: &str) -> bool {
@@ -161,7 +166,7 @@ fn confirm_action(tty: &str, owner: &str, pid: i32, cmd: &str) -> bool {
     input == "y" || input == "yes"
 }
 
-fn list_signals(cli: &Cli) {
+fn list_signals(cli: &Settings) {
     if cli.list {
         for signal in ALL_SIGNALS[1..].iter() {
             print!("{} ", signal);
