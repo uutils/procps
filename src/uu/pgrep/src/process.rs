@@ -4,6 +4,7 @@
 // file that was distributed with this source code.
 
 use regex::Regex;
+use std::fs::read_link;
 use std::hash::Hash;
 use std::sync::LazyLock;
 use std::{
@@ -377,6 +378,11 @@ impl ProcessInformation {
         self.get_uid_or_gid_field("Gid", 1)
     }
 
+    // Root directory of the process (which can be changed by chroot)
+    pub fn root(&mut self) -> Result<PathBuf, io::Error> {
+        read_link(format!("/proc/{}/root", self.pid))
+    }
+
     /// Fetch run state from [ProcessInformation::cached_stat]
     ///
     /// - [The /proc Filesystem: Table 1-4](https://docs.kernel.org/filesystems/proc.html#id10)
@@ -611,5 +617,12 @@ mod tests {
         assert_eq!(pid_entry.euid().unwrap(), uucore::process::geteuid());
         assert_eq!(pid_entry.gid().unwrap(), uucore::process::getgid());
         assert_eq!(pid_entry.egid().unwrap(), uucore::process::getegid());
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn test_root() {
+        let mut pid_entry = ProcessInformation::current_process_info().unwrap();
+        assert_eq!(pid_entry.root().unwrap(), PathBuf::from("/"));
     }
 }
