@@ -12,6 +12,9 @@ use libc::{sysconf, _SC_CLK_TCK};
 #[cfg(target_os = "linux")]
 use std::{collections::HashMap, fs, path::Path, time::SystemTime};
 use std::{process, time::Duration};
+use uucore::uptime::{
+    get_formated_uptime, get_formatted_loadavg, get_formatted_nusers, get_formatted_time,
+};
 #[cfg(target_os = "linux")]
 use uucore::utmpx::Utmpx;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
@@ -184,6 +187,23 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
     Ok(user_info_list)
 }
 
+fn print_uptime() {
+    print!(" {} ", get_formatted_time());
+    match get_formated_uptime(None) {
+        Ok(uptime) => {
+            print!("{}, ", uptime);
+        }
+        Err(_) => {
+            print!("up ???? days ??:??, ");
+        }
+    }
+    print!(" {}", get_formatted_nusers());
+    if let Ok(loadavg) = get_formatted_loadavg() {
+        print!(",  {}", loadavg);
+    }
+    println!();
+}
+
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
     Ok(Vec::new())
@@ -200,6 +220,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     match fetch_user_info() {
         Ok(user_info) => {
             if !no_header {
+                print_uptime();
                 if short {
                     println!("{:<9}{:<9}{:<7}{:<}", "USER", "TTY", "IDLE", "WHAT");
                 } else {
