@@ -193,7 +193,7 @@ fn command(pid: u32) -> String {
     };
 
     proc.exe()
-        .and_then(|it| it.iter().last())
+        .and_then(|it| it.iter().next_back())
         .map(|it| it.to_str().unwrap())
         .unwrap_or(&f(proc.cmd()))
         .into()
