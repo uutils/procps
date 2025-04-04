@@ -189,14 +189,12 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
 
 fn print_uptime() {
     print!(" {} ", get_formatted_time());
-    match get_formated_uptime(None) {
-        Ok(uptime) => {
-            print!("{}, ", uptime);
-        }
-        Err(_) => {
-            print!("up ???? days ??:??, ");
-        }
+    if let Ok(uptime) = get_formated_uptime(None) {
+        print!("{}, ", uptime);
+    } else {
+        print!("up ???? days ??:??, ");
     }
+
     print!(" {}", get_formatted_nusers());
     if let Ok(loadavg) = get_formatted_loadavg() {
         print!(",  {}", loadavg);
