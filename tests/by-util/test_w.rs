@@ -26,6 +26,10 @@ fn test_no_header() {
 
         let result = cmd.stdout_str();
 
+        assert!(match result.lines().next() {
+            None => true,
+            Some(line) => !line.contains("user") && !line.contains("load average"),
+        });
         assert!(!result.contains("USER     TTY      LOGIN@   IDLE   JCPU   PCPU WHAT"));
     }
 }
@@ -41,7 +45,7 @@ fn test_option_short() {
 
     let cmd_output = cmd.stdout_str();
     let cmd_output_lines: Vec<&str> = cmd_output.split('\n').collect();
-    let line_output_header = cmd_output_lines[0];
+    let line_output_header = cmd_output_lines[1];
     let line_output_data_words: Vec<&str> = cmd_output_lines[1]
         .trim()
         .split(' ')
