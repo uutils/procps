@@ -4,6 +4,7 @@
 // file that was distributed with this source code.
 
 use regex::Regex;
+use std::fs::read_link;
 use std::hash::Hash;
 use std::sync::LazyLock;
 use std::{
@@ -250,6 +251,17 @@ impl ProcessInformation {
         })
     }
 
+    pub fn current_process_info() -> Result<ProcessInformation, io::Error> {
+        use std::str::FromStr;
+
+        #[cfg(target_os = "linux")]
+        let pid = uucore::process::getpid();
+        #[cfg(not(target_os = "linux"))]
+        let pid = 0; // dummy
+
+        ProcessInformation::try_new(PathBuf::from_str(&format!("/proc/{}", pid)).unwrap())
+    }
+
     pub fn proc_status(&self) -> &str {
         &self.inner_status
     }
@@ -364,6 +376,11 @@ impl ProcessInformation {
 
     pub fn egid(&mut self) -> Result<u32, io::Error> {
         self.get_uid_or_gid_field("Gid", 1)
+    }
+
+    // Root directory of the process (which can be changed by chroot)
+    pub fn root(&mut self) -> Result<PathBuf, io::Error> {
+        read_link(format!("/proc/{}/root", self.pid))
     }
 
     /// Fetch run state from [ProcessInformation::cached_stat]
@@ -495,7 +512,9 @@ pub fn walk_threads() -> impl Iterator<Item = ProcessInformation> {
 mod tests {
     use super::*;
     #[cfg(target_os = "linux")]
-    use std::{collections::HashSet, str::FromStr};
+    use std::collections::HashSet;
+    #[cfg(target_os = "linux")]
+    use uucore::process::getpid;
 
     #[test]
     fn test_run_state_conversion() {
@@ -515,30 +534,10 @@ mod tests {
         assert!(RunState::try_from("Rg").is_err());
     }
 
-    #[cfg(target_os = "linux")]
-    fn current_pid() -> usize {
-        // Direct read link of /proc/self.
-        // It's result must be current programs pid.
-        fs::read_link("/proc/self")
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .parse::<usize>()
-            .unwrap()
-    }
-
-    #[cfg(target_os = "linux")]
-    fn current_process_info() -> ProcessInformation {
-        ProcessInformation::try_new(PathBuf::from_str(&format!("/proc/{}", current_pid())).unwrap())
-            .unwrap()
-    }
-
     #[test]
     #[cfg(target_os = "linux")]
     fn test_walk_pid() {
-        let current_pid = current_pid();
-
-        let find = walk_process().find(|it| it.pid == current_pid);
+        let find = walk_process().find(|it| it.pid == getpid() as usize);
 
         assert!(find.is_some());
     }
@@ -546,10 +545,8 @@ mod tests {
     #[test]
     #[cfg(target_os = "linux")]
     fn test_pid_entry() {
-        let current_pid = current_pid();
-
-        let pid_entry = current_process_info();
-        let mut result = WalkDir::new(format!("/proc/{}/fd", current_pid))
+        let pid_entry = ProcessInformation::current_process_info().unwrap();
+        let mut result = WalkDir::new(format!("/proc/{}/fd", getpid()))
             .into_iter()
             .flatten()
             .map(DirEntry::into_path)
@@ -569,7 +566,7 @@ mod tests {
     fn test_thread_ids() {
         let main_tid = unsafe { uucore::libc::gettid() };
         std::thread::spawn(move || {
-            let mut pid_entry = current_process_info();
+            let mut pid_entry = ProcessInformation::current_process_info().unwrap();
             let thread_ids = pid_entry.thread_ids();
 
             assert!(thread_ids.contains(&(main_tid as usize)));
@@ -599,7 +596,7 @@ mod tests {
     #[test]
     #[cfg(target_os = "linux")]
     fn test_ids() {
-        let mut pid_entry = current_process_info();
+        let mut pid_entry = ProcessInformation::current_process_info().unwrap();
         assert_eq!(
             pid_entry.ppid().unwrap(),
             unsafe { uucore::libc::getppid() } as u64
@@ -615,10 +612,17 @@ mod tests {
     #[test]
     #[cfg(target_os = "linux")]
     fn test_uid_gid() {
-        let mut pid_entry = current_process_info();
+        let mut pid_entry = ProcessInformation::current_process_info().unwrap();
         assert_eq!(pid_entry.uid().unwrap(), uucore::process::getuid());
         assert_eq!(pid_entry.euid().unwrap(), uucore::process::geteuid());
         assert_eq!(pid_entry.gid().unwrap(), uucore::process::getgid());
         assert_eq!(pid_entry.egid().unwrap(), uucore::process::getegid());
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn test_root() {
+        let mut pid_entry = ProcessInformation::current_process_info().unwrap();
+        assert_eq!(pid_entry.root().unwrap(), PathBuf::from("/"));
     }
 }
