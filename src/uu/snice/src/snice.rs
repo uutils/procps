@@ -213,7 +213,7 @@ fn construct_verbose_result(pids: &[u32], action_results: &[Option<ActionResult>
 
             let mut cmd = process
                 .exe()
-                .and_then(|it| it.iter().last())
+                .and_then(|it| it.iter().next_back())
                 .unwrap_or("?".as_ref());
             let cmd = cmd.to_str().unwrap();
 
