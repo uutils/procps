@@ -21,43 +21,15 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  style_format:
-    name: Style/format
-    runs-on: ${{ matrix.job.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        job:
-          - { os: ubuntu-latest, features: feat_os_unix }
+  fmt:
+    name: cargo fmt --all -- --check
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-          components: rustfmt
+      - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: Initialize workflow variables
-        id: vars
-        shell: bash
-        run: |
-          ## VARs setup
-          outputs() { step_id="${{ github.action }}"; for var in "$@" ; do echo steps.${step_id}.outputs.${var}="${!var}"; echo "${var}=${!var}" >> $GITHUB_OUTPUT; done; }
-          # failure mode
-          unset FAIL_ON_FAULT ; case '${{ env.STYLE_FAIL_ON_FAULT }}' in
-            ''|0|f|false|n|no|off) FAULT_TYPE=warning ;;
-            *) FAIL_ON_FAULT=true ; FAULT_TYPE=error ;;
-          esac;
-          outputs FAIL_ON_FAULT FAULT_TYPE
-      - name: "`cargo fmt` testing"
-        shell: bash
-        run: |
-          ## `cargo fmt` testing
-          unset fault
-          fault_type="${{ steps.vars.outputs.FAULT_TYPE }}"
-          fault_prefix=$(echo "$fault_type" | tr '[:lower:]' '[:upper:]')
-          # * convert any errors/warnings to GHA UI annotations; ref: <https://help.github.com/en/actions/reference/workflow-commands-for-github-actions#setting-a-warning-message>
-          S=$(cargo fmt -- --check) && printf "%s\n" "$S" || { printf "%s\n" "$S" ; printf "%s\n" "$S" | sed -E -n -e "s/^Diff[[:space:]]+in[[:space:]]+${PWD//\//\\/}\/(.*)[[:space:]]+at[[:space:]]+[^0-9]+([0-9]+).*$/::${fault_type} file=\1,line=\2::${fault_prefix}: \`cargo fmt\`: style violation (file:'\1', line:\2; use \`cargo fmt -- \"\1\"\`)/p" ; fault=true ; }
-          if [ -n "${{ steps.vars.outputs.FAIL_ON_FAULT }}" ] && [ -n "$fault" ]; then exit 1 ; fi
+      - run: rustup component add rustfmt
+      - run: cargo fmt --all -- --check
 
   style_lint:
     name: Style/lint
