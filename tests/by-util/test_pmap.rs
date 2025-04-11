@@ -3,11 +3,13 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use crate::common::util::TestScenario;
 #[cfg(target_os = "linux")]
 use regex::Regex;
 #[cfg(target_os = "linux")]
 use std::process;
+use uutests::new_ucmd;
+use uutests::util::TestScenario;
+use uutests::util_name;
 
 const NON_EXISTING_PID: &str = "999999";
 #[cfg(target_os = "linux")]

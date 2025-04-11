@@ -7,7 +7,9 @@ use std::process;
 
 use regex::Regex;
 
-use crate::common::util::TestScenario;
+use uutests::new_ucmd;
+use uutests::util::TestScenario;
+use uutests::util_name;
 
 #[test]
 fn test_no_args() {

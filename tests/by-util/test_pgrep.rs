@@ -9,9 +9,11 @@ use std::{
     process::{Child, Command},
 };
 
-use crate::common::util::TestScenario;
 #[cfg(target_os = "linux")]
 use regex::Regex;
+use uutests::new_ucmd;
+use uutests::util::TestScenario;
+use uutests::util_name;
 
 #[cfg(target_os = "linux")]
 const SINGLE_PID: &str = "^[1-9][0-9]*";
