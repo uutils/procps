@@ -12,7 +12,7 @@ keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
 categories = ["command-line-utilities"]
 
 [dependencies]
-uucore = { workspace = true, features = ["utmpx"] }
+uucore = { workspace = true, features = ["utmpx", "uptime"] }
 clap = { workspace = true }
 chrono = { workspace = true, default-features = false, features = [
   "clock",
