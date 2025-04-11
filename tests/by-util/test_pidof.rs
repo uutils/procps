@@ -48,6 +48,16 @@ fn test_quiet() {
 
 #[test]
 #[cfg(target_os = "linux")]
+fn test_check_root_accepted() {
+    new_ucmd!()
+        .arg("-w")
+        .arg("--check-root")
+        .arg("kthreadd")
+        .succeeds();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
 fn test_single_shot() {
     for arg in ["-s", "--single-shot"] {
         let binding = new_ucmd!()

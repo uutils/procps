@@ -23,6 +23,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let mut section: Vec<String> = vec![];
     let mut title: Vec<String> = vec![];
     let mut data: Vec<String> = vec![];
+    let mut data_len_excess = 0;
 
     #[cfg(target_os = "linux")]
     let func = [
@@ -38,7 +39,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let func: [ConcatFunc; 0] = [];
 
     func.iter()
-        .for_each(|f| f(&mut section, &mut title, &mut data));
+        .for_each(|f| f(&mut section, &mut title, &mut data, &mut data_len_excess));
 
     println!("{}", section.join(" "));
     println!("{}", title.join(" "));
@@ -47,16 +48,26 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     Ok(())
 }
 
-type ConcatFunc = Box<dyn Fn(&mut Vec<String>, &mut Vec<String>, &mut Vec<String>)>;
+type ConcatFunc = Box<dyn Fn(&mut Vec<String>, &mut Vec<String>, &mut Vec<String>, &mut usize)>;
 
 #[allow(dead_code)]
-fn concat_helper(func: impl Fn() -> (String, String, String) + 'static) -> ConcatFunc {
+fn concat_helper(
+    func: impl Fn() -> (String, String, Vec<(usize, String)>) + 'static,
+) -> ConcatFunc {
     Box::from(
-        move |section: &mut Vec<String>, title: &mut Vec<String>, data: &mut Vec<String>| {
+        move |section: &mut Vec<String>,
+              title: &mut Vec<String>,
+              data: &mut Vec<String>,
+              data_len_excess: &mut usize| {
             let output = func();
             section.push(output.0);
             title.push(output.1);
-            data.push(output.2);
+            output.2.iter().for_each(|(len, value)| {
+                let len = len - *data_len_excess;
+                let formatted_value = format!("{:>width$}", value, width = len);
+                *data_len_excess = formatted_value.len() - len;
+                data.push(formatted_value);
+            });
         },
     )
 }
@@ -70,19 +81,19 @@ fn up_secs() -> f64 {
 }
 
 #[cfg(target_os = "linux")]
-fn get_process_info() -> (String, String, String) {
+fn get_process_info() -> (String, String, Vec<(usize, String)>) {
     let stat = procfs::KernelStats::current().unwrap();
     let runnable = stat.procs_running.unwrap_or_default();
     let blocked = stat.procs_blocked.unwrap_or_default();
     (
         "procs".into(),
         " r  b".into(),
-        format!("{:>2} {:>2}", runnable, blocked),
+        vec![(2, format!("{}", runnable)), (2, format!("{}", blocked))],
     )
 }
 
 #[cfg(target_os = "linux")]
-fn get_memory_info() -> (String, String, String) {
+fn get_memory_info() -> (String, String, Vec<(usize, String)>) {
     let memory_info = procfs::Meminfo::current().unwrap();
     let swap_used = (memory_info.swap_total - memory_info.swap_free) / 1024;
     let free = memory_info.mem_free / 1024;
@@ -92,12 +103,17 @@ fn get_memory_info() -> (String, String, String) {
     (
         "-----------memory----------".into(),
         "  swpd   free   buff  cache".into(),
-        format!("{:>6} {:>6} {:>5} {:>6}", swap_used, free, buffer, cache),
+        vec![
+            (6, format!("{}", swap_used)),
+            (6, format!("{}", free)),
+            (6, format!("{}", buffer)),
+            (6, format!("{}", cache)),
+        ],
     )
 }
 
 #[cfg(target_os = "linux")]
-fn get_swap_info() -> (String, String, String) {
+fn get_swap_info() -> (String, String, Vec<(usize, String)>) {
     let uptime = up_secs();
     let vmstat = procfs::vmstat().unwrap();
     let swap_in = vmstat.get("pswpin").unwrap();
@@ -105,16 +121,15 @@ fn get_swap_info() -> (String, String, String) {
     (
         "---swap--".into(),
         "  si   so".into(),
-        format!(
-            "{:>2} {:>4}",
-            *swap_in as f64 / uptime,
-            *swap_out as f64 / uptime
-        ),
+        vec![
+            (4, format!("{:.0}", *swap_in as f64 / uptime)),
+            (4, format!("{:.0}", *swap_out as f64 / uptime)),
+        ],
     )
 }
 
 #[cfg(target_os = "linux")]
-fn get_io_info() -> (String, String, String) {
+fn get_io_info() -> (String, String, Vec<(usize, String)>) {
     let uptime = up_secs();
     let vmstat = procfs::vmstat().unwrap();
     let read_bytes = vmstat.get("pgpgin").unwrap();
@@ -122,16 +137,15 @@ fn get_io_info() -> (String, String, String) {
     (
         "-----io----".into(),
         "   bi    bo".into(),
-        format!(
-            "{:>5.0} {:>5.0}",
-            *read_bytes as f64 / uptime,
-            *write_bytes as f64 / uptime
-        ),
+        vec![
+            (5, format!("{:.0}", *read_bytes as f64 / uptime)),
+            (5, format!("{:.0}", *write_bytes as f64 / uptime)),
+        ],
     )
 }
 
 #[cfg(target_os = "linux")]
-fn get_system_info() -> (String, String, String) {
+fn get_system_info() -> (String, String, Vec<(usize, String)>) {
     let uptime = up_secs();
     let stat = parse_proc_file("/proc/stat");
 
@@ -148,30 +162,28 @@ fn get_system_info() -> (String, String, String) {
     (
         "-system--".into(),
         "  in   cs".into(),
-        format!(
-            "{:>4.0} {:>4.0}",
-            interrupts as f64 / uptime,
-            context_switches as f64 / uptime
-        ),
+        vec![
+            (4, format!("{:.0}", interrupts as f64 / uptime)),
+            (4, format!("{:.0}", context_switches as f64 / uptime)),
+        ],
     )
 }
 
 #[cfg(target_os = "linux")]
-fn get_cpu_info() -> (String, String, String) {
+fn get_cpu_info() -> (String, String, Vec<(usize, String)>) {
     let cpu_load = CpuLoad::current();
 
     (
         "-------cpu-------".into(),
         "us sy id wa st gu".into(),
-        format!(
-            "{:>2.0} {:>2.0} {:>2.0} {:>2.0} {:>2.0} {:>2.0}",
-            cpu_load.user,
-            cpu_load.system,
-            cpu_load.idle,
-            cpu_load.io_wait,
-            cpu_load.steal_time,
-            cpu_load.guest
-        ),
+        vec![
+            (2, format!("{:.0}", cpu_load.user)),
+            (2, format!("{:.0}", cpu_load.system)),
+            (2, format!("{:.0}", cpu_load.idle)),
+            (2, format!("{:.0}", cpu_load.io_wait)),
+            (2, format!("{:.0}", cpu_load.steal_time)),
+            (2, format!("{:.0}", cpu_load.guest)),
+        ],
     )
 }
 

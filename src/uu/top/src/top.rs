@@ -154,7 +154,7 @@ where
         input.chars().take(width).collect()
     } else {
         let mut result = String::from(&input);
-        result.extend(std::iter::repeat(' ').take(width - input.len()));
+        result.extend(std::iter::repeat_n(' ', width - input.len()));
         result
     }
 }

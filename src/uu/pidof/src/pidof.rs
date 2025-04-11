@@ -7,6 +7,8 @@ use std::path::PathBuf;
 
 use clap::{crate_version, Arg, ArgAction, ArgMatches, Command};
 use uu_pgrep::process::{walk_process, ProcessInformation};
+#[cfg(unix)]
+use uucore::process::geteuid;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
 
 const ABOUT: &str = help_about!("pidof.md");
@@ -94,21 +96,35 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<usize> {
         .copied()
         .collect::<Vec<_>>();
 
+    // Original pidof silently ignores the check-root option if the user is not root.
+    #[cfg(unix)]
+    let check_root = matches.get_flag("check-root") && geteuid() == 0;
+    #[cfg(not(unix))]
+    let check_root = false;
+    let our_root = ProcessInformation::current_process_info()
+        .unwrap()
+        .root()
+        .unwrap();
+
     program_names
         .into_iter()
         .flat_map(|program| {
             let mut processed = Vec::new();
             for mut process in collected.clone() {
-                let contains =
-                    match_process_name(&mut process, &program, with_workers, match_scripts);
-                let should_omit = arg_omit_pid.contains(&process.pid);
+                if !match_process_name(&mut process, &program, with_workers, match_scripts) {
+                    continue;
+                }
+                if arg_omit_pid.contains(&process.pid) {
+                    continue;
+                }
+                if check_root && process.root().unwrap() != our_root {
+                    continue;
+                }
 
-                if contains && !should_omit {
-                    if matches.get_flag("t") {
-                        processed.extend_from_slice(&process.thread_ids());
-                    } else {
-                        processed.push(process.pid);
-                    }
+                if matches.get_flag("t") {
+                    processed.extend_from_slice(&process.thread_ids());
+                } else {
+                    processed.push(process.pid);
                 }
             }
 
@@ -140,12 +156,13 @@ pub fn uu_app() -> Command {
                 .index(1)
                 .action(ArgAction::Append),
         )
-        // .arg(
-        //     Arg::new("c")
-        //         .short('c')
-        //         .help("Return PIDs with the same root directory")
-        //         .action(ArgAction::SetTrue),
-        // )
+        .arg(
+            Arg::new("check-root")
+                .short('c')
+                .long("check-root")
+                .help("Only return PIDs with the same root directory")
+                .action(ArgAction::SetTrue),
+        )
         .arg(
             Arg::new("S")
                 .short('S')
