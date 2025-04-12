@@ -3,7 +3,9 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use crate::common::util::TestScenario;
+use uutests::new_ucmd;
+use uutests::util::TestScenario;
+use uutests::util_name;
 
 #[test]
 fn test_invalid_arg() {
@@ -12,7 +14,10 @@ fn test_invalid_arg() {
 
 #[cfg(target_os = "linux")]
 mod linux {
-    use crate::common::util::TestScenario;
+
+    use uutests::new_ucmd;
+    use uutests::util::TestScenario;
+    use uutests::util_name;
 
     #[test]
     fn test_get_simple() {
@@ -68,7 +73,10 @@ mod linux {
 
 #[cfg(not(target_os = "linux"))]
 mod non_linux {
-    use crate::common::util::TestScenario;
+
+    use uutests::new_ucmd;
+    use uutests::util::TestScenario;
+    use uutests::util_name;
 
     #[test]
     fn test_fails_on_unsupported_platforms() {

@@ -4,8 +4,11 @@
 // file that was distributed with this source code.
 
 #[cfg(target_os = "linux")]
-use crate::common::util::run_ucmd_as_root;
-use crate::common::util::TestScenario;
+use uutests::util::run_ucmd_as_root;
+
+use uutests::new_ucmd;
+use uutests::util::TestScenario;
+use uutests::util_name;
 
 #[test]
 fn test_invalid_arg() {

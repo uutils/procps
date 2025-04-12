@@ -4,7 +4,11 @@
 // file that was distributed with this source code.
 
 #[cfg(unix)]
-use crate::common::util::TestScenario;
+use uutests::new_ucmd;
+#[cfg(unix)]
+use uutests::util::TestScenario;
+#[cfg(unix)]
+use uutests::util_name;
 
 #[cfg(unix)]
 #[test]
