@@ -8,7 +8,7 @@ mod picker;
 
 #[cfg(target_os = "linux")]
 use crate::picker::{get_pickers, Picker};
-use clap::{arg, crate_version, Command};
+use clap::{arg, crate_version, ArgMatches, Command};
 #[allow(unused_imports)]
 pub use parser::*;
 #[allow(unused_imports)]
@@ -57,13 +57,13 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             }
         }
 
-        let pickers = get_pickers();
+        let pickers = get_pickers(&matches);
         let mut proc_data = ProcData::new();
 
         let mut line_count = 0;
         print_header(&pickers);
         if !no_first {
-            print_data(&pickers, &proc_data, None);
+            print_data(&pickers, &proc_data, None, &matches);
             line_count += 1;
         }
 
@@ -77,7 +77,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             if !one_header && term_height > 0 && ((line_count + 3) % term_height as i64 == 0) {
                 print_header(&pickers);
             }
-            print_data(&pickers, &proc_data_now, Some(&proc_data));
+            print_data(&pickers, &proc_data_now, Some(&proc_data), &matches);
             line_count += 1;
             proc_data = proc_data_now;
         }
@@ -98,11 +98,22 @@ fn print_header(pickers: &[Picker]) {
     println!("{}", title.join(" "));
 }
 #[cfg(target_os = "linux")]
-fn print_data(pickers: &[Picker], proc_data: &ProcData, proc_data_before: Option<&ProcData>) {
+fn print_data(
+    pickers: &[Picker],
+    proc_data: &ProcData,
+    proc_data_before: Option<&ProcData>,
+    matches: &ArgMatches,
+) {
     let mut data: Vec<String> = vec![];
     let mut data_len_excess = 0;
     pickers.iter().for_each(|f| {
-        f.1(proc_data, proc_data_before, &mut data, &mut data_len_excess);
+        f.1(
+            proc_data,
+            proc_data_before,
+            matches,
+            &mut data,
+            &mut data_len_excess,
+        );
     });
     println!("{}", data.join(" "));
 }
@@ -117,7 +128,7 @@ pub fn uu_app() -> Command {
         .args([
             arg!(<delay> "The delay between updates in seconds").required(false),
             arg!(<count> "Number of updates").required(false),
-            // arg!(-a --active "Display active and inactive memory"),
+            arg!(-a --active "Display active and inactive memory"),
             // arg!(-f --forks "switch displays the number of forks since boot"),
             // arg!(-m --slabs "Display slabinfo"),
             arg!(-n --"one-header" "Display the header only once rather than periodically"),
@@ -128,6 +139,7 @@ pub fn uu_app() -> Command {
             // arg!(-S --unit <character> "Switches outputs between 1000 (k), 1024 (K), 1000000 (m), or 1048576 (M) bytes"),
             // arg!(-t --timestamp "Append timestamp to each line"),
             // arg!(-w --wide "Wide output mode"),
+            arg!(-w --wide "Wide output mode"),
             arg!(-y --"no-first" "Omits first report with statistics since system boot"),
         ])
 }

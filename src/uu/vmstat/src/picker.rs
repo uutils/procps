@@ -5,29 +5,60 @@
 
 #[cfg(target_os = "linux")]
 use crate::{CpuLoad, Meminfo, ProcData};
+use clap::ArgMatches;
 
 #[cfg(target_os = "linux")]
 pub type Picker = (
     (String, String),
-    Box<dyn Fn(&ProcData, Option<&ProcData>, &mut Vec<String>, &mut usize)>,
+    Box<dyn Fn(&ProcData, Option<&ProcData>, &ArgMatches, &mut Vec<String>, &mut usize)>,
 );
 
 #[cfg(target_os = "linux")]
-pub fn get_pickers() -> Vec<Picker> {
+pub fn get_pickers(matches: &ArgMatches) -> Vec<Picker> {
+    let wide = matches.get_flag("wide");
     vec![
-        concat_helper(("procs".into(), " r  b".into()), get_process_info),
         concat_helper(
-            (
-                "-----------memory----------".into(),
-                "  swpd   free   buff  cache".into(),
-            ),
+            if wide {
+                ("--procs--".into(), "   r    b".into())
+            } else {
+                ("procs".into(), " r  b".into())
+            },
+            get_process_info,
+        ),
+        concat_helper(
+            if wide {
+                (
+                    "-----------------------memory----------------------".into(),
+                    if matches.get_flag("active") {
+                        "        swpd         free        inact       active".into()
+                    } else {
+                        "        swpd         free         buff        cache".into()
+                    },
+                )
+            } else {
+                (
+                    "-----------memory----------".into(),
+                    if matches.get_flag("active") {
+                        "  swpd   free  inact active".into()
+                    } else {
+                        "  swpd   free   buff  cache".into()
+                    },
+                )
+            },
             get_memory_info,
         ),
         concat_helper(("---swap--".into(), "  si   so".into()), get_swap_info),
         concat_helper(("-----io----".into(), "   bi    bo".into()), get_io_info),
         concat_helper(("-system--".into(), "  in   cs".into()), get_system_info),
         concat_helper(
-            ("-------cpu-------".into(), "us sy id wa st gu".into()),
+            if wide {
+                (
+                    "----------cpu----------".into(),
+                    " us  sy  id  wa  st  gu".into(),
+                )
+            } else {
+                ("-------cpu-------".into(), "us sy id wa st gu".into())
+            },
             get_cpu_info,
         ),
     ]
@@ -36,16 +67,17 @@ pub fn get_pickers() -> Vec<Picker> {
 #[cfg(target_os = "linux")]
 fn concat_helper(
     title: (String, String),
-    func: impl Fn(&ProcData, Option<&ProcData>) -> Vec<(usize, String)> + 'static,
+    func: impl Fn(&ProcData, Option<&ProcData>, &ArgMatches) -> Vec<(usize, String)> + 'static,
 ) -> Picker {
     (
         title,
         Box::from(
             move |proc_data: &ProcData,
                   proc_data_before: Option<&ProcData>,
+                  matches: &ArgMatches,
                   data: &mut Vec<String>,
                   data_len_excess: &mut usize| {
-                let output = func(proc_data, proc_data_before);
+                let output = func(proc_data, proc_data_before, matches);
                 output.iter().for_each(|(len, value)| {
                     let len = if *data_len_excess > *len {
                         0
@@ -76,32 +108,47 @@ macro_rules! diff {
 fn get_process_info(
     proc_data: &ProcData,
     _proc_data_before: Option<&ProcData>,
+    matches: &ArgMatches,
 ) -> Vec<(usize, String)> {
     let runnable = proc_data.stat.get("procs_running").unwrap();
     let blocked = proc_data.stat.get("procs_blocked").unwrap();
+    let len = if matches.get_flag("wide") { 4 } else { 2 };
 
-    vec![(2, runnable.to_string()), (2, blocked.to_string())]
+    vec![(len, runnable.to_string()), (len, blocked.to_string())]
 }
 
 #[cfg(target_os = "linux")]
 fn get_memory_info(
     proc_data: &ProcData,
     _proc_data_before: Option<&ProcData>,
+    matches: &ArgMatches,
 ) -> Vec<(usize, String)> {
     use bytesize::*;
-
+    let len = if matches.get_flag("wide") { 12 } else { 6 };
     let memory_info = Meminfo::from_proc_map(&proc_data.meminfo);
 
     let swap_used = (memory_info.swap_total - memory_info.swap_free).as_u64() / KB;
     let free = memory_info.mem_free.as_u64() / KB;
+
+    if matches.get_flag("active") {
+        let inactive = memory_info.inactive.as_u64() / KB;
+        let active = memory_info.active.as_u64() / KB;
+        return vec![
+            (len, format!("{}", swap_used)),
+            (len, format!("{}", free)),
+            (len, format!("{}", inactive)),
+            (len, format!("{}", active)),
+        ];
+    }
+
     let buffer = memory_info.buffers.as_u64() / KB;
     let cache = memory_info.cached.as_u64() / KB;
 
     vec![
-        (6, format!("{}", swap_used)),
-        (6, format!("{}", free)),
-        (6, format!("{}", buffer)),
-        (6, format!("{}", cache)),
+        (len, format!("{}", swap_used)),
+        (len, format!("{}", free)),
+        (len, format!("{}", buffer)),
+        (len, format!("{}", cache)),
     ]
 }
 
@@ -109,6 +156,7 @@ fn get_memory_info(
 fn get_swap_info(
     proc_data: &ProcData,
     proc_data_before: Option<&ProcData>,
+    _matches: &ArgMatches,
 ) -> Vec<(usize, String)> {
     let period = diff!(proc_data, proc_data_before, uptime.0);
     let swap_in = diff!(
@@ -129,7 +177,11 @@ fn get_swap_info(
 }
 
 #[cfg(target_os = "linux")]
-fn get_io_info(proc_data: &ProcData, proc_data_before: Option<&ProcData>) -> Vec<(usize, String)> {
+fn get_io_info(
+    proc_data: &ProcData,
+    proc_data_before: Option<&ProcData>,
+    _matches: &ArgMatches,
+) -> Vec<(usize, String)> {
     let period = diff!(proc_data, proc_data_before, uptime.0);
     let read_bytes = diff!(
         proc_data,
@@ -152,6 +204,7 @@ fn get_io_info(proc_data: &ProcData, proc_data_before: Option<&ProcData>) -> Vec
 fn get_system_info(
     proc_data: &ProcData,
     proc_data_before: Option<&ProcData>,
+    _matches: &ArgMatches,
 ) -> Vec<(usize, String)> {
     let period = diff!(proc_data, proc_data_before, uptime.0);
 
@@ -182,15 +235,18 @@ fn get_system_info(
 fn get_cpu_info(
     proc_data: &ProcData,
     _proc_data_before: Option<&ProcData>,
+    matches: &ArgMatches,
 ) -> Vec<(usize, String)> {
+    let len = if matches.get_flag("wide") { 3 } else { 2 };
+
     let cpu_load = CpuLoad::from_proc_map(&proc_data.stat);
 
     vec![
-        (2, format!("{:.0}", cpu_load.user)),
-        (2, format!("{:.0}", cpu_load.system)),
-        (2, format!("{:.0}", cpu_load.idle)),
-        (2, format!("{:.0}", cpu_load.io_wait)),
-        (2, format!("{:.0}", cpu_load.steal_time)),
-        (2, format!("{:.0}", cpu_load.guest)),
+        (len, format!("{:.0}", cpu_load.user)),
+        (len, format!("{:.0}", cpu_load.system)),
+        (len, format!("{:.0}", cpu_load.idle)),
+        (len, format!("{:.0}", cpu_load.io_wait)),
+        (len, format!("{:.0}", cpu_load.steal_time)),
+        (len, format!("{:.0}", cpu_load.guest)),
     ]
 }

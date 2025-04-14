@@ -136,6 +136,8 @@ pub struct Meminfo {
     pub buffers: bytesize::ByteSize,
     pub cached: bytesize::ByteSize,
     pub swap_cached: bytesize::ByteSize,
+    pub active: bytesize::ByteSize,
+    pub inactive: bytesize::ByteSize,
     pub swap_total: bytesize::ByteSize,
     pub swap_free: bytesize::ByteSize,
 }
@@ -157,6 +159,8 @@ impl Meminfo {
         let cached = bytesize::ByteSize::from_str(proc_map.get("Cached").unwrap()).unwrap();
         let swap_cached =
             bytesize::ByteSize::from_str(proc_map.get("SwapCached").unwrap()).unwrap();
+        let active = bytesize::ByteSize::from_str(proc_map.get("Active").unwrap()).unwrap();
+        let inactive = bytesize::ByteSize::from_str(proc_map.get("Inactive").unwrap()).unwrap();
         let swap_total = bytesize::ByteSize::from_str(proc_map.get("SwapTotal").unwrap()).unwrap();
         let swap_free = bytesize::ByteSize::from_str(proc_map.get("SwapFree").unwrap()).unwrap();
         Self {
@@ -166,6 +170,8 @@ impl Meminfo {
             buffers,
             cached,
             swap_cached,
+            active,
+            inactive,
             swap_total,
             swap_free,
         }
