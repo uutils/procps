@@ -5,8 +5,8 @@
 
 #[cfg(target_os = "linux")]
 use crate::{CpuLoad, Meminfo, ProcData};
+#[cfg(target_os = "linux")]
 use clap::ArgMatches;
-use uucore::error::USimpleError;
 
 #[cfg(target_os = "linux")]
 pub type Picker = (
@@ -65,6 +65,7 @@ pub fn get_pickers(matches: &ArgMatches) -> Vec<Picker> {
     ]
 }
 
+#[cfg(target_os = "linux")]
 fn with_unit(x: u64, arg: &ArgMatches) -> u64 {
     if let Some(unit) = arg.get_one::<String>("unit") {
         return match unit.as_str() {
@@ -72,10 +73,7 @@ fn with_unit(x: u64, arg: &ArgMatches) -> u64 {
             "K" => x / bytesize::KIB,
             "m" => x / bytesize::MB,
             "M" => x / bytesize::MIB,
-            _ => panic!(
-                "{:?}",
-                USimpleError::new(1, "-S requires k, K, m or M (default is KiB)",)
-            ),
+            _ => x, // impossible
         };
     }
     x / bytesize::KIB

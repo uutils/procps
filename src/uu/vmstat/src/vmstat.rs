@@ -8,6 +8,7 @@ mod picker;
 
 #[cfg(target_os = "linux")]
 use crate::picker::{get_pickers, Picker};
+#[allow(unused_imports)]
 use clap::{arg, crate_version, ArgMatches, Command};
 #[allow(unused_imports)]
 pub use parser::*;
@@ -24,6 +25,16 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
     #[cfg(target_os = "linux")]
     {
+        // validate unit
+        if let Some(unit) = matches.get_one::<String>("unit") {
+            if !["k", "K", "m", "M"].contains(&unit.as_str()) {
+                Err(USimpleError::new(
+                    1,
+                    "-S requires k, K, m or M (default is KiB)",
+                ))?;
+            }
+        }
+
         let one_header = matches.get_flag("one-header");
         let no_first = matches.get_flag("no-first");
         let delay = matches.get_one::<String>("delay");

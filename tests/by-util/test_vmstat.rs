@@ -16,3 +16,14 @@ fn test_simple() {
 fn test_invalid_arg() {
     new_ucmd!().arg("--definitely-invalid").fails().code_is(1);
 }
+
+#[test]
+fn test_unit() {
+    new_ucmd!().args(&["-S", "M"]).succeeds();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_invalid_unit() {
+    new_ucmd!().args(&["-S", "x"]).fails().code_is(1);
+}
