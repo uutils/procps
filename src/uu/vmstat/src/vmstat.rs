@@ -136,9 +136,8 @@ pub fn uu_app() -> Command {
             // arg!(-d --disk "Report disk statistics"),
             // arg!(-D --"disk-sum" "Report some summary statistics about disk activity"),
             // arg!(-p --partition <device> "Detailed statistics about partition"),
-            // arg!(-S --unit <character> "Switches outputs between 1000 (k), 1024 (K), 1000000 (m), or 1048576 (M) bytes"),
+            arg!(-S --unit <character> "Switches outputs between 1000 (k), 1024 (K), 1000000 (m), or 1048576 (M) bytes"),
             // arg!(-t --timestamp "Append timestamp to each line"),
-            // arg!(-w --wide "Wide output mode"),
             arg!(-w --wide "Wide output mode"),
             arg!(-y --"no-first" "Omits first report with statistics since system boot"),
         ])

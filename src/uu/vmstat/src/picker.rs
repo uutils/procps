@@ -6,6 +6,7 @@
 #[cfg(target_os = "linux")]
 use crate::{CpuLoad, Meminfo, ProcData};
 use clap::ArgMatches;
+use uucore::error::USimpleError;
 
 #[cfg(target_os = "linux")]
 pub type Picker = (
@@ -62,6 +63,22 @@ pub fn get_pickers(matches: &ArgMatches) -> Vec<Picker> {
             get_cpu_info,
         ),
     ]
+}
+
+fn with_unit(x: u64, arg: &ArgMatches) -> u64 {
+    if let Some(unit) = arg.get_one::<String>("unit") {
+        return match unit.as_str() {
+            "k" => x / bytesize::KB,
+            "K" => x / bytesize::KIB,
+            "m" => x / bytesize::MB,
+            "M" => x / bytesize::MIB,
+            _ => panic!(
+                "{:?}",
+                USimpleError::new(1, "-S requires k, K, m or M (default is KiB)",)
+            ),
+        };
+    }
+    x / bytesize::KIB
 }
 
 #[cfg(target_os = "linux")]
@@ -123,16 +140,18 @@ fn get_memory_info(
     _proc_data_before: Option<&ProcData>,
     matches: &ArgMatches,
 ) -> Vec<(usize, String)> {
-    use bytesize::*;
     let len = if matches.get_flag("wide") { 12 } else { 6 };
     let memory_info = Meminfo::from_proc_map(&proc_data.meminfo);
 
-    let swap_used = (memory_info.swap_total - memory_info.swap_free).as_u64() / KB;
-    let free = memory_info.mem_free.as_u64() / KB;
+    let swap_used = with_unit(
+        (memory_info.swap_total - memory_info.swap_free).as_u64(),
+        matches,
+    );
+    let free = with_unit(memory_info.mem_free.as_u64(), matches);
 
     if matches.get_flag("active") {
-        let inactive = memory_info.inactive.as_u64() / KB;
-        let active = memory_info.active.as_u64() / KB;
+        let inactive = with_unit(memory_info.inactive.as_u64(), matches);
+        let active = with_unit(memory_info.active.as_u64(), matches);
         return vec![
             (len, format!("{}", swap_used)),
             (len, format!("{}", free)),
@@ -141,8 +160,8 @@ fn get_memory_info(
         ];
     }
 
-    let buffer = memory_info.buffers.as_u64() / KB;
-    let cache = memory_info.cached.as_u64() / KB;
+    let buffer = with_unit(memory_info.buffers.as_u64(), matches);
+    let cache = with_unit(memory_info.cached.as_u64(), matches);
 
     vec![
         (len, format!("{}", swap_used)),
