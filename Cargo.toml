@@ -42,6 +42,7 @@ feat_common_core = [
     "vmstat",
     "w",
     "watch",
+    "hugetop",
 ]
 
 [workspace.dependencies]
@@ -99,6 +100,7 @@ top = { optional = true, version = "0.0.1", package = "uu_top", path = "src/uu/t
 vmstat = { optional = true, version = "0.0.1", package = "uu_vmstat", path = "src/uu/vmstat" }
 w = { optional = true, version = "0.0.1", package = "uu_w", path = "src/uu/w" }
 watch = { optional = true, version = "0.0.1", package = "uu_watch", path = "src/uu/watch" }
+hugetop = {optional = true, version = "0.0.1", package = "uu_hugetop", path = "src/uu/hugetop"}
 
 [dev-dependencies]
 chrono = { workspace = true }
