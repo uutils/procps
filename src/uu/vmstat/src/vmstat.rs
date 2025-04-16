@@ -8,6 +8,7 @@ mod picker;
 
 #[cfg(target_os = "linux")]
 use crate::picker::{get_pickers, Picker};
+use clap::value_parser;
 #[allow(unused_imports)]
 use clap::{arg, crate_version, ArgMatches, Command};
 #[allow(unused_imports)]
@@ -37,36 +38,26 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
         let one_header = matches.get_flag("one-header");
         let no_first = matches.get_flag("no-first");
-        let delay = matches.get_one::<String>("delay");
-        let mut delay = if let Some(delay) = delay {
-            let delay = delay.parse::<i64>().unwrap();
-            if delay <= 0 {
-                return Err(USimpleError::new(-1, "delay must be greater than 0"));
-            }
-            delay
-        } else {
-            -1
-        };
-        let count = matches.get_one::<String>("count");
+
+        let delay = matches.get_one::<u64>("delay");
+        let count = matches.get_one::<u64>("count");
         let mut count = if let Some(count) = count {
-            let mut count = count.parse::<i64>().unwrap();
-            if count < 0 {
-                return Err(USimpleError::new(-1, "count must be greater than 0"));
+            if *count == 0 {
+                Some(1)
+            } else {
+                Some(*count)
             }
-            if count == 0 {
-                count = 1;
-            }
-            count
         } else {
-            -1
+            None
         };
-        if count < 0 && delay < 0 {
-            count = 1;
-            if no_first {
-                delay = 1;
-                count = 1;
+        let delay = if let Some(delay) = delay {
+            *delay
+        } else {
+            if count.is_none() {
+                count = Some(1);
             }
-        }
+            1
+        };
 
         let pickers = get_pickers(&matches);
         let mut proc_data = ProcData::new();
@@ -82,10 +73,10 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             .map(|size| size.1 .0)
             .unwrap_or(0);
 
-        while count < 0 || line_count < count {
-            std::thread::sleep(std::time::Duration::from_secs(delay as u64));
+        while count.is_none() || line_count < count.unwrap() {
+            std::thread::sleep(std::time::Duration::from_secs(delay));
             let proc_data_now = ProcData::new();
-            if !one_header && term_height > 0 && ((line_count + 3) % term_height as i64 == 0) {
+            if !one_header && term_height > 0 && ((line_count + 3) % term_height as u64 == 0) {
                 print_header(&pickers);
             }
             print_data(&pickers, &proc_data_now, Some(&proc_data), &matches);
@@ -96,6 +87,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     Ok(())
 }
+
 #[cfg(target_os = "linux")]
 fn print_header(pickers: &[Picker]) {
     let mut section: Vec<&str> = vec![];
@@ -108,6 +100,7 @@ fn print_header(pickers: &[Picker]) {
     println!("{}", section.join(" "));
     println!("{}", title.join(" "));
 }
+
 #[cfg(target_os = "linux")]
 fn print_data(
     pickers: &[Picker],
@@ -137,8 +130,12 @@ pub fn uu_app() -> Command {
         .override_usage(format_usage(USAGE))
         .infer_long_args(true)
         .args([
-            arg!(<delay> "The delay between updates in seconds").required(false),
-            arg!(<count> "Number of updates").required(false),
+            arg!(<delay> "The delay between updates in seconds")
+                .required(false)
+                .value_parser(value_parser!(u64).range(1..)),
+            arg!(<count> "Number of updates")
+                .required(false)
+                .value_parser(value_parser!(u64)),
             arg!(-a --active "Display active and inactive memory"),
             // arg!(-f --forks "switch displays the number of forks since boot"),
             // arg!(-m --slabs "Display slabinfo"),
