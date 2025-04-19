@@ -12,11 +12,10 @@ keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
 categories = ["command-line-utilities"]
 
 [dependencies]
-uucore = { workspace = true }
+bytesize = { workspace = true }
 clap = { workspace = true }
-
-[target.'cfg(target_os="linux")'.dependencies]
-procfs = { workspace = true }
+terminal_size = { workspace = true }
+uucore = { workspace = true }
 
 [lib]
 path = "src/vmstat.rs"
