@@ -41,23 +41,11 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
         let delay = matches.get_one::<u64>("delay");
         let count = matches.get_one::<u64>("count");
-        let mut count = if let Some(count) = count {
-            if *count == 0 {
-                Some(1)
-            } else {
-                Some(*count)
-            }
-        } else {
-            None
-        };
-        let delay = if let Some(delay) = delay {
-            *delay
-        } else {
-            if count.is_none() {
-                count = Some(1);
-            }
+        let mut count = count.copied().map(|c| if c == 0 { 1 } else { c });
+        let delay = delay.copied().unwrap_or_else(|| {
+            count.get_or_insert(1);
             1
-        };
+        });
 
         let pickers = get_pickers(&matches);
         let mut proc_data = ProcData::new();

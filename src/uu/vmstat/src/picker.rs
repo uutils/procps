@@ -73,7 +73,7 @@ fn with_unit(x: u64, arg: &ArgMatches) -> u64 {
             "K" => x / bytesize::KIB,
             "m" => x / bytesize::MB,
             "M" => x / bytesize::MIB,
-            _ => x, // impossible
+            _ => unreachable!(),
         };
     }
     x / bytesize::KIB
