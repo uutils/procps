@@ -18,6 +18,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
 
     let settings = process_matcher::get_match_settings(&matches)?;
+
+    // FIXME: process_matcher::find_matching_pids() is not working on Windows
     let mut proc_infos = process_matcher::find_matching_pids(&settings);
 
     // For empty result
@@ -42,7 +44,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         }
     }
 
-    wait(&proc_infos);
+    // It should be fine to reserve a `timeout` parameter for future use.
+    wait(&proc_infos, None)?;
 
     Ok(())
 }
