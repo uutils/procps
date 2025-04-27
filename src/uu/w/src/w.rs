@@ -97,11 +97,6 @@ fn fetch_idle_time(tty: String) -> Result<Duration, std::io::Error> {
     }
 }
 
-#[cfg(not(target_os = "linux"))]
-fn _fetch_idle_time(_tty: String) -> Result<Duration, std::io::Error> {
-    Ok(Duration::ZERO)
-}
-
 fn format_time_elapsed(time: Duration, old_style: bool) -> Result<String, chrono::OutOfRangeError> {
     let t = chrono::Duration::from_std(time)?;
     if t.num_days() >= 2 {
