@@ -22,6 +22,7 @@ chrono = { workspace = true }
 bytesize = { workspace = true }
 
 uu_vmstat = { path = "../vmstat" }
+uu_w = { path = "../w" }
 
 [target.'cfg(target_os="windows")'.dependencies]
 windows-sys = { workspace = true, features = [

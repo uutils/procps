@@ -13,7 +13,7 @@ use libc::{sysconf, _SC_CLK_TCK};
 use std::{collections::HashMap, fs, path::Path, time::SystemTime};
 use std::{process, time::Duration};
 use uucore::uptime::{
-    get_formated_uptime, get_formatted_loadavg, get_formatted_nusers, get_formatted_time,
+    get_formatted_loadavg, get_formatted_nusers, get_formatted_time, get_uptime, UptimeError,
 };
 #[cfg(target_os = "linux")]
 use uucore::utmpx::Utmpx;
@@ -187,9 +187,35 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
     Ok(user_info_list)
 }
 
+pub fn format_uptime_procps(up_secs: i64) -> UResult<String> {
+    if up_secs < 0 {
+        Err(UptimeError::SystemUptime)?;
+    }
+    let up_days = up_secs / 86400;
+    let up_hours = (up_secs - (up_days * 86400)) / 3600;
+    let up_mins = (up_secs - (up_days * 86400) - (up_hours * 3600)) / 60;
+    let day_str = match up_days.cmp(&1) {
+        std::cmp::Ordering::Equal => format!("{up_days:1} day, "),
+        std::cmp::Ordering::Greater => format!("{up_days:1} days, "),
+        _ => String::new(),
+    };
+    let hour_min_str = if up_hours > 0 {
+        format!("{up_hours:2}:{up_mins:02}")
+    } else {
+        format!("{up_mins} min")
+    };
+    Ok(format!("{}{}", day_str, hour_min_str))
+}
+
+#[inline]
+pub fn get_formatted_uptime_procps() -> UResult<String> {
+    let time_str = format_uptime_procps(get_uptime(None)?)?;
+    Ok(format!("up {}", time_str))
+}
+
 fn print_uptime() {
     print!(" {} ", get_formatted_time());
-    if let Ok(uptime) = get_formated_uptime(None) {
+    if let Ok(uptime) = get_formatted_uptime_procps() {
         print!("{}, ", uptime);
     } else {
         print!("up ???? days ??:??, ");
@@ -329,7 +355,7 @@ pub fn uu_app() -> Command {
 mod tests {
     use crate::{
         fetch_cmdline, fetch_pcpu_time, fetch_terminal_number, format_time, format_time_elapsed,
-        get_clock_tick,
+        format_uptime_procps, get_clock_tick,
     };
     use std::{fs, path::Path, process, time::Duration};
 
@@ -399,5 +425,27 @@ mod tests {
             fetch_pcpu_time(pid).unwrap(),
             (utime + stime) / get_clock_tick() as f64
         )
+    }
+
+    #[test]
+    fn test_format_uptime() {
+        let test_times = [
+            (1, "0 min"),
+            (10, "0 min"),
+            (60, "1 min"),
+            (100, "1 min"),
+            (200, "3 min"),
+            (3600, " 1:00"),
+            (5000, " 1:23"),
+            (3600 * 24, "1 day, 0 min"),
+            (3600 * 24 + 60, "1 day, 1 min"),
+            (3600 * 24 + 3600, "1 day,  1:00"),
+        ];
+
+        test_times.iter().for_each(|up_secs| {
+            let result = format_uptime_procps(up_secs.0).unwrap();
+
+            assert_eq!(result, up_secs.1);
+        })
     }
 }

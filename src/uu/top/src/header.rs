@@ -5,9 +5,8 @@
 
 use crate::picker::sysinfo;
 use bytesize::ByteSize;
-use uucore::uptime::{
-    get_formated_uptime, get_formatted_loadavg, get_formatted_nusers, get_formatted_time,
-};
+use uu_w::get_formatted_uptime_procps;
+use uucore::uptime::{get_formatted_loadavg, get_formatted_nusers, get_formatted_time};
 
 pub(crate) fn header(scale_summary_mem: Option<&String>) -> String {
     format!(
@@ -39,8 +38,9 @@ fn format_memory(memory_b: u64, unit: u64) -> f64 {
     ByteSize::b(memory_b).0 as f64 / unit as f64
 }
 
+#[inline]
 fn uptime() -> String {
-    get_formated_uptime(None).unwrap_or_default()
+    get_formatted_uptime_procps().unwrap_or_default()
 }
 
 #[cfg(target_os = "linux")]

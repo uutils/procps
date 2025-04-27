@@ -1655,6 +1655,7 @@ dependencies = [
  "prettytable-rs",
  "sysinfo",
  "uu_vmstat",
+ "uu_w",
  "uucore",
  "windows-sys 0.59.0",
 ]
