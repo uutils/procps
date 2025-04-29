@@ -1,0 +1,35 @@
+[package]
+name = "uu_hugetop"
+version = "0.0.1"
+edition = "2021"
+authors = ["uutils developers"]
+license = "MIT"
+description = "hugetop ~ (uutils) report huge page information"
+
+homepage = "https://github.com/uutils/procps"
+repository = "https://github.com/uutils/procps/tree/main/src/uu/hugetop"
+keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
+categories = ["command-line-utilities"]
+
+[dependencies]
+uucore = { workspace = true, features = ["utmpx", "uptime"] }
+clap = { workspace = true }
+libc = { workspace = true }
+nix = { workspace = true }
+prettytable-rs = { workspace = true }
+sysinfo = { workspace = true }
+chrono = { workspace = true }
+bytesize = { workspace = true }
+
+# TODO: @hz2 finish adjusting
+# for integration test of `--once`, mocking /proc etc.
+[dev-dependencies]
+assert_cmd = { workspace = true }
+predicates = { workspace = true }
+
+[lib]
+path = "src/hugetop.rs"
+
+[[bin]]
+name = "hugetop"
+path = "src/main.rs"

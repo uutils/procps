@@ -27,6 +27,7 @@ uudoc = []
 
 feat_common_core = [
     "free",
+    "hugetop",
     "pgrep",
     "pidof",
     "pidwait",
@@ -84,6 +85,7 @@ uucore = { workspace = true }
 
 #
 free = { optional = true, version = "0.0.1", package = "uu_free", path = "src/uu/free" }
+hugetop = { optional = true, version = "0.0.1", package = "uu_hugetop", path = "src/uu/hugetop" }
 pgrep = { optional = true, version = "0.0.1", package = "uu_pgrep", path = "src/uu/pgrep" }
 pidof = { optional = true, version = "0.0.1", package = "uu_pidof", path = "src/uu/pidof" }
 pidwait = { optional = true, version = "0.0.1", package = "uu_pidwait", path = "src/uu/pidwait" }
