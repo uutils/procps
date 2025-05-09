@@ -1,25 +1,31 @@
 # procps (uutils)
 # * see the repository LICENSE, README, and CONTRIBUTING files for more information
 
-# spell-checker:ignore (libs) bigdecimal datetime fundu gethostid kqueue libselinux mangen memmap procfs uuhelp
+# spell-checker:ignore (libs) mangen
+
+[workspace.package]
+authors = ["uutils developers"]
+categories = ["command-line-utilities"]
+edition = "2021"
+homepage = "https://github.com/uutils/procps"
+keywords = ["procps", "uutils", "cross-platform", "cli", "utility"]
+license = "MIT"
+version = "0.0.1"
 
 [package]
 name = "procps"
-version = "0.0.1"
-authors = ["uutils developers"]
-license = "MIT"
 description = "procps ~ implemented as universal (cross-platform) utils, written in Rust"
 default-run = "procps"
-
-homepage = "https://github.com/uutils/procps"
 repository = "https://github.com/uutils/procps"
 readme = "README.md"
-keywords = ["procps", "uutils", "cross-platform", "cli", "utility"]
-categories = ["command-line-utilities"]
-rust-version = "1.70.0"
-edition = "2021"
-
 build = "build.rs"
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+version.workspace = true
 
 [features]
 default = ["feat_common_core"]
@@ -51,6 +57,7 @@ clap = { version = "4.5.4", features = ["wrap_help", "cargo"] }
 clap_complete = "4.5.2"
 clap_mangen = "0.2.20"
 crossterm = "0.29.0"
+ctor = "0.4.1"
 libc = "0.2.154"
 nix = { version = "0.30", default-features = false, features = ["process"] }
 phf = "0.11.2"
@@ -66,7 +73,6 @@ textwrap = { version = "0.16.1", features = ["terminal_size"] }
 thiserror = "2.0.4"
 uucore = "0.0.30"
 uutests = "0.0.30"
-ctor = "0.4.1"
 walkdir = "2.5.0"
 windows = { version = "0.61.1" }
 windows-sys = { version = "0.59.0", default-features = false }
@@ -102,14 +108,14 @@ watch = { optional = true, version = "0.0.1", package = "uu_watch", path = "src/
 
 [dev-dependencies]
 chrono = { workspace = true }
+ctor = { workspace = true }
 libc = { workspace = true }
 pretty_assertions = "1.4.0"
 rand = { workspace = true }
 regex = { workspace = true }
 tempfile = { workspace = true }
-ctor = { workspace = true }
-uutests = { workspace = true }
 uucore = { workspace = true, features = ["entries", "process", "signals"] }
+uutests = { workspace = true }
 
 [target.'cfg(unix)'.dev-dependencies]
 xattr = { workspace = true }
