@@ -52,7 +52,7 @@ clap_complete = "4.5.2"
 clap_mangen = "0.2.20"
 crossterm = "0.29.0"
 libc = "0.2.154"
-nix = { version = "0.29", default-features = false, features = ["process"] }
+nix = { version = "0.30", default-features = false, features = ["process"] }
 phf = "0.11.2"
 phf_codegen = "0.11.2"
 prettytable-rs = "0.10.0"
