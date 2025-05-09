@@ -187,6 +187,37 @@ impl TryFrom<&String> for RunState {
     }
 }
 
+/// Represents an entry in `/proc/<pid>/cgroup`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CgroupMembership {
+    pub hierarchy_id: u32,
+    pub controllers: Vec<String>,
+    pub cgroup_path: String,
+}
+
+impl TryFrom<&str> for CgroupMembership {
+    type Error = io::Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let parts: Vec<&str> = value.split(':').collect();
+        if parts.len() != 3 {
+            return Err(io::ErrorKind::InvalidData.into());
+        }
+
+        Ok(CgroupMembership {
+            hierarchy_id: parts[0]
+                .parse::<u32>()
+                .map_err(|_| io::ErrorKind::InvalidData)?,
+            controllers: if parts[1].is_empty() {
+                vec![]
+            } else {
+                parts[1].split(',').map(String::from).collect()
+            },
+            cgroup_path: parts[2].to_string(),
+        })
+    }
+}
+
 /// Process ID and its information
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ProcessInformation {
@@ -381,6 +412,24 @@ impl ProcessInformation {
     // Root directory of the process (which can be changed by chroot)
     pub fn root(&mut self) -> Result<PathBuf, io::Error> {
         read_link(format!("/proc/{}/root", self.pid))
+    }
+
+    /// Returns cgroups (both v1 and v2) that the process belongs to.
+    pub fn cgroups(&mut self) -> Result<Vec<CgroupMembership>, io::Error> {
+        fs::read_to_string(format!("/proc/{}/cgroup", self.pid))?
+            .lines()
+            .map(CgroupMembership::try_from)
+            .collect()
+    }
+
+    /// Returns path to the v2 cgroup that the process belongs to.
+    pub fn cgroup_v2_path(&mut self) -> Result<String, io::Error> {
+        const V2_HIERARCHY_ID: u32 = 0;
+        self.cgroups()?
+            .iter()
+            .find(|cg| cg.hierarchy_id == V2_HIERARCHY_ID)
+            .map(|cg| cg.cgroup_path.clone())
+            .ok_or(io::ErrorKind::NotFound.into())
     }
 
     /// Fetch run state from [ProcessInformation::cached_stat]
@@ -624,5 +673,23 @@ mod tests {
     fn test_root() {
         let mut pid_entry = ProcessInformation::current_process_info().unwrap();
         assert_eq!(pid_entry.root().unwrap(), PathBuf::from("/"));
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn test_cgroups() {
+        let mut pid_entry = ProcessInformation::try_new("/proc/1".into()).unwrap();
+        if pid_entry.name().unwrap() == "systemd" {
+            let cgroups = pid_entry.cgroups().unwrap();
+            if let Some(membership) = cgroups.iter().find(|cg| cg.hierarchy_id == 0) {
+                let expected = CgroupMembership {
+                    hierarchy_id: 0,
+                    controllers: vec![],
+                    cgroup_path: "/init.scope".to_string(),
+                };
+                assert_eq!(membership, &expected);
+                assert_eq!(pid_entry.cgroup_v2_path().unwrap(), "/init.scope");
+            }
+        }
     }
 }

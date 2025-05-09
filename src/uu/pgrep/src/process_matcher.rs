@@ -44,6 +44,7 @@ pub struct Settings {
     pub gid: Option<HashSet<u32>>,
     pub pgroup: Option<HashSet<u64>>,
     pub session: Option<HashSet<u64>>,
+    pub cgroup: Option<HashSet<String>>,
     pub threads: bool,
 }
 
@@ -101,6 +102,9 @@ pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
             })
             .collect()
         }),
+        cgroup: matches
+            .get_many::<String>("cgroup")
+            .map(|groups| groups.cloned().collect()),
         threads: false,
     };
 
@@ -115,6 +119,7 @@ pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
         && settings.gid.is_none()
         && settings.pgroup.is_none()
         && settings.session.is_none()
+        && settings.cgroup.is_none()
         && !settings.require_handler
         && pattern.is_empty()
     {
@@ -235,6 +240,10 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
             let parent_matched = any_matches(&settings.parent, pid.ppid().unwrap());
             let pgroup_matched = any_matches(&settings.pgroup, pid.pgid().unwrap());
             let session_matched = any_matches(&settings.session, pid.sid().unwrap());
+            let cgroup_matched = any_matches(
+                &settings.cgroup,
+                pid.cgroup_v2_path().unwrap_or("/".to_string()),
+            );
 
             let ids_matched = any_matches(&settings.uid, pid.uid().unwrap())
                 && any_matches(&settings.euid, pid.euid().unwrap())
@@ -265,6 +274,7 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
                 && parent_matched
                 && pgroup_matched
                 && session_matched
+                && cgroup_matched
                 && ids_matched
                 && handler_matched)
                 ^ settings.inverse
@@ -413,8 +423,7 @@ pub fn clap_args(pattern_help: &'static str, enable_v_flag: bool) -> Vec<Arg> {
         // arg!(-L --logpidfile           "fail if PID file is not locked"),
         arg!(-r --runstates <state>    "match runstates [D,S,Z,...]"),
         // arg!(-A --"ignore-ancestors"   "exclude our ancestors from results"),
-        // arg!(--cgroup <grp>            "match by cgroup v2 names")
-        //     .value_delimiter(','),
+        arg!(--cgroup <grp>            "match by cgroup v2 names").value_delimiter(','),
         // arg!(--ns <PID>                "match the processes that belong to the same namespace as <pid>"),
         // arg!(--nslist <ns>             "list which namespaces will be considered for the --ns option.")
         //     .value_delimiter(',')
