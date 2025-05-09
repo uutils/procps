@@ -1577,8 +1577,10 @@ dependencies = [
  "clap",
  "nix 0.30.1",
  "regex",
+ "rustix 1.0.5",
  "uu_pgrep",
  "uucore",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
