@@ -79,7 +79,7 @@ pub struct PmapConfig {
 impl PmapConfig {
     pub fn get_field_list(&self) -> [&'static str; 29] {
         // Note: Address and Mapping are treated separately from other fields.
-        return [
+        [
             pmap_field_name::PERM,
             pmap_field_name::OFFSET,
             pmap_field_name::DEVICE,
@@ -109,20 +109,20 @@ impl PmapConfig {
             pmap_field_name::THP_ELIGIBLE,
             pmap_field_name::PROTECTION_KEY,
             pmap_field_name::VMFLAGS,
-        ];
+        ]
     }
 
     pub fn needs_fotter(&self, field_name: &str) -> bool {
-        match field_name {
+        !matches!(
+            field_name,
             pmap_field_name::ADDRESS
-            | pmap_field_name::PERM
-            | pmap_field_name::OFFSET
-            | pmap_field_name::DEVICE
-            | pmap_field_name::INODE
-            | pmap_field_name::VMFLAGS
-            | pmap_field_name::MAPPING => false,
-            _ => true,
-        }
+                | pmap_field_name::PERM
+                | pmap_field_name::OFFSET
+                | pmap_field_name::DEVICE
+                | pmap_field_name::INODE
+                | pmap_field_name::VMFLAGS
+                | pmap_field_name::MAPPING
+        )
     }
 
     pub fn is_enabled(&self, field_name: &str) -> bool {

@@ -41,7 +41,7 @@ impl SmapEntry {
     pub fn get_field(&self, field_name: &str) -> String {
         match field_name {
             pmap_field_name::ADDRESS => self.map_line.address.clone(),
-            pmap_field_name::PERM => self.map_line.perms.to_string().clone(),
+            pmap_field_name::PERM => self.map_line.perms.to_string(),
             pmap_field_name::OFFSET => self.map_line.offset.clone(),
             pmap_field_name::DEVICE => self.map_line.device.clone(),
             pmap_field_name::INODE => self.map_line.inode.to_string(),

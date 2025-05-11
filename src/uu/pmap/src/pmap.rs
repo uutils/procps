@@ -120,7 +120,7 @@ where
 fn get_smap_table(pid: &str) -> Result<SmapTable, Error> {
     let path = format!("/proc/{pid}/smaps");
     let contents = fs::read_to_string(path)?;
-    Ok(parse_smaps(&contents)?)
+    parse_smaps(&contents)
 }
 
 fn output_default_format(pid: &str, pmap_config: &PmapConfig) -> Result<(), Error> {
