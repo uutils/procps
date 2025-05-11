@@ -112,15 +112,14 @@ fn test_extended() {
 fn test_more_extended() {
     let pid = process::id();
 
-    for arg in ["-X"] {
-        let result = new_ucmd!()
-            .arg(arg)
-            .arg(pid.to_string())
-            .succeeds()
-            .stdout_move_str();
+    let arg = "-X";
+    let result = new_ucmd!()
+        .arg(arg)
+        .arg(pid.to_string())
+        .succeeds()
+        .stdout_move_str();
 
-        assert_more_extended_format(pid, &result);
-    }
+    assert_more_extended_format(pid, &result);
 }
 
 #[test]
@@ -128,15 +127,14 @@ fn test_more_extended() {
 fn test_most_extended() {
     let pid = process::id();
 
-    for arg in ["--XX"] {
-        let result = new_ucmd!()
-            .arg(arg)
-            .arg(pid.to_string())
-            .succeeds()
-            .stdout_move_str();
+    let arg = "--XX";
+    let result = new_ucmd!()
+        .arg(arg)
+        .arg(pid.to_string())
+        .succeeds()
+        .stdout_move_str();
 
-        assert_most_extended_format(pid, &result);
-    }
+    assert_most_extended_format(pid, &result);
 }
 
 #[test]
