@@ -503,6 +503,29 @@ fn test_nonexisting_session() {
 
 #[test]
 #[cfg(target_os = "linux")]
+fn test_nonexisting_cgroup() {
+    new_ucmd!()
+        .arg("--cgroup")
+        .arg("NONEXISTING")
+        .fails()
+        .stdout_is("");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_cgroup() {
+    let init_is_systemd = new_ucmd!().arg("systemd").run().code() == 0;
+    if init_is_systemd {
+        new_ucmd!()
+            .arg("--cgroup")
+            .arg("/init.scope")
+            .succeeds()
+            .stdout_is("1\n");
+    }
+}
+
+#[test]
+#[cfg(target_os = "linux")]
 fn test_threads() {
     std::thread::Builder::new()
         .name("PgrepTest".to_owned())
