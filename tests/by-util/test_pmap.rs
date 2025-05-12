@@ -334,7 +334,7 @@ fn assert_most_extended_format(pid: u32, s: &str) {
     let re = Regex::new(r"^         Address Perm           Offset    Device      Inode +Size +KernelPageSize +MMUPageSize +Rss +Pss +Pss_Dirty +Shared_Clean +Shared_Dirty +Private_Clean +Private_Dirty +Referenced +Anonymous( +KSM)? +LazyFree +AnonHugePages +ShmemPmdMapped +FilePmdMapped +Shared_Hugetlb +Private_Hugetlb +Swap +SwapPss +Locked +THPeligible( +ProtectionKey)? +VmFlags +Mapping$").unwrap();
     assert!(re.is_match(lines[1]), "failing line: '{}'", lines[1]);
 
-    let re = Regex::new(r"^[0-9a-f]{16} (-|r)(-|w)(-|x)(p|s) [0-9a-f]{16} [0-9a-f]{3}:[0-9a-f]{5} +\d+ +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +([a-z][a-z] )*(|\[[a-zA-Z ]+\]|[a-zA-Z0-9._-]+)$").unwrap();
+    let re = Regex::new(r"^[0-9a-f]{16} (-|r)(-|w)(-|x)(p|s) [0-9a-f]{16} [0-9a-f]{3}:[0-9a-f]{5} +\d+ +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +([a-z][a-z] )*(|\[[a-zA-Z_ ]+\]|[a-zA-Z0-9._-]+)$").unwrap();
 
     for line in lines.iter().take(line_count - 2).skip(2) {
         assert!(re.is_match(line), "failing line: '{line}'");
