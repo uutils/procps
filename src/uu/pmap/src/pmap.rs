@@ -234,7 +234,7 @@ fn output_custom_format(pid: &str, pmap_config: &mut PmapConfig) -> Result<(), E
         );
         for field_name in pmap_config.get_field_list() {
             if pmap_config.is_enabled(field_name) && field_name != pmap_field_name::VMFLAGS {
-                if pmap_config.needs_fotter(field_name) {
+                if pmap_config.needs_footer(field_name) {
                     line += &format!(
                         "{:=>width$} ",
                         "",
@@ -259,7 +259,7 @@ fn output_custom_format(pid: &str, pmap_config: &mut PmapConfig) -> Result<(), E
         );
         for field_name in pmap_config.get_field_list() {
             if pmap_config.is_enabled(field_name) && field_name != pmap_field_name::VMFLAGS {
-                if pmap_config.needs_fotter(field_name) {
+                if pmap_config.needs_footer(field_name) {
                     line += &format!(
                         "{:>width$} ",
                         smap_table.info.get_total(field_name),

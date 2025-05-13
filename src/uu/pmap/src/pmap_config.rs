@@ -112,7 +112,7 @@ impl PmapConfig {
         ]
     }
 
-    pub fn needs_fotter(&self, field_name: &str) -> bool {
+    pub fn needs_footer(&self, field_name: &str) -> bool {
         !matches!(
             field_name,
             pmap_field_name::ADDRESS
