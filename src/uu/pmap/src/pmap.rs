@@ -47,6 +47,11 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         pmap_config.set_most_extended();
     }
 
+    // Options independent with field selection:
+    if matches.get_flag(options::SHOW_PATH) {
+        pmap_config.show_path = true;
+    }
+
     let pids = matches
         .get_many::<String>(options::PID)
         .expect("PID required");

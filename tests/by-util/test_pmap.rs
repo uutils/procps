@@ -30,7 +30,7 @@ fn test_existing_pid() {
         .succeeds()
         .stdout_move_str();
 
-    assert_format(pid, &result);
+    assert_format(pid, &result, false);
 }
 
 #[test]
@@ -50,8 +50,8 @@ fn test_multiple_existing_pids() {
     let pos_second_pid = result.iter().rposition(|line| re.is_match(line)).unwrap();
     let (left, right) = result.split_at(pos_second_pid);
 
-    assert_format(pid, &left.join("\n"));
-    assert_format(pid, &right.join("\n"));
+    assert_format(pid, &left.join("\n"), false);
+    assert_format(pid, &right.join("\n"), false);
 }
 
 #[test]
@@ -65,7 +65,7 @@ fn test_non_existing_and_existing_pid() {
         .fails();
     let result = result.code_is(42).no_stderr().stdout_str();
 
-    assert_format(pid, result);
+    assert_format(pid, result, false);
 }
 
 #[test]
@@ -103,7 +103,7 @@ fn test_extended() {
             .succeeds()
             .stdout_move_str();
 
-        assert_extended_format(pid, &result);
+        assert_extended_format(pid, &result, false);
     }
 }
 
@@ -119,7 +119,7 @@ fn test_more_extended() {
         .succeeds()
         .stdout_move_str();
 
-    assert_more_extended_format(pid, &result);
+    assert_more_extended_format(pid, &result, false);
 }
 
 #[test]
@@ -134,7 +134,7 @@ fn test_most_extended() {
         .succeeds()
         .stdout_move_str();
 
-    assert_most_extended_format(pid, &result);
+    assert_most_extended_format(pid, &result, false);
 }
 
 #[test]
@@ -166,7 +166,7 @@ fn test_device() {
             .succeeds()
             .stdout_move_str();
 
-        assert_device_format(pid, &result);
+        assert_device_format(pid, &result, false);
     }
 }
 
@@ -184,6 +184,63 @@ fn test_device_permission_denied() {
             .stdout_move_str();
 
         assert_cmdline_only(INIT_PID, &result);
+    }
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_showpath() {
+    let pid = process::id();
+
+    for arg in ["-p", "--show-path"] {
+        // default format
+        let result = new_ucmd!()
+            .arg(arg)
+            .arg(pid.to_string())
+            .succeeds()
+            .stdout_move_str();
+
+        assert_format(pid, &result, true);
+
+        // extended format
+        let result = new_ucmd!()
+            .arg(arg)
+            .arg("--extended")
+            .arg(pid.to_string())
+            .succeeds()
+            .stdout_move_str();
+
+        assert_extended_format(pid, &result, true);
+
+        // more-extended format
+        let result = new_ucmd!()
+            .arg(arg)
+            .arg("-X")
+            .arg(pid.to_string())
+            .succeeds()
+            .stdout_move_str();
+
+        assert_more_extended_format(pid, &result, true);
+
+        // most-extended format
+        let result = new_ucmd!()
+            .arg(arg)
+            .arg("--XX")
+            .arg(pid.to_string())
+            .succeeds()
+            .stdout_move_str();
+
+        assert_most_extended_format(pid, &result, true);
+
+        // device format
+        let result = new_ucmd!()
+            .arg(arg)
+            .arg("--device")
+            .arg(pid.to_string())
+            .succeeds()
+            .stdout_move_str();
+
+        assert_device_format(pid, &result, true);
     }
 }
 
@@ -211,14 +268,18 @@ fn assert_cmdline_only(pid: &str, s: &str) {
 // ...
 //  total          1040320K
 #[cfg(target_os = "linux")]
-fn assert_format(pid: u32, s: &str) {
+fn assert_format(pid: u32, s: &str, show_path: bool) {
     let (first_line, rest) = s.split_once('\n').unwrap();
     let re = Regex::new(&format!("^{pid}:   .+[^ ]$")).unwrap();
     assert!(re.is_match(first_line));
 
     let rest = rest.trim_end();
     let (memory_map, last_line) = rest.rsplit_once('\n').unwrap();
-    let re = Regex::new(r"(?m)^[0-9a-f]{16} +[1-9][0-9]*K (-|r)(-|w)(-|x)(-|s)- (  \[ (anon|stack) \]|[a-zA-Z0-9._-]+)$").unwrap();
+    let re = if show_path {
+        Regex::new(r"(?m)^[0-9a-f]{16} +[1-9][0-9]*K (-|r)(-|w)(-|x)(-|s)- (  \[ (anon|stack) \]|/[/a-zA-Z0-9._-]+)$").unwrap()
+    } else {
+        Regex::new(r"(?m)^[0-9a-f]{16} +[1-9][0-9]*K (-|r)(-|w)(-|x)(-|s)- (  \[ (anon|stack) \]|[a-zA-Z0-9._-]+)$").unwrap()
+    };
     assert!(re.is_match(memory_map));
 
     let re = Regex::new("^ total +[1-9][0-9]*K$").unwrap();
@@ -236,7 +297,7 @@ fn assert_format(pid: u32, s: &str) {
 // ---------------- ------- ------- ------- (one intentional trailing space)
 // total kB             144       7      14
 #[cfg(target_os = "linux")]
-fn assert_extended_format(pid: u32, s: &str) {
+fn assert_extended_format(pid: u32, s: &str, show_path: bool) {
     let lines: Vec<_> = s.lines().collect();
     let line_count = lines.len();
 
@@ -246,10 +307,11 @@ fn assert_extended_format(pid: u32, s: &str) {
     let expected_header = "Address           Kbytes     RSS   Dirty Mode  Mapping";
     assert_eq!(expected_header, lines[1], "failing line: '{}'", lines[1]);
 
-    let re = Regex::new(
-        r"^[0-9a-f]{16} +[1-9][0-9]* +\d+ +\d+ (-|r)(-|w)(-|x)(-|s)- (  \[ (anon|stack) \]|[a-zA-Z0-9._-]+)$",
-    )
-    .unwrap();
+    let re = if show_path {
+        Regex::new(r"^[0-9a-f]{16} +[1-9][0-9]* +\d+ +\d+ (-|r)(-|w)(-|x)(-|s)- (  \[ (anon|stack) \]|/[/a-zA-Z0-9._-]+)$").unwrap()
+    } else {
+        Regex::new(r"^[0-9a-f]{16} +[1-9][0-9]* +\d+ +\d+ (-|r)(-|w)(-|x)(-|s)- (  \[ (anon|stack) \]|[a-zA-Z0-9._-]+)$").unwrap()
+    };
 
     for line in lines.iter().take(line_count - 2).skip(2) {
         assert!(re.is_match(line), "failing line: '{line}'");
@@ -282,7 +344,7 @@ fn assert_extended_format(pid: u32, s: &str) {
 //                                                             ==== ==== ==== ========= ========== ========= ======== ============== ============= ============== =============== ==== ======= ====== =========== (one intentional trailing space)
 //                                                             4164 3448 2826       552       3448       552        0              0             0              0               0    0       0      0           0 KB (one intentional trailing space)
 #[cfg(target_os = "linux")]
-fn assert_more_extended_format(pid: u32, s: &str) {
+fn assert_more_extended_format(pid: u32, s: &str, show_path: bool) {
     let lines: Vec<_> = s.lines().collect();
     let line_count = lines.len();
 
@@ -292,7 +354,11 @@ fn assert_more_extended_format(pid: u32, s: &str) {
     let re = Regex::new(r"^         Address Perm           Offset    Device      Inode +Size +Rss +Pss +Pss_Dirty +Referenced +Anonymous( +KSM)? +LazyFree +ShmemPmdMapped +FilePmdMapped +Shared_Hugetlb +Private_Hugetlb +Swap +SwapPss +Locked +THPeligible( +ProtectionKey)? +Mapping$").unwrap();
     assert!(re.is_match(lines[1]), "failing line: '{}'", lines[1]);
 
-    let re = Regex::new(r"^[0-9a-f]{16} (-|r)(-|w)(-|x)(p|s) [0-9a-f]{16} [0-9a-f]{3}:[0-9a-f]{5} +\d+ +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? (|\[[a-zA-Z_ ]+\]|[a-zA-Z0-9._-]+)$").unwrap();
+    let re = if show_path {
+        Regex::new(r"^[0-9a-f]{16} (-|r)(-|w)(-|x)(p|s) [0-9a-f]{16} [0-9a-f]{3}:[0-9a-f]{5} +\d+ +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? (|\[[a-zA-Z_ ]+\]|/[/a-zA-Z0-9._-]+)$").unwrap()
+    } else {
+        Regex::new(r"^[0-9a-f]{16} (-|r)(-|w)(-|x)(p|s) [0-9a-f]{16} [0-9a-f]{3}:[0-9a-f]{5} +\d+ +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? (|\[[a-zA-Z_ ]+\]|[a-zA-Z0-9._-]+)$").unwrap()
+    };
 
     for line in lines.iter().take(line_count - 2).skip(2) {
         assert!(re.is_match(line), "failing line: '{line}'");
@@ -324,7 +390,7 @@ fn assert_more_extended_format(pid: u32, s: &str) {
 //                                                             ==== ============== =========== ==== ==== ========= ============ ============ ============= ============= ========== ========= ======== ============= ============== ============= ============== =============== ==== ======= ====== =========== (one intentional trailing space)
 //                                                             4164             92          92 3448 2880       552         1132            0          1764           552       3448       552        0             0              0             0              0               0    0       0      0           0 KB (one intentional trailing space)
 #[cfg(target_os = "linux")]
-fn assert_most_extended_format(pid: u32, s: &str) {
+fn assert_most_extended_format(pid: u32, s: &str, show_path: bool) {
     let lines: Vec<_> = s.lines().collect();
     let line_count = lines.len();
 
@@ -334,7 +400,11 @@ fn assert_most_extended_format(pid: u32, s: &str) {
     let re = Regex::new(r"^         Address Perm           Offset    Device      Inode +Size +KernelPageSize +MMUPageSize +Rss +Pss +Pss_Dirty +Shared_Clean +Shared_Dirty +Private_Clean +Private_Dirty +Referenced +Anonymous( +KSM)? +LazyFree +AnonHugePages +ShmemPmdMapped +FilePmdMapped +Shared_Hugetlb +Private_Hugetlb +Swap +SwapPss +Locked +THPeligible( +ProtectionKey)? +VmFlags +Mapping$").unwrap();
     assert!(re.is_match(lines[1]), "failing line: '{}'", lines[1]);
 
-    let re = Regex::new(r"^[0-9a-f]{16} (-|r)(-|w)(-|x)(p|s) [0-9a-f]{16} [0-9a-f]{3}:[0-9a-f]{5} +\d+ +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +([a-z][a-z] )*(|\[[a-zA-Z_ ]+\]|[a-zA-Z0-9._-]+)$").unwrap();
+    let re = if show_path {
+        Regex::new(r"^[0-9a-f]{16} (-|r)(-|w)(-|x)(p|s) [0-9a-f]{16} [0-9a-f]{3}:[0-9a-f]{5} +\d+ +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +([a-z][a-z] )*(|\[[a-zA-Z_ ]+\]|/[/a-zA-Z0-9._-]+)$").unwrap()
+    } else {
+        Regex::new(r"^[0-9a-f]{16} (-|r)(-|w)(-|x)(p|s) [0-9a-f]{16} [0-9a-f]{3}:[0-9a-f]{5} +\d+ +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +([a-z][a-z] )*(|\[[a-zA-Z_ ]+\]|[a-zA-Z0-9._-]+)$").unwrap()
+    };
 
     for line in lines.iter().take(line_count - 2).skip(2) {
         assert!(re.is_match(line), "failing line: '{line}'");
@@ -365,7 +435,7 @@ fn assert_most_extended_format(pid: u32, s: &str) {
 // ...
 // mapped: 3060K    writeable/private: 348K    shared: 0K
 #[cfg(target_os = "linux")]
-fn assert_device_format(pid: u32, s: &str) {
+fn assert_device_format(pid: u32, s: &str, show_path: bool) {
     let lines: Vec<_> = s.lines().collect();
     let line_count = lines.len();
 
@@ -375,10 +445,11 @@ fn assert_device_format(pid: u32, s: &str) {
     let expected_header = "Address           Kbytes Mode  Offset           Device    Mapping";
     assert_eq!(expected_header, lines[1]);
 
-    let re = Regex::new(
-        r"^[0-9a-f]{16} +[1-9][0-9]* (-|r)(-|w)(-|x)(-|s)- [0-9a-f]{16} [0-9a-f]{3}:[0-9a-f]{5} (  \[ (anon|stack) \]|[a-zA-Z0-9._-]+)$",
-    )
-    .unwrap();
+    let re = if show_path {
+        Regex::new(r"^[0-9a-f]{16} +[1-9][0-9]* (-|r)(-|w)(-|x)(-|s)- [0-9a-f]{16} [0-9a-f]{3}:[0-9a-f]{5} (  \[ (anon|stack) \]|/[/a-zA-Z0-9._-]+)$").unwrap()
+    } else {
+        Regex::new(r"^[0-9a-f]{16} +[1-9][0-9]* (-|r)(-|w)(-|x)(-|s)- [0-9a-f]{16} [0-9a-f]{3}:[0-9a-f]{5} (  \[ (anon|stack) \]|[a-zA-Z0-9._-]+)$").unwrap()
+    };
 
     for line in lines.iter().take(line_count - 1).skip(2) {
         assert!(re.is_match(line), "failing line: {line}");
