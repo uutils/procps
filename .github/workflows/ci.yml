@@ -91,6 +91,8 @@ jobs:
         # Hardcode the version of crossbeam-epoch. See
         # https://github.com/uutils/coreutils/issues/3680
         sed -i -e "s|tempfile =|crossbeam-epoch = \"=0.9.8\"\ntempfile =|" Cargo.toml
+        # zip version 2.6.x are yanked
+        sed -i -e "s|zip = { version = \"2.6\", default-features = false }|zip = { version = \"2.4\", default-features = false }|" Cargo.toml
         cargo install --path .
         cd -
 # Uncomment when the upstream issue
