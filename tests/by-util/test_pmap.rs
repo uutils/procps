@@ -275,11 +275,13 @@ fn assert_format(pid: u32, s: &str, show_path: bool) {
 
     let rest = rest.trim_end();
     let (memory_map, last_line) = rest.rsplit_once('\n').unwrap();
-    let re = if show_path {
-        Regex::new(r"(?m)^[0-9a-f]{16} +[1-9][0-9]*K (-|r)(-|w)(-|x)(-|s)- (  \[ (anon|stack) \]|/[/a-zA-Z0-9._-]+)$").unwrap()
+    let base_pattern = r"(?m)^[0-9a-f]{16} +[1-9][0-9]*K (-|r)(-|w)(-|x)(-|s)-";
+    let mapping_pattern = if show_path {
+        r" (  \[ (anon|stack) \]|/[/a-zA-Z0-9._-]+)$"
     } else {
-        Regex::new(r"(?m)^[0-9a-f]{16} +[1-9][0-9]*K (-|r)(-|w)(-|x)(-|s)- (  \[ (anon|stack) \]|[a-zA-Z0-9._-]+)$").unwrap()
+        r" (  \[ (anon|stack) \]|[a-zA-Z0-9._-]+)$"
     };
+    let re = Regex::new(&format!("{base_pattern}{mapping_pattern}")).unwrap();
     assert!(re.is_match(memory_map));
 
     let re = Regex::new("^ total +[1-9][0-9]*K$").unwrap();
@@ -307,11 +309,13 @@ fn assert_extended_format(pid: u32, s: &str, show_path: bool) {
     let expected_header = "Address           Kbytes     RSS   Dirty Mode  Mapping";
     assert_eq!(expected_header, lines[1], "failing line: '{}'", lines[1]);
 
-    let re = if show_path {
-        Regex::new(r"^[0-9a-f]{16} +[1-9][0-9]* +\d+ +\d+ (-|r)(-|w)(-|x)(-|s)- (  \[ (anon|stack) \]|/[/a-zA-Z0-9._-]+)$").unwrap()
+    let base_pattern = r"^[0-9a-f]{16} +[1-9][0-9]* +\d+ +\d+ (-|r)(-|w)(-|x)(-|s)-";
+    let mapping_pattern = if show_path {
+        r" (  \[ (anon|stack) \]|/[/a-zA-Z0-9._-]+)$"
     } else {
-        Regex::new(r"^[0-9a-f]{16} +[1-9][0-9]* +\d+ +\d+ (-|r)(-|w)(-|x)(-|s)- (  \[ (anon|stack) \]|[a-zA-Z0-9._-]+)$").unwrap()
+        r" (  \[ (anon|stack) \]|[a-zA-Z0-9._-]+)$"
     };
+    let re = Regex::new(&format!("{base_pattern}{mapping_pattern}")).unwrap();
 
     for line in lines.iter().take(line_count - 2).skip(2) {
         assert!(re.is_match(line), "failing line: '{line}'");
@@ -354,11 +358,13 @@ fn assert_more_extended_format(pid: u32, s: &str, show_path: bool) {
     let re = Regex::new(r"^         Address Perm           Offset    Device      Inode +Size +Rss +Pss +Pss_Dirty +Referenced +Anonymous( +KSM)? +LazyFree +ShmemPmdMapped +FilePmdMapped +Shared_Hugetlb +Private_Hugetlb +Swap +SwapPss +Locked +THPeligible( +ProtectionKey)? +Mapping$").unwrap();
     assert!(re.is_match(lines[1]), "failing line: '{}'", lines[1]);
 
-    let re = if show_path {
-        Regex::new(r"^[0-9a-f]{16} (-|r)(-|w)(-|x)(p|s) [0-9a-f]{16} [0-9a-f]{3}:[0-9a-f]{5} +\d+ +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? (|\[[a-zA-Z_ ]+\]|/[/a-zA-Z0-9._-]+)$").unwrap()
+    let base_pattern = r"^[0-9a-f]{16} (-|r)(-|w)(-|x)(p|s) [0-9a-f]{16} [0-9a-f]{3}:[0-9a-f]{5} +\d+ +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)?";
+    let mapping_pattern = if show_path {
+        r" (|\[[a-zA-Z_ ]+\]|/[/a-zA-Z0-9._-]+)$"
     } else {
-        Regex::new(r"^[0-9a-f]{16} (-|r)(-|w)(-|x)(p|s) [0-9a-f]{16} [0-9a-f]{3}:[0-9a-f]{5} +\d+ +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? (|\[[a-zA-Z_ ]+\]|[a-zA-Z0-9._-]+)$").unwrap()
+        r" (|\[[a-zA-Z_ ]+\]|[a-zA-Z0-9._-]+)$"
     };
+    let re = Regex::new(&format!("{base_pattern}{mapping_pattern}")).unwrap();
 
     for line in lines.iter().take(line_count - 2).skip(2) {
         assert!(re.is_match(line), "failing line: '{line}'");
@@ -400,11 +406,13 @@ fn assert_most_extended_format(pid: u32, s: &str, show_path: bool) {
     let re = Regex::new(r"^         Address Perm           Offset    Device      Inode +Size +KernelPageSize +MMUPageSize +Rss +Pss +Pss_Dirty +Shared_Clean +Shared_Dirty +Private_Clean +Private_Dirty +Referenced +Anonymous( +KSM)? +LazyFree +AnonHugePages +ShmemPmdMapped +FilePmdMapped +Shared_Hugetlb +Private_Hugetlb +Swap +SwapPss +Locked +THPeligible( +ProtectionKey)? +VmFlags +Mapping$").unwrap();
     assert!(re.is_match(lines[1]), "failing line: '{}'", lines[1]);
 
-    let re = if show_path {
-        Regex::new(r"^[0-9a-f]{16} (-|r)(-|w)(-|x)(p|s) [0-9a-f]{16} [0-9a-f]{3}:[0-9a-f]{5} +\d+ +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +([a-z][a-z] )*(|\[[a-zA-Z_ ]+\]|/[/a-zA-Z0-9._-]+)$").unwrap()
+    let base_pattern = r"^[0-9a-f]{16} (-|r)(-|w)(-|x)(p|s) [0-9a-f]{16} [0-9a-f]{3}:[0-9a-f]{5} +\d+ +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +([a-z][a-z] )*";
+    let mapping_pattern = if show_path {
+        r"(|\[[a-zA-Z_ ]+\]|/[/a-zA-Z0-9._-]+)$"
     } else {
-        Regex::new(r"^[0-9a-f]{16} (-|r)(-|w)(-|x)(p|s) [0-9a-f]{16} [0-9a-f]{3}:[0-9a-f]{5} +\d+ +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +([a-z][a-z] )*(|\[[a-zA-Z_ ]+\]|[a-zA-Z0-9._-]+)$").unwrap()
+        r"(|\[[a-zA-Z_ ]+\]|[a-zA-Z0-9._-]+)$"
     };
+    let re = Regex::new(&format!("{base_pattern}{mapping_pattern}")).unwrap();
 
     for line in lines.iter().take(line_count - 2).skip(2) {
         assert!(re.is_match(line), "failing line: '{line}'");
@@ -445,11 +453,14 @@ fn assert_device_format(pid: u32, s: &str, show_path: bool) {
     let expected_header = "Address           Kbytes Mode  Offset           Device    Mapping";
     assert_eq!(expected_header, lines[1]);
 
-    let re = if show_path {
-        Regex::new(r"^[0-9a-f]{16} +[1-9][0-9]* (-|r)(-|w)(-|x)(-|s)- [0-9a-f]{16} [0-9a-f]{3}:[0-9a-f]{5} (  \[ (anon|stack) \]|/[/a-zA-Z0-9._-]+)$").unwrap()
+    let base_pattern =
+        r"^[0-9a-f]{16} +[1-9][0-9]* (-|r)(-|w)(-|x)(-|s)- [0-9a-f]{16} [0-9a-f]{3}:[0-9a-f]{5}";
+    let mapping_pattern = if show_path {
+        r" (  \[ (anon|stack) \]|/[/a-zA-Z0-9._-]+)$"
     } else {
-        Regex::new(r"^[0-9a-f]{16} +[1-9][0-9]* (-|r)(-|w)(-|x)(-|s)- [0-9a-f]{16} [0-9a-f]{3}:[0-9a-f]{5} (  \[ (anon|stack) \]|[a-zA-Z0-9._-]+)$").unwrap()
+        r" (  \[ (anon|stack) \]|[a-zA-Z0-9._-]+)$"
     };
+    let re = Regex::new(&format!("{base_pattern}{mapping_pattern}")).unwrap();
 
     for line in lines.iter().take(line_count - 1).skip(2) {
         assert!(re.is_match(line), "failing line: {line}");
