@@ -35,6 +35,10 @@ mod test_watch;
 #[path = "by-util/test_pmap.rs"]
 mod test_pmap;
 
+#[cfg(feature = "skill")]
+#[path = "by-util/test_skill.rs"]
+mod test_skill;
+
 #[cfg(feature = "slabtop")]
 #[path = "by-util/test_slabtop.rs"]
 mod test_slabtop;
