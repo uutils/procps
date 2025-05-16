@@ -53,7 +53,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     };
 
     // Collect pids
-    let pids = process_matcher::find_matching_pids(&settings);
+    let pids = process_matcher::find_matching_pids(&settings)?;
 
     // Send signal
     // TODO: Implement -q

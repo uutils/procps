@@ -541,3 +541,65 @@ fn test_threads() {
         .join()
         .unwrap();
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_pidfile_match() {
+    let temp_file = tempfile::NamedTempFile::new().unwrap();
+    std::fs::write(temp_file.path(), "1\tfoo\n").unwrap();
+
+    new_ucmd!()
+        .arg("--pidfile")
+        .arg(temp_file.path())
+        .succeeds()
+        .stdout_is("1\n");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_pidfile_no_match() {
+    let temp_file = tempfile::NamedTempFile::new().unwrap();
+    std::fs::write(temp_file.path(), "  -1").unwrap();
+
+    new_ucmd!()
+        .arg("--pidfile")
+        .arg(temp_file.path())
+        .fails()
+        .no_output();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_pidfile_invert() {
+    let temp_file = tempfile::NamedTempFile::new().unwrap();
+    std::fs::write(temp_file.path(), "  -1").unwrap();
+
+    new_ucmd!()
+        .arg("-v")
+        .arg("--pidfile")
+        .arg(temp_file.path())
+        .succeeds();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_pidfile_invalid_content() {
+    let temp_file = tempfile::NamedTempFile::new().unwrap();
+    std::fs::write(temp_file.path(), "0x1").unwrap();
+
+    new_ucmd!()
+        .arg("--pidfile")
+        .arg(temp_file.path())
+        .fails()
+        .stderr_matches(&Regex::new("Pidfile .* not valid").unwrap());
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_pidfile_nonexistent_file() {
+    new_ucmd!()
+        .arg("--pidfile")
+        .arg("/nonexistent/file")
+        .fails()
+        .stderr_contains("Failed to read pidfile");
+}
