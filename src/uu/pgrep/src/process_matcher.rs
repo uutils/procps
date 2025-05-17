@@ -5,8 +5,9 @@
 
 // Common process matcher logic shared by pgrep, pkill and pidwait
 
-use std::fs;
 use std::hash::Hash;
+#[cfg(unix)]
+use std::os::fd::AsRawFd;
 use std::{collections::HashSet, io};
 
 use clap::{arg, Arg, ArgAction, ArgMatches};
@@ -49,6 +50,7 @@ pub struct Settings {
     pub threads: bool,
 
     pub pidfile: Option<String>,
+    pub logpidfile: bool,
 }
 
 pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
@@ -110,6 +112,7 @@ pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
             .map(|groups| groups.cloned().collect()),
         threads: false,
         pidfile: matches.get_one::<String>("pidfile").cloned(),
+        logpidfile: matches.get_flag("logpidfile"),
     };
 
     if !settings.newest
@@ -208,7 +211,7 @@ fn collect_matched_pids(settings: &Settings) -> UResult<Vec<ProcessInformation>>
         let pid_from_pidfile = settings
             .pidfile
             .as_ref()
-            .map(|filename| read_pidfile(filename))
+            .map(|filename| read_pidfile(filename, settings.logpidfile))
             .transpose()?;
 
         for mut pid in pids {
@@ -392,7 +395,7 @@ fn parse_gid_or_group_name(gid_or_group_name: &str) -> io::Result<u32> {
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid group name"))
 }
 
-pub fn parse_pidfile_content(content: &str) -> Option<i64> {
+fn parse_pidfile_content(content: &str) -> Option<i64> {
     let re = Regex::new(r"(?-m)^[[:blank:]]*(-?[0-9]+)(?:\s|$)").unwrap();
     re.captures(content)?.get(1)?.as_str().parse::<i64>().ok()
 }
@@ -411,8 +414,48 @@ fn test_parse_pidfile_content_valid() {
     assert_eq!(parse_pidfile_content("\n123\n"), None);
 }
 
-pub fn read_pidfile(filename: &str) -> UResult<i64> {
-    let content = fs::read_to_string(filename)
+#[cfg(unix)]
+fn is_locked(file: &std::fs::File) -> bool {
+    // On Linux, fcntl and flock locks are independent, so need to check both
+    let mut flock_struct = uucore::libc::flock {
+        l_type: uucore::libc::F_RDLCK as uucore::libc::c_short,
+        l_whence: uucore::libc::SEEK_SET as uucore::libc::c_short,
+        l_start: 0,
+        l_len: 0,
+        l_pid: 0,
+    };
+    let fd = file.as_raw_fd();
+    let result = unsafe { uucore::libc::fcntl(fd, uucore::libc::F_GETLK, &mut flock_struct) };
+    if result == 0 && flock_struct.l_type != uucore::libc::F_UNLCK as uucore::libc::c_short {
+        return true;
+    }
+
+    let result = unsafe { uucore::libc::flock(fd, uucore::libc::LOCK_SH | uucore::libc::LOCK_NB) };
+    if result == -1 && std::io::Error::last_os_error().kind() == std::io::ErrorKind::WouldBlock {
+        return true;
+    }
+
+    false
+}
+
+#[cfg(not(unix))]
+fn is_locked(_file: &std::fs::File) -> bool {
+    // Dummy implementation just to make it compile
+    false
+}
+
+fn read_pidfile(filename: &str, check_locked: bool) -> UResult<i64> {
+    let file = std::fs::File::open(filename)
+        .map_err(|e| USimpleError::new(1, format!("Failed to open pidfile {}: {}", filename, e)))?;
+
+    if check_locked && !is_locked(&file) {
+        return Err(USimpleError::new(
+            1,
+            format!("Pidfile {} is not locked", filename),
+        ));
+    }
+
+    let content = std::fs::read_to_string(filename)
         .map_err(|e| USimpleError::new(1, format!("Failed to read pidfile {}: {}", filename, e)))?;
 
     let pid = parse_pidfile_content(&content)
@@ -462,7 +505,7 @@ pub fn clap_args(pattern_help: &'static str, enable_v_flag: bool) -> Vec<Arg> {
             .value_parser(parse_uid_or_username),
         arg!(-x --exact                "match exactly with the command name"),
         arg!(-F --pidfile <file>       "read PIDs from file"),
-        // arg!(-L --logpidfile           "fail if PID file is not locked"),
+        arg!(-L --logpidfile           "fail if PID file is not locked"),
         arg!(-r --runstates <state>    "match runstates [D,S,Z,...]"),
         // arg!(-A --"ignore-ancestors"   "exclude our ancestors from results"),
         arg!(--cgroup <grp>            "match by cgroup v2 names").value_delimiter(','),
