@@ -1,16 +1,14 @@
 [package]
 name = "uu_pkill"
-version = "0.0.1"
-edition = "2021"
-authors = ["uutils developers"]
-license = "MIT"
 description = "pgrep ~ (uutils) Kills processes based on name and other attributes."
-
-homepage = "https://github.com/uutils/procps"
 repository = "https://github.com/uutils/procps/tree/main/src/uu/pkill"
-keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
-categories = ["command-line-utilities"]
-
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+version.workspace = true
 
 [dependencies]
 uucore = { workspace = true, features = ["entries"] }
