@@ -72,6 +72,8 @@ pub struct PmapConfig {
     pub protection_key: bool,
     pub vmflags: bool,
     pub mapping: bool,
+    // [Mapping] category
+    pub show_path: bool,
     // Misc
     pub custom_format_enabled: bool,
 }

@@ -157,9 +157,13 @@ impl MapLine {
             }
         }
 
-        match self.mapping.rsplit_once('/') {
-            Some((_, name)) => name.into(),
-            None => self.mapping.clone(),
+        if pmap_config.show_path {
+            self.mapping.clone()
+        } else {
+            match self.mapping.rsplit_once('/') {
+                Some((_, name)) => name.into(),
+                None => self.mapping.clone(),
+            }
         }
     }
 }
@@ -285,32 +289,68 @@ mod test {
 
         mapline.mapping = "".to_string();
         pmap_config.custom_format_enabled = false;
+        pmap_config.show_path = false;
+        assert_eq!("  [ anon ]", mapline.parse_mapping(&pmap_config));
+        pmap_config.show_path = true;
         assert_eq!("  [ anon ]", mapline.parse_mapping(&pmap_config));
         pmap_config.custom_format_enabled = true;
+        pmap_config.show_path = false;
+        assert_eq!("", mapline.parse_mapping(&pmap_config));
+        pmap_config.show_path = true;
         assert_eq!("", mapline.parse_mapping(&pmap_config));
 
         mapline.mapping = "[vvar]".to_string();
         pmap_config.custom_format_enabled = false;
+        pmap_config.show_path = false;
+        assert_eq!("  [ anon ]", mapline.parse_mapping(&pmap_config));
+        pmap_config.show_path = true;
         assert_eq!("  [ anon ]", mapline.parse_mapping(&pmap_config));
         pmap_config.custom_format_enabled = true;
+        pmap_config.show_path = false;
+        assert_eq!("[vvar]", mapline.parse_mapping(&pmap_config));
+        pmap_config.show_path = true;
         assert_eq!("[vvar]", mapline.parse_mapping(&pmap_config));
 
         mapline.mapping = "anon_inode:i915.gem".to_string();
         pmap_config.custom_format_enabled = false;
+        pmap_config.show_path = false;
+        assert_eq!("  [ anon ]", mapline.parse_mapping(&pmap_config));
+        pmap_config.show_path = true;
         assert_eq!("  [ anon ]", mapline.parse_mapping(&pmap_config));
         pmap_config.custom_format_enabled = true;
+        pmap_config.show_path = false;
+        assert_eq!("anon_inode:i915.gem", mapline.parse_mapping(&pmap_config));
+        pmap_config.show_path = true;
         assert_eq!("anon_inode:i915.gem", mapline.parse_mapping(&pmap_config));
 
         mapline.mapping = "[stack]".to_string();
         pmap_config.custom_format_enabled = false;
+        pmap_config.show_path = false;
+        assert_eq!("  [ stack ]", mapline.parse_mapping(&pmap_config));
+        pmap_config.show_path = true;
         assert_eq!("  [ stack ]", mapline.parse_mapping(&pmap_config));
         pmap_config.custom_format_enabled = true;
+        pmap_config.show_path = false;
+        assert_eq!("[stack]", mapline.parse_mapping(&pmap_config));
+        pmap_config.show_path = true;
         assert_eq!("[stack]", mapline.parse_mapping(&pmap_config));
 
         mapline.mapping = "/usr/lib/ld-linux-x86-64.so.2".to_string();
         pmap_config.custom_format_enabled = false;
+        pmap_config.show_path = false;
         assert_eq!("ld-linux-x86-64.so.2", mapline.parse_mapping(&pmap_config));
+        pmap_config.show_path = true;
+        assert_eq!(
+            "/usr/lib/ld-linux-x86-64.so.2",
+            mapline.parse_mapping(&pmap_config)
+        );
         pmap_config.custom_format_enabled = true;
+        pmap_config.show_path = false;
         assert_eq!("ld-linux-x86-64.so.2", mapline.parse_mapping(&pmap_config));
+        pmap_config.show_path = true;
+        assert_eq!(
+            "/usr/lib/ld-linux-x86-64.so.2",
+            mapline.parse_mapping(&pmap_config)
+        );
     }
 }
