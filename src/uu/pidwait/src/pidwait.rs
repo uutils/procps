@@ -18,7 +18,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
 
     let settings = process_matcher::get_match_settings(&matches)?;
-    let mut proc_infos = process_matcher::find_matching_pids(&settings);
+    let mut proc_infos = process_matcher::find_matching_pids(&settings)?;
 
     // For empty result
     if proc_infos.is_empty() {

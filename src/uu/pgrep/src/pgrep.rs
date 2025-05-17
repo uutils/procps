@@ -32,7 +32,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     settings.threads = matches.get_flag("lightweight");
 
     // Collect pids
-    let pids = process_matcher::find_matching_pids(&settings);
+    let pids = process_matcher::find_matching_pids(&settings)?;
 
     // Processing output
     let output = if matches.get_flag("count") {

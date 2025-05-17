@@ -5,6 +5,7 @@
 
 // Common process matcher logic shared by pgrep, pkill and pidwait
 
+use std::fs;
 use std::hash::Hash;
 use std::{collections::HashSet, io};
 
@@ -46,6 +47,8 @@ pub struct Settings {
     pub session: Option<HashSet<u64>>,
     pub cgroup: Option<HashSet<String>>,
     pub threads: bool,
+
+    pub pidfile: Option<String>,
 }
 
 pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
@@ -106,6 +109,7 @@ pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
             .get_many::<String>("cgroup")
             .map(|groups| groups.cloned().collect()),
         threads: false,
+        pidfile: matches.get_one::<String>("pidfile").cloned(),
     };
 
     if !settings.newest
@@ -121,6 +125,7 @@ pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
         && settings.session.is_none()
         && settings.cgroup.is_none()
         && !settings.require_handler
+        && settings.pidfile.is_none()
         && pattern.is_empty()
     {
         return Err(USimpleError::new(
@@ -142,13 +147,13 @@ pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
     Ok(settings)
 }
 
-pub fn find_matching_pids(settings: &Settings) -> Vec<ProcessInformation> {
-    let mut pids = collect_matched_pids(settings);
+pub fn find_matching_pids(settings: &Settings) -> UResult<Vec<ProcessInformation>> {
+    let mut pids = collect_matched_pids(settings)?;
     if pids.is_empty() {
         uucore::error::set_exit_code(1);
-        pids
+        Ok(pids)
     } else {
-        process_flag_o_n(settings, &mut pids)
+        Ok(process_flag_o_n(settings, &mut pids))
     }
 }
 
@@ -189,7 +194,7 @@ fn any_matches<T: Eq + Hash>(optional_ids: &Option<HashSet<T>>, id: T) -> bool {
 }
 
 /// Collect pids with filter construct from command line arguments
-fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
+fn collect_matched_pids(settings: &Settings) -> UResult<Vec<ProcessInformation>> {
     // Filtration general parameters
     let filtered: Vec<ProcessInformation> = {
         let mut tmp_vec = Vec::new();
@@ -200,6 +205,11 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
             walk_process().collect::<Vec<_>>()
         };
         let our_pid = std::process::id() as usize;
+        let pid_from_pidfile = settings
+            .pidfile
+            .as_ref()
+            .map(|filename| read_pidfile(filename))
+            .transpose()?;
 
         for mut pid in pids {
             if pid.pid == our_pid {
@@ -267,6 +277,8 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
             #[cfg(not(unix))]
             let handler_matched = true;
 
+            let pidfile_matched = pid_from_pidfile.is_none_or(|p| p == pid.pid as i64);
+
             if (run_state_matched
                 && pattern_matched
                 && tty_matched
@@ -276,7 +288,8 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
                 && session_matched
                 && cgroup_matched
                 && ids_matched
-                && handler_matched)
+                && handler_matched
+                && pidfile_matched)
                 ^ settings.inverse
             {
                 tmp_vec.push(pid);
@@ -285,7 +298,7 @@ fn collect_matched_pids(settings: &Settings) -> Vec<ProcessInformation> {
         tmp_vec
     };
 
-    filtered
+    Ok(filtered)
 }
 
 /// Sorting pids for flag `-o` and `-n`.
@@ -379,6 +392,35 @@ fn parse_gid_or_group_name(gid_or_group_name: &str) -> io::Result<u32> {
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid group name"))
 }
 
+pub fn parse_pidfile_content(content: &str) -> Option<i64> {
+    let re = Regex::new(r"(?-m)^[[:blank:]]*(-?[0-9]+)(?:\s|$)").unwrap();
+    re.captures(content)?.get(1)?.as_str().parse::<i64>().ok()
+}
+
+#[test]
+fn test_parse_pidfile_content_valid() {
+    assert_eq!(parse_pidfile_content(" 1234"), Some(1234));
+    assert_eq!(parse_pidfile_content("-5678 "), Some(-5678));
+    assert_eq!(parse_pidfile_content("   42\nfoo\n"), Some(42));
+    assert_eq!(parse_pidfile_content("\t-99\tbar\n"), Some(-99));
+
+    assert_eq!(parse_pidfile_content(""), None);
+    assert_eq!(parse_pidfile_content("abc"), None);
+    assert_eq!(parse_pidfile_content("0x42"), None);
+    assert_eq!(parse_pidfile_content("2.3"), None);
+    assert_eq!(parse_pidfile_content("\n123\n"), None);
+}
+
+pub fn read_pidfile(filename: &str) -> UResult<i64> {
+    let content = fs::read_to_string(filename)
+        .map_err(|e| USimpleError::new(1, format!("Failed to read pidfile {}: {}", filename, e)))?;
+
+    let pid = parse_pidfile_content(&content)
+        .ok_or_else(|| USimpleError::new(1, format!("Pidfile {} not valid", filename)))?;
+
+    Ok(pid)
+}
+
 #[allow(clippy::cognitive_complexity)]
 pub fn clap_args(pattern_help: &'static str, enable_v_flag: bool) -> Vec<Arg> {
     vec![
@@ -419,7 +461,7 @@ pub fn clap_args(pattern_help: &'static str, enable_v_flag: bool) -> Vec<Arg> {
             .value_delimiter(',')
             .value_parser(parse_uid_or_username),
         arg!(-x --exact                "match exactly with the command name"),
-        // arg!(-F --pidfile <file>       "read PIDs from file"),
+        arg!(-F --pidfile <file>       "read PIDs from file"),
         // arg!(-L --logpidfile           "fail if PID file is not locked"),
         arg!(-r --runstates <state>    "match runstates [D,S,Z,...]"),
         // arg!(-A --"ignore-ancestors"   "exclude our ancestors from results"),
