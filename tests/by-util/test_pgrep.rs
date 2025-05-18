@@ -601,5 +601,75 @@ fn test_pidfile_nonexistent_file() {
         .arg("--pidfile")
         .arg("/nonexistent/file")
         .fails()
-        .stderr_contains("Failed to read pidfile");
+        .stderr_contains("Failed to open pidfile");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_pidfile_not_locked() {
+    let temp_file = tempfile::NamedTempFile::new().unwrap();
+    std::fs::write(temp_file.path(), "1").unwrap();
+
+    new_ucmd!()
+        .arg("--logpidfile")
+        .arg("--pidfile")
+        .arg(temp_file.path())
+        .fails()
+        .stderr_matches(&Regex::new("Pidfile .* is not locked").unwrap());
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_pidfile_flock_locked() {
+    let temp_file = tempfile::NamedTempFile::new().unwrap();
+    std::fs::write(temp_file.path(), "1").unwrap();
+
+    // spawn a flock process that locks the file
+    let mut flock_process = Command::new("flock")
+        .arg(temp_file.path())
+        .arg("sleep")
+        .arg("2")
+        .spawn()
+        .unwrap();
+
+    new_ucmd!()
+        .arg("--logpidfile")
+        .arg("--pidfile")
+        .arg(temp_file.path())
+        .succeeds()
+        .stdout_is("1\n");
+
+    flock_process.kill().unwrap();
+    flock_process.wait().unwrap();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_pidfile_fcntl_locked() {
+    if uutests::util::is_ci() {
+        // CI runner doesn't support flock --fcntl
+        return;
+    }
+
+    let temp_file = tempfile::NamedTempFile::new().unwrap();
+    std::fs::write(temp_file.path(), "1").unwrap();
+
+    // spawn a flock process that locks the file
+    let mut flock_process = Command::new("flock")
+        .arg("--fcntl")
+        .arg(temp_file.path())
+        .arg("sleep")
+        .arg("2")
+        .spawn()
+        .unwrap();
+
+    new_ucmd!()
+        .arg("--logpidfile")
+        .arg("--pidfile")
+        .arg(temp_file.path())
+        .succeeds()
+        .stdout_is("1\n");
+
+    flock_process.kill().unwrap();
+    flock_process.wait().unwrap();
 }
