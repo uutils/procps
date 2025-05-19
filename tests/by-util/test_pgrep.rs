@@ -673,3 +673,15 @@ fn test_pidfile_fcntl_locked() {
     flock_process.kill().unwrap();
     flock_process.wait().unwrap();
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_ignore_ancestors() {
+    let our_pid = std::process::id();
+    new_ucmd!()
+        .arg("--ignore-ancestors")
+        .arg(".*")
+        .succeeds()
+        .stdout_does_not_match(&Regex::new(&format!("(?m)^{our_pid}$")).unwrap())
+        .stdout_does_not_match(&Regex::new("(?m)^1$").unwrap());
+}
