@@ -51,6 +51,7 @@ pub struct Settings {
 
     pub pidfile: Option<String>,
     pub logpidfile: bool,
+    pub ignore_ancestors: bool,
 }
 
 pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
@@ -113,6 +114,7 @@ pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
         threads: false,
         pidfile: matches.get_one::<String>("pidfile").cloned(),
         logpidfile: matches.get_flag("logpidfile"),
+        ignore_ancestors: matches.get_flag("ignore-ancestors"),
     };
 
     if !settings.newest
@@ -196,18 +198,37 @@ fn any_matches<T: Eq + Hash>(optional_ids: &Option<HashSet<T>>, id: T) -> bool {
     optional_ids.as_ref().is_none_or(|ids| ids.contains(&id))
 }
 
+fn get_ancestors(process_infos: &mut [ProcessInformation], mut pid: usize) -> HashSet<usize> {
+    let mut ret = HashSet::from([pid]);
+    while pid != 1 {
+        if let Some(process) = process_infos.iter_mut().find(|p| p.pid == pid) {
+            pid = process.ppid().unwrap() as usize;
+            ret.insert(pid);
+        } else {
+            break;
+        }
+    }
+    ret
+}
+
 /// Collect pids with filter construct from command line arguments
 fn collect_matched_pids(settings: &Settings) -> UResult<Vec<ProcessInformation>> {
     // Filtration general parameters
     let filtered: Vec<ProcessInformation> = {
         let mut tmp_vec = Vec::new();
 
-        let pids = if settings.threads {
+        let mut pids = if settings.threads {
             walk_threads().collect::<Vec<_>>()
         } else {
             walk_process().collect::<Vec<_>>()
         };
         let our_pid = std::process::id() as usize;
+        let ignored_pids = if settings.ignore_ancestors {
+            get_ancestors(&mut pids, our_pid)
+        } else {
+            HashSet::from([our_pid])
+        };
+
         let pid_from_pidfile = settings
             .pidfile
             .as_ref()
@@ -215,7 +236,7 @@ fn collect_matched_pids(settings: &Settings) -> UResult<Vec<ProcessInformation>>
             .transpose()?;
 
         for mut pid in pids {
-            if pid.pid == our_pid {
+            if ignored_pids.contains(&pid.pid) {
                 continue;
             }
 
@@ -507,7 +528,7 @@ pub fn clap_args(pattern_help: &'static str, enable_v_flag: bool) -> Vec<Arg> {
         arg!(-F --pidfile <file>       "read PIDs from file"),
         arg!(-L --logpidfile           "fail if PID file is not locked"),
         arg!(-r --runstates <state>    "match runstates [D,S,Z,...]"),
-        // arg!(-A --"ignore-ancestors"   "exclude our ancestors from results"),
+        arg!(-A --"ignore-ancestors"   "exclude our ancestors from results"),
         arg!(--cgroup <grp>            "match by cgroup v2 names").value_delimiter(','),
         // arg!(--ns <PID>                "match the processes that belong to the same namespace as <pid>"),
         // arg!(--nslist <ns>             "list which namespaces will be considered for the --ns option.")
