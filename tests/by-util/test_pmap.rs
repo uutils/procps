@@ -298,8 +298,6 @@ fn assert_format(pid: u32, s: &str, quiet: bool, show_path: bool) {
     let re = Regex::new(&format!("^{pid}:   .+[^ ]$")).unwrap();
     assert!(re.is_match(first_line));
 
-    let rest = rest.trim_end();
-    let (memory_map, last_line) = rest.rsplit_once('\n').unwrap();
     let base_pattern = r"(?m)^[0-9a-f]{16} +[1-9][0-9]*K (-|r)(-|w)(-|x)(-|s)-";
     let mapping_pattern = if show_path {
         r" (  \[ (anon|stack) \]|/[/a-zA-Z0-9._-]+)$"
@@ -307,9 +305,14 @@ fn assert_format(pid: u32, s: &str, quiet: bool, show_path: bool) {
         r" (  \[ (anon|stack) \]|[a-zA-Z0-9._-]+)$"
     };
     let re = Regex::new(&format!("{base_pattern}{mapping_pattern}")).unwrap();
-    assert!(re.is_match(memory_map));
 
-    if !quiet {
+    let rest = rest.trim_end();
+    if quiet {
+        assert!(re.is_match(rest));
+    } else {
+        let (memory_map, last_line) = rest.rsplit_once('\n').unwrap();
+        assert!(re.is_match(memory_map));
+
         let re = Regex::new("^ total +[1-9][0-9]*K$").unwrap();
         assert!(re.is_match(last_line));
     }
@@ -346,11 +349,15 @@ fn assert_extended_format(pid: u32, s: &str, quiet: bool, show_path: bool) {
     };
     let re = Regex::new(&format!("{base_pattern}{mapping_pattern}")).unwrap();
 
-    for line in lines.iter().take(line_count - 2).skip(2) {
-        assert!(re.is_match(line), "failing line: '{line}'");
-    }
+    if quiet {
+        for line in lines.iter().skip(1) {
+            assert!(re.is_match(line), "failing line: '{line}'");
+        }
+    } else {
+        for line in lines.iter().take(line_count - 2).skip(2) {
+            assert!(re.is_match(line), "failing line: '{line}'");
+        }
 
-    if !quiet {
         let expected_separator = "---------------- ------- ------- ------- ";
         assert_eq!(
             expected_separator,
@@ -399,11 +406,15 @@ fn assert_more_extended_format(pid: u32, s: &str, quiet: bool, show_path: bool) 
     };
     let re = Regex::new(&format!("{base_pattern}{mapping_pattern}")).unwrap();
 
-    for line in lines.iter().take(line_count - 2).skip(2) {
-        assert!(re.is_match(line), "failing line: '{line}'");
-    }
+    if quiet {
+        for line in lines.iter().skip(1) {
+            assert!(re.is_match(line), "failing line: '{line}'");
+        }
+    } else {
+        for line in lines.iter().take(line_count - 2).skip(2) {
+            assert!(re.is_match(line), "failing line: '{line}'");
+        }
 
-    if !quiet {
         let re = Regex::new(r"^                                                            +=+ =+ =+ =+ =+ =+( =+)? =+ =+ =+ =+ =+ =+ =+ =+ =+( =+)? $").unwrap();
         assert!(
             re.is_match(lines[line_count - 2]),
@@ -451,11 +462,15 @@ fn assert_most_extended_format(pid: u32, s: &str, quiet: bool, show_path: bool) 
     };
     let re = Regex::new(&format!("{base_pattern}{mapping_pattern}")).unwrap();
 
-    for line in lines.iter().take(line_count - 2).skip(2) {
-        assert!(re.is_match(line), "failing line: '{line}'");
-    }
+    if quiet {
+        for line in lines.iter().skip(1) {
+            assert!(re.is_match(line), "failing line: '{line}'");
+        }
+    } else {
+        for line in lines.iter().take(line_count - 2).skip(2) {
+            assert!(re.is_match(line), "failing line: '{line}'");
+        }
 
-    if !quiet {
         let re = Regex::new(r"^                                                            +=+ =+ =+ =+ =+ =+ =+ =+ =+ =+ =+ =+( =+)? =+ =+ =+ =+ =+ =+ =+ =+ =+ =+( =+)? $").unwrap();
         assert!(
             re.is_match(lines[line_count - 2]),
@@ -503,11 +518,15 @@ fn assert_device_format(pid: u32, s: &str, quiet: bool, show_path: bool) {
     };
     let re = Regex::new(&format!("{base_pattern}{mapping_pattern}")).unwrap();
 
-    for line in lines.iter().take(line_count - 1).skip(2) {
-        assert!(re.is_match(line), "failing line: {line}");
-    }
+    if quiet {
+        for line in lines.iter().skip(1) {
+            assert!(re.is_match(line), "failing line: {line}");
+        }
+    } else {
+        for line in lines.iter().take(line_count - 1).skip(2) {
+            assert!(re.is_match(line), "failing line: {line}");
+        }
 
-    if !quiet {
         let re =
             Regex::new(r"^mapped: \d+K\s{4}writeable/private: \d+K\s{4}shared: \d+K$").unwrap();
         assert!(
