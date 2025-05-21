@@ -48,9 +48,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     }
 
     // Options independent with field selection:
-    if matches.get_flag(options::QUIET) {
-        pmap_config.quiet = true;
-    }
+    pmap_config.quiet = matches.get_flag(options::QUIET);
     if matches.get_flag(options::SHOW_PATH) {
         pmap_config.show_path = true;
     }
