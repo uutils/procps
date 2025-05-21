@@ -75,6 +75,7 @@ pub struct PmapConfig {
     // [Mapping] category
     pub show_path: bool,
     // Misc
+    pub quiet: bool,
     pub custom_format_enabled: bool,
 }
 

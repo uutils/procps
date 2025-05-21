@@ -48,6 +48,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     }
 
     // Options independent with field selection:
+    pmap_config.quiet = matches.get_flag(options::QUIET);
     if matches.get_flag(options::SHOW_PATH) {
         pmap_config.show_path = true;
     }
@@ -142,7 +143,9 @@ fn output_default_format(pid: &str, pmap_config: &PmapConfig) -> Result<(), Erro
         total += map_line.size_in_kb;
     })?;
 
-    println!(" total {total:>16}K");
+    if !pmap_config.quiet {
+        println!(" total {total:>16}K");
+    }
 
     Ok(())
 }
@@ -150,7 +153,9 @@ fn output_default_format(pid: &str, pmap_config: &PmapConfig) -> Result<(), Erro
 fn output_extended_format(pid: &str, pmap_config: &PmapConfig) -> Result<(), Error> {
     let smap_table = get_smap_table(pid)?;
 
-    println!("Address           Kbytes     RSS   Dirty Mode  Mapping");
+    if !pmap_config.quiet {
+        println!("Address           Kbytes     RSS   Dirty Mode  Mapping");
+    }
 
     for smap_entry in smap_table.entries {
         println!(
@@ -164,13 +169,16 @@ fn output_extended_format(pid: &str, pmap_config: &PmapConfig) -> Result<(), Err
         );
     }
 
-    println!("---------------- ------- ------- ------- ");
-    println!(
-        "total kB         {:>7} {:>7} {:>7}",
-        smap_table.info.total_size_in_kb,
-        smap_table.info.total_rss_in_kb,
-        smap_table.info.total_shared_dirty_in_kb + smap_table.info.total_private_dirty_in_kb,
-    );
+    if !pmap_config.quiet {
+        println!("---------------- ------- ------- ------- ");
+        println!(
+            "total kB         {:>7} {:>7} {:>7}",
+            smap_table.info.total_size_in_kb,
+            smap_table.info.total_rss_in_kb,
+            smap_table.info.total_shared_dirty_in_kb + smap_table.info.total_private_dirty_in_kb,
+        );
+    }
+
     Ok(())
 }
 
@@ -185,15 +193,20 @@ fn output_custom_format(pid: &str, pmap_config: &mut PmapConfig) -> Result<(), E
     }
 
     // Header
-    {
+    if !pmap_config.quiet {
         let mut line = format!(
             "{:>width$} ",
             pmap_field_name::ADDRESS,
             width = smap_table.info.get_width(pmap_field_name::ADDRESS)
         );
 
+        pmap_config.quiet = true;
         for field_name in pmap_config.get_field_list() {
             if pmap_config.is_enabled(field_name) {
+                // If there is any field that needs footer, we can't suppress the footer
+                if pmap_config.needs_footer(field_name) {
+                    pmap_config.quiet = false;
+                }
                 line += &format!(
                     "{:>width$} ",
                     field_name,
@@ -230,7 +243,7 @@ fn output_custom_format(pid: &str, pmap_config: &mut PmapConfig) -> Result<(), E
     }
 
     // Footer
-    {
+    if !pmap_config.quiet {
         // Separator
         let mut line = format!(
             "{:>width$} ",
@@ -292,7 +305,11 @@ fn output_device_format(pid: &str, pmap_config: &PmapConfig) -> Result<(), Error
 
     process_maps(
         pid,
-        Some("Address           Kbytes Mode  Offset           Device    Mapping"),
+        if !pmap_config.quiet {
+            Some("Address           Kbytes Mode  Offset           Device    Mapping")
+        } else {
+            None
+        },
         |map_line| {
             println!(
                 "{} {:>7} {} {} {} {}",
@@ -315,9 +332,11 @@ fn output_device_format(pid: &str, pmap_config: &PmapConfig) -> Result<(), Error
         },
     )?;
 
-    println!(
-        "mapped: {total_mapped}K    writeable/private: {total_writeable_private}K    shared: {total_shared}K"
-    );
+    if !pmap_config.quiet {
+        println!(
+            "mapped: {total_mapped}K    writeable/private: {total_writeable_private}K    shared: {total_shared}K"
+        );
+    }
 
     Ok(())
 }
