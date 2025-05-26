@@ -1,15 +1,14 @@
 [package]
 name = "uu_watch"
-version = "0.0.1"
-edition = "2021"
-authors = ["uutils developers"]
-license = "MIT"
 description = "watch ~ (uutils) Execute a program periodically, showing output fullscreen"
-
-homepage = "https://github.com/uutils/procps"
 repository = "https://github.com/uutils/procps/tree/main/src/uu/watch"
-keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
-categories = ["command-line-utilities"]
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+version.workspace = true
 
 [dependencies]
 uucore = { workspace = true }
