@@ -42,7 +42,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         }
     }
 
-    wait(&proc_infos);
+    // It should be fine to reserve a `timeout` parameter for future use.
+    wait(&proc_infos, None)?;
 
     Ok(())
 }
