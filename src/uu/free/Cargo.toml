@@ -1,15 +1,14 @@
 [package]
 name = "uu_free"
-version = "0.0.1"
-edition = "2021"
-authors = ["uutils developers"]
-license = "MIT"
 description = "free ~ (uutils) Display amount of free and used memory in the system"
-
-homepage = "https://github.com/uutils/procps"
 repository = "https://github.com/uutils/procps/tree/main/src/uu/free"
-keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
-categories = ["command-line-utilities"]
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+version.workspace = true
 
 [dependencies]
 bytesize = { workspace = true }

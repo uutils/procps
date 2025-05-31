@@ -3,6 +3,7 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use crate::pmap_config::PmapConfig;
 use std::fmt;
 use std::io::{Error, ErrorKind};
 
@@ -40,13 +41,25 @@ impl From<&str> for Perms {
     }
 }
 
-// Please note: While `Perms` has four boolean fields, it's string representation has five
-// characters because pmap's default and device formats use five characters for the perms,
-// with the last character always being '-'.
 impl fmt::Display for Perms {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
+            "{}{}{}{}",
+            if self.readable { 'r' } else { '-' },
+            if self.writable { 'w' } else { '-' },
+            if self.executable { 'x' } else { '-' },
+            if self.shared { 's' } else { 'p' },
+        )
+    }
+}
+
+// Please note: While `Perms` has four boolean fields, its `Mode` representation
+// used in pmap's default and device formats has five characters for the perms,
+// with the last character always being '-'.
+impl Perms {
+    pub fn mode(&self) -> String {
+        format!(
             "{}{}{}{}-",
             if self.readable { 'r' } else { '-' },
             if self.writable { 'w' } else { '-' },
@@ -90,8 +103,7 @@ pub fn parse_map_line(line: &str) -> Result<MapLine, Error> {
     let inode = inode
         .parse::<u64>()
         .map_err(|_| Error::from(ErrorKind::InvalidData))?;
-    let mapping = mapping.trim_ascii_start();
-    let mapping = parse_mapping(mapping);
+    let mapping = mapping.trim_ascii_start().to_string();
 
     Ok(MapLine {
         address,
@@ -126,18 +138,33 @@ fn parse_device(device: &str) -> Result<String, Error> {
     Ok(format!("{major:0>3}:{minor:0>5}"))
 }
 
-fn parse_mapping(mapping: &str) -> String {
-    if mapping == "[stack]" {
-        return "  [ stack ]".into();
-    }
+impl MapLine {
+    pub fn parse_mapping(&self, pmap_config: &PmapConfig) -> String {
+        if pmap_config.custom_format_enabled {
+            if self.mapping.starts_with('[') {
+                return self.mapping.clone();
+            }
+        } else {
+            if self.mapping == "[stack]" {
+                return "  [ stack ]".into();
+            }
 
-    if mapping.is_empty() || mapping.starts_with('[') || mapping.starts_with("anon") {
-        return "  [ anon ]".into();
-    }
+            if self.mapping.is_empty()
+                || self.mapping.starts_with('[')
+                || self.mapping.starts_with("anon")
+            {
+                return "  [ anon ]".into();
+            }
+        }
 
-    match mapping.rsplit_once('/') {
-        Some((_, name)) => name.into(),
-        None => mapping.into(),
+        if pmap_config.show_path {
+            self.mapping.clone()
+        } else {
+            match self.mapping.rsplit_once('/') {
+                Some((_, name)) => name.into(),
+                None => self.mapping.clone(),
+            }
+        }
     }
 }
 
@@ -167,40 +194,47 @@ mod test {
 
     #[test]
     fn test_perms_to_string() {
-        assert_eq!("-----", Perms::from("---p").to_string());
-        assert_eq!("---s-", Perms::from("---s").to_string());
-        assert_eq!("rwx--", Perms::from("rwxp").to_string());
+        assert_eq!("---p", Perms::from("---p").to_string());
+        assert_eq!("---s", Perms::from("---s").to_string());
+        assert_eq!("rwxp", Perms::from("rwxp").to_string());
+    }
+
+    #[test]
+    fn test_perms_mode() {
+        assert_eq!("-----", Perms::from("---p").mode());
+        assert_eq!("---s-", Perms::from("---s").mode());
+        assert_eq!("rwx--", Perms::from("rwxp").mode());
     }
 
     #[test]
     fn test_parse_map_line() {
         let data = [
             (
-                create_map_line("000062442eb9e000", 16, Perms::from("r--p"), "0000000000000000", "008:00008", 10813151, "konsole"),
+                create_map_line("000062442eb9e000", 16, Perms::from("r--p"), "0000000000000000", "008:00008", 10813151, "/usr/bin/konsole"),
                 "62442eb9e000-62442eba2000 r--p 00000000 08:08 10813151                   /usr/bin/konsole"
             ),
             (
-                create_map_line("000071af50000000", 132, Perms::from("rw-p"), "0000000000000000", "000:00000", 0, "  [ anon ]"),
+                create_map_line("000071af50000000", 132, Perms::from("rw-p"), "0000000000000000", "000:00000", 0, ""),
                 "71af50000000-71af50021000 rw-p 00000000 00:00 0 "
             ),
             (
-                create_map_line("00007ffc3f8df000", 132, Perms::from("rw-p"), "0000000000000000", "000:00000", 0, "  [ stack ]"),
+                create_map_line("00007ffc3f8df000", 132, Perms::from("rw-p"), "0000000000000000", "000:00000", 0, "[stack]"),
                 "7ffc3f8df000-7ffc3f900000 rw-p 00000000 00:00 0                          [stack]"
             ),
             (
-                create_map_line("000071af8c9e6000", 16, Perms::from("rw-s"), "0000000105830000", "000:00010", 1075, "  [ anon ]"),
+                create_map_line("000071af8c9e6000", 16, Perms::from("rw-s"), "0000000105830000", "000:00010", 1075, "anon_inode:i915.gem"),
                 "71af8c9e6000-71af8c9ea000 rw-s 105830000 00:10 1075                      anon_inode:i915.gem"
             ),
             (
-                create_map_line("000071af6cf0c000", 3560, Perms::from("rw-s"), "0000000000000000", "000:00001", 256481, "memfd:wayland-shm (deleted)"),
+                create_map_line("000071af6cf0c000", 3560, Perms::from("rw-s"), "0000000000000000", "000:00001", 256481, "/memfd:wayland-shm (deleted)"),
                 "71af6cf0c000-71af6d286000 rw-s 00000000 00:01 256481                     /memfd:wayland-shm (deleted)"
             ),
             (
-                create_map_line("ffffffffff600000", 4, Perms::from("--xp"), "0000000000000000", "000:00000", 0, "  [ anon ]"),
+                create_map_line("ffffffffff600000", 4, Perms::from("--xp"), "0000000000000000", "000:00000", 0, "[vsyscall]"),
                 "ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]"
             ),
             (
-                create_map_line("00005e8187da8000", 24, Perms::from("r--p"), "0000000000000000", "008:00008", 9524160, "hello   world"),
+                create_map_line("00005e8187da8000", 24, Perms::from("r--p"), "0000000000000000", "008:00008", 9524160, "/usr/bin/hello   world"),
                 "5e8187da8000-5e8187dae000 r--p 00000000 08:08 9524160                    /usr/bin/hello   world"
             ),
         ];
@@ -250,14 +284,73 @@ mod test {
 
     #[test]
     fn test_parse_mapping() {
-        assert_eq!("  [ anon ]", parse_mapping(""));
-        assert_eq!("  [ anon ]", parse_mapping("[vvar]"));
-        assert_eq!("  [ anon ]", parse_mapping("[vdso]"));
-        assert_eq!("  [ anon ]", parse_mapping("anon_inode:i915.gem"));
-        assert_eq!("  [ stack ]", parse_mapping("[stack]"));
+        let mut mapline = MapLine::default();
+        let mut pmap_config = PmapConfig::default();
+
+        mapline.mapping = "".to_string();
+        pmap_config.custom_format_enabled = false;
+        pmap_config.show_path = false;
+        assert_eq!("  [ anon ]", mapline.parse_mapping(&pmap_config));
+        pmap_config.show_path = true;
+        assert_eq!("  [ anon ]", mapline.parse_mapping(&pmap_config));
+        pmap_config.custom_format_enabled = true;
+        pmap_config.show_path = false;
+        assert_eq!("", mapline.parse_mapping(&pmap_config));
+        pmap_config.show_path = true;
+        assert_eq!("", mapline.parse_mapping(&pmap_config));
+
+        mapline.mapping = "[vvar]".to_string();
+        pmap_config.custom_format_enabled = false;
+        pmap_config.show_path = false;
+        assert_eq!("  [ anon ]", mapline.parse_mapping(&pmap_config));
+        pmap_config.show_path = true;
+        assert_eq!("  [ anon ]", mapline.parse_mapping(&pmap_config));
+        pmap_config.custom_format_enabled = true;
+        pmap_config.show_path = false;
+        assert_eq!("[vvar]", mapline.parse_mapping(&pmap_config));
+        pmap_config.show_path = true;
+        assert_eq!("[vvar]", mapline.parse_mapping(&pmap_config));
+
+        mapline.mapping = "anon_inode:i915.gem".to_string();
+        pmap_config.custom_format_enabled = false;
+        pmap_config.show_path = false;
+        assert_eq!("  [ anon ]", mapline.parse_mapping(&pmap_config));
+        pmap_config.show_path = true;
+        assert_eq!("  [ anon ]", mapline.parse_mapping(&pmap_config));
+        pmap_config.custom_format_enabled = true;
+        pmap_config.show_path = false;
+        assert_eq!("anon_inode:i915.gem", mapline.parse_mapping(&pmap_config));
+        pmap_config.show_path = true;
+        assert_eq!("anon_inode:i915.gem", mapline.parse_mapping(&pmap_config));
+
+        mapline.mapping = "[stack]".to_string();
+        pmap_config.custom_format_enabled = false;
+        pmap_config.show_path = false;
+        assert_eq!("  [ stack ]", mapline.parse_mapping(&pmap_config));
+        pmap_config.show_path = true;
+        assert_eq!("  [ stack ]", mapline.parse_mapping(&pmap_config));
+        pmap_config.custom_format_enabled = true;
+        pmap_config.show_path = false;
+        assert_eq!("[stack]", mapline.parse_mapping(&pmap_config));
+        pmap_config.show_path = true;
+        assert_eq!("[stack]", mapline.parse_mapping(&pmap_config));
+
+        mapline.mapping = "/usr/lib/ld-linux-x86-64.so.2".to_string();
+        pmap_config.custom_format_enabled = false;
+        pmap_config.show_path = false;
+        assert_eq!("ld-linux-x86-64.so.2", mapline.parse_mapping(&pmap_config));
+        pmap_config.show_path = true;
         assert_eq!(
-            "ld-linux-x86-64.so.2",
-            parse_mapping("/usr/lib/ld-linux-x86-64.so.2")
+            "/usr/lib/ld-linux-x86-64.so.2",
+            mapline.parse_mapping(&pmap_config)
+        );
+        pmap_config.custom_format_enabled = true;
+        pmap_config.show_path = false;
+        assert_eq!("ld-linux-x86-64.so.2", mapline.parse_mapping(&pmap_config));
+        pmap_config.show_path = true;
+        assert_eq!(
+            "/usr/lib/ld-linux-x86-64.so.2",
+            mapline.parse_mapping(&pmap_config)
         );
     }
 }

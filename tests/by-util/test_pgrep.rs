@@ -503,6 +503,29 @@ fn test_nonexisting_session() {
 
 #[test]
 #[cfg(target_os = "linux")]
+fn test_nonexisting_cgroup() {
+    new_ucmd!()
+        .arg("--cgroup")
+        .arg("NONEXISTING")
+        .fails()
+        .stdout_is("");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_cgroup() {
+    let init_is_systemd = new_ucmd!().arg("systemd").run().code() == 0;
+    if init_is_systemd {
+        new_ucmd!()
+            .arg("--cgroup")
+            .arg("/init.scope")
+            .succeeds()
+            .stdout_is("1\n");
+    }
+}
+
+#[test]
+#[cfg(target_os = "linux")]
 fn test_threads() {
     std::thread::Builder::new()
         .name("PgrepTest".to_owned())
@@ -517,4 +540,148 @@ fn test_threads() {
         .unwrap()
         .join()
         .unwrap();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_pidfile_match() {
+    let temp_file = tempfile::NamedTempFile::new().unwrap();
+    std::fs::write(temp_file.path(), "1\tfoo\n").unwrap();
+
+    new_ucmd!()
+        .arg("--pidfile")
+        .arg(temp_file.path())
+        .succeeds()
+        .stdout_is("1\n");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_pidfile_no_match() {
+    let temp_file = tempfile::NamedTempFile::new().unwrap();
+    std::fs::write(temp_file.path(), "  -1").unwrap();
+
+    new_ucmd!()
+        .arg("--pidfile")
+        .arg(temp_file.path())
+        .fails()
+        .no_output();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_pidfile_invert() {
+    let temp_file = tempfile::NamedTempFile::new().unwrap();
+    std::fs::write(temp_file.path(), "  -1").unwrap();
+
+    new_ucmd!()
+        .arg("-v")
+        .arg("--pidfile")
+        .arg(temp_file.path())
+        .succeeds();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_pidfile_invalid_content() {
+    let temp_file = tempfile::NamedTempFile::new().unwrap();
+    std::fs::write(temp_file.path(), "0x1").unwrap();
+
+    new_ucmd!()
+        .arg("--pidfile")
+        .arg(temp_file.path())
+        .fails()
+        .stderr_matches(&Regex::new("Pidfile .* not valid").unwrap());
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_pidfile_nonexistent_file() {
+    new_ucmd!()
+        .arg("--pidfile")
+        .arg("/nonexistent/file")
+        .fails()
+        .stderr_contains("Failed to open pidfile");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_pidfile_not_locked() {
+    let temp_file = tempfile::NamedTempFile::new().unwrap();
+    std::fs::write(temp_file.path(), "1").unwrap();
+
+    new_ucmd!()
+        .arg("--logpidfile")
+        .arg("--pidfile")
+        .arg(temp_file.path())
+        .fails()
+        .stderr_matches(&Regex::new("Pidfile .* is not locked").unwrap());
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_pidfile_flock_locked() {
+    let temp_file = tempfile::NamedTempFile::new().unwrap();
+    std::fs::write(temp_file.path(), "1").unwrap();
+
+    // spawn a flock process that locks the file
+    let mut flock_process = Command::new("flock")
+        .arg(temp_file.path())
+        .arg("sleep")
+        .arg("2")
+        .spawn()
+        .unwrap();
+
+    new_ucmd!()
+        .arg("--logpidfile")
+        .arg("--pidfile")
+        .arg(temp_file.path())
+        .succeeds()
+        .stdout_is("1\n");
+
+    flock_process.kill().unwrap();
+    flock_process.wait().unwrap();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_pidfile_fcntl_locked() {
+    if uutests::util::is_ci() {
+        // CI runner doesn't support flock --fcntl
+        return;
+    }
+
+    let temp_file = tempfile::NamedTempFile::new().unwrap();
+    std::fs::write(temp_file.path(), "1").unwrap();
+
+    // spawn a flock process that locks the file
+    let mut flock_process = Command::new("flock")
+        .arg("--fcntl")
+        .arg(temp_file.path())
+        .arg("sleep")
+        .arg("2")
+        .spawn()
+        .unwrap();
+
+    new_ucmd!()
+        .arg("--logpidfile")
+        .arg("--pidfile")
+        .arg(temp_file.path())
+        .succeeds()
+        .stdout_is("1\n");
+
+    flock_process.kill().unwrap();
+    flock_process.wait().unwrap();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_ignore_ancestors() {
+    let our_pid = std::process::id();
+    new_ucmd!()
+        .arg("--ignore-ancestors")
+        .arg(".*")
+        .succeeds()
+        .stdout_does_not_match(&Regex::new(&format!("(?m)^{our_pid}$")).unwrap())
+        .stdout_does_not_match(&Regex::new("(?m)^1$").unwrap());
 }
