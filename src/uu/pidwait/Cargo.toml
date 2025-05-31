@@ -23,7 +23,7 @@ uu_pgrep = { path = "../pgrep" }
 rustix = { version = "1", default-features = false, features = ["event", "process", "std"] }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_Threading"] }
+windows-sys = { workspace = true, features = ["Win32_Foundation", "Win32_System_Threading"] }
 
 [lib]
 path = "src/pidwait.rs"
