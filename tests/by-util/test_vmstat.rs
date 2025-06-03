@@ -69,3 +69,15 @@ fn test_active() {
         .unwrap()
         .contains("active"));
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_timestamp() {
+    let result = new_ucmd!().arg("-t").succeeds();
+    assert!(result
+        .stdout_str()
+        .lines()
+        .next()
+        .unwrap()
+        .contains("timestamp"));
+}
