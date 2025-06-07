@@ -9,27 +9,29 @@ use std::{
     io::{Error, ErrorKind},
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub(crate) struct SlabInfo {
-    pub(crate) meta: Vec<String>,
-    pub(crate) data: Vec<(String, Vec<u64>)>,
+    pub(crate) meta: im::Vector<String>,
+    pub(crate) data: im::Vector<(String, Vec<u64>)>,
 }
 
 impl SlabInfo {
     // parse slabinfo from /proc/slabinfo
+    //
     // need root permission
     pub fn new() -> Result<SlabInfo, Error> {
         let content = fs::read_to_string("/proc/slabinfo")?;
 
-        Self::parse(&content).ok_or(ErrorKind::Unsupported.into())
+        Self::with_slabinfo(&content).ok_or(ErrorKind::Unsupported.into())
     }
 
-    pub fn parse(content: &str) -> Option<SlabInfo> {
+    pub fn with_slabinfo(content: &str) -> Option<SlabInfo> {
         let mut lines: Vec<&str> = content.lines().collect();
 
         let _ = parse_version(lines.remove(0))?;
         let meta = parse_meta(lines.remove(0));
-        let data: Vec<(String, Vec<u64>)> = lines.into_iter().filter_map(parse_data).collect();
+        let data: im::Vector<(String, Vec<u64>)> =
+            lines.into_iter().filter_map(parse_data).collect();
 
         Some(SlabInfo { meta, data })
     }
@@ -43,6 +45,7 @@ impl SlabInfo {
         item.get(offset).copied()
     }
 
+    // Get all processes name
     pub fn names(&self) -> Vec<&String> {
         self.data.iter().map(|(k, _)| k).collect()
     }
@@ -190,15 +193,17 @@ impl SlabInfo {
             return 0;
         };
 
-        let iter = self.data.iter().filter_map(|(_, data)| data.get(offset));
+        let objsize = self
+            .data
+            .iter()
+            .filter_map(|(_, data)| data.get(offset))
+            .collect::<im::Vector<_>>();
 
-        let count = iter.clone().count();
-        let sum = iter.sum::<u64>();
-
+        let count = objsize.clone().iter().count();
         if count == 0 {
             0
         } else {
-            (sum) / (count as u64)
+            (objsize.into_iter().sum::<u64>()) / (count as u64)
         }
     }
 
@@ -266,7 +271,7 @@ pub(crate) fn parse_version(line: &str) -> Option<String> {
         .map(String::from)
 }
 
-pub(crate) fn parse_meta(line: &str) -> Vec<String> {
+pub(crate) fn parse_meta(line: &str) -> im::Vector<String> {
     line.replace(['#', ':'], " ")
         .split_whitespace()
         .filter(|it| it.starts_with('<') && it.ends_with('>'))
@@ -310,8 +315,8 @@ mod tests {
         let result = parse_meta(test);
 
         assert_eq!(
-            result,
-            [
+            result.into_iter().collect::<Vec<_>>(),
+            vec![
                 "active_objs",
                 "num_objs",
                 "objsize",
@@ -348,7 +353,7 @@ mod tests {
     #[test]
     fn test_parse() {
         let test = include_str!("../../../../tests/fixtures/slabtop/data.txt");
-        let result = SlabInfo::parse(test.into()).unwrap();
+        let result = SlabInfo::with_slabinfo(test).unwrap();
 
         assert_eq!(result.fetch("nf_conntrack_expect", "objsize").unwrap(), 208);
         assert_eq!(
