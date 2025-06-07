@@ -457,31 +457,33 @@ fn construct_committed_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> S
 }
 
 // Here's the `-h` `--human` flag processing logic
+// See: https://github.com/uutils/procps/pull/431
 fn humanized(kib: u64, si: bool) -> String {
-    let binding = {
-        let display = ByteSize::kib(kib).display();
-
-        if si {
-            display.si()
-        } else {
-            display.iec()
-        }
+    let b = ByteSize::kib(kib).0;
+    let units = ['B', 'K', 'M', 'G', 'T', 'P'];
+    let mut level = 0;
+    let mut divisor = 1;
+    while level < units.len() - 1 && divisor * 100 <= b {
+        divisor *= if si { 1000 } else { 1024 };
+        level += 1;
     }
-    .to_string();
+    if level == 0 {
+        return format!("{}{}", b, units[level]);
+    }
 
-    let split: Vec<&str> = binding.split(' ').collect();
-
-    // TODO: finish the logic of automatic scale.
-    let num_string = String::from(split[0]);
-
-    let unit_string = {
-        let mut tmp = String::from(split[1]);
-        if tmp != "B" {
-            tmp.pop();
-        }
-        tmp
+    let value = (b as f64) / (divisor as f64);
+    let formatted_value = if (value * 10.0).round() < 100.0 {
+        format!("{:.1}", (value * 10.0).round() / 10.0)
+    } else {
+        (value as u64).to_string()
     };
-    format!("{}{}", num_string, unit_string)
+
+    format!(
+        "{}{}{}",
+        formatted_value,
+        units[level].to_owned(),
+        if si { "" } else { "i" }
+    )
 }
 
 fn detect_unit(arg: &ArgMatches) -> fn(u64) -> u64 {
@@ -541,8 +543,22 @@ mod test {
     }
 
     #[test]
-    fn test_humanized_unit_for_zero() {
-        assert_eq!("0B", humanized(0, false));
-        assert_eq!("0B", humanized(0, true));
+    fn test_humanized_unit() {
+        let test_cases = [
+            (0, false, "0B"),
+            (0, true, "0B"),
+            (1023, false, "1.0Mi"),
+            (1024, true, "1.0M"),
+            (1024, false, "1.0Mi"),
+            (1536, true, "1.6M"),
+            (1536, false, "1.5Mi"),
+            (8500, true, "8.7M"),
+            (8500, false, "8.3Mi"),
+            (10138, false, "9.9Mi"),
+            (10230, false, "9Mi"),
+        ];
+        for &(kib, si, expected) in &test_cases {
+            assert_eq!(humanized(kib, si), expected);
+        }
     }
 }
