@@ -5,9 +5,9 @@
 
 use clap::{arg, crate_version, Command};
 use std::time::Duration;
+use uu_pgrep::process::ProcessInformation;
 use uu_pgrep::process_matcher;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
-use uu_pgrep::process::ProcessInformation;
 
 const ABOUT: &str = help_about!("pidwait.md");
 const USAGE: &str = help_usage!("pidwait.md");
@@ -49,7 +49,10 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     Ok(())
 }
 
-pub(crate) fn wait(procs: &[ProcessInformation], timeout: Option<Duration>) -> Result<Option<()>, std::io::Error> {
+pub(crate) fn wait(
+    procs: &[ProcessInformation],
+    timeout: Option<Duration>,
+) -> Result<Option<()>, std::io::Error> {
     if !procs.is_empty() {
         platform::wait(procs, timeout)
     } else {
