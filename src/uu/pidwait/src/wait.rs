@@ -28,7 +28,7 @@ mod imp;
 mod imp;
 
 pub(crate) fn wait(procs: &[ProcessInformation], timeout: Option<Duration>) -> Result<Option<()>> {
-    if procs.len() > 0 {
+    if !procs.is_empty() {
         imp::wait(procs, timeout)
     } else {
         Ok(None)
