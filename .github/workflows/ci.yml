@@ -36,6 +36,29 @@ jobs:
           sudo apt-get -yq --no-install-suggests --no-install-recommends install libsystemd-dev
       - run: cargo test --all
 
+  test_separately:
+    name: Test each util separately
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macOS-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - if: ${{ contains(matrix.os, 'ubuntu') }}
+        run: |
+          sudo apt-get update -y
+          sudo apt-get -yq --no-install-suggests --no-install-recommends install libsystemd-dev
+      - name: build and test all programs separately
+        shell: bash
+        run: |
+          ## TODO: add hugetop and skill
+          programs="free pgrep pidof pidwait pkill pmap ps pwdx slabtop snice sysctl tload top vmstat w watch"
+          for program in $programs; do
+            echo "Building and testing $program"
+            cargo test -p "uu_$program" || exit 1
+          done
+
   coverage:
     name: Code Coverage
     runs-on: ${{ matrix.job.os }}
