@@ -20,10 +20,10 @@ fn parse_interval(input: &str) -> Result<Duration, ParseIntError> {
     let Some(index) = input.find([',', '.']) else {
         let seconds: u64 = input.parse()?;
 
-        if seconds != 0 {
-            return Ok(Duration::new(seconds, 0));
+        return if seconds == 0 {
+            Ok(Duration::from_millis(100))
         } else {
-            return Ok(Duration::from_millis(100));
+            Ok(Duration::new(seconds, 0))
         };
     };
 
