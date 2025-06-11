@@ -13,7 +13,7 @@ use std::{collections::HashSet, io};
 use clap::{arg, Arg, ArgAction, ArgMatches};
 use regex::Regex;
 #[cfg(unix)]
-use uucore::libc::{getpgrp, getsid};
+use uucore::process::{getpgrp, getsid};
 #[cfg(unix)]
 use uucore::{
     display::Quotable,
@@ -89,14 +89,8 @@ pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
             .get_many::<u32>("group")
             .map(|ids| ids.cloned().collect()),
         pgroup: matches.get_many::<u64>("pgroup").map(|xs| {
-            xs.map(|pg| {
-                if *pg == 0 {
-                    unsafe { getpgrp() as u64 }
-                } else {
-                    *pg
-                }
-            })
-            .collect()
+            xs.map(|pg| if *pg == 0 { getpgrp() as u64 } else { *pg })
+                .collect()
         }),
         session: matches.get_many::<u64>("session").map(|xs| {
             xs.map(|sid| {
@@ -390,7 +384,7 @@ pub fn grp2gid(_name: &str) -> io::Result<u32> {
 ///
 /// Dummy implementation for unsupported platforms.
 #[cfg(not(unix))]
-pub unsafe fn getpgrp() -> u32 {
+pub fn getpgrp() -> u32 {
     panic!("unsupported on this platform");
 }
 
