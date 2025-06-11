@@ -53,7 +53,7 @@ feat_common_core = [
 [workspace.dependencies]
 bytesize = "2.0.0"
 chrono = { version = "0.4.38", default-features = false, features = ["clock"] }
-clap = { version = "4.5.4", features = ["wrap_help", "cargo"] }
+clap = { version = "4.5.4", features = ["wrap_help", "cargo", "env"] }
 clap_complete = "4.5.2"
 clap_mangen = "0.2.20"
 crossterm = "0.29.0"

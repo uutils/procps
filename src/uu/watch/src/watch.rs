@@ -19,7 +19,12 @@ fn parse_interval(input: &str) -> Result<Duration, ParseIntError> {
     // Find index where to split string into seconds and nanos
     let Some(index) = input.find([',', '.']) else {
         let seconds: u64 = input.parse()?;
-        return Ok(Duration::new(seconds, 0));
+
+        return if seconds == 0 {
+            Ok(Duration::from_millis(100))
+        } else {
+            Ok(Duration::new(seconds, 0))
+        };
     };
 
     // If the seconds string is empty, set seconds to 0
@@ -249,5 +254,17 @@ mod parse_interval_tests {
     fn test_invalid_nano() {
         let interval = parse_interval("1.00000000000a");
         assert!(interval.is_err())
+    }
+
+    #[test]
+    fn test_minimum_seconds() {
+        let interval = parse_interval("0");
+        assert_eq!(Ok(Duration::from_millis(100)), interval);
+    }
+
+    #[test]
+    fn test_minimum_nanos() {
+        let interval = parse_interval("0.0");
+        assert_eq!(Ok(Duration::from_millis(100)), interval);
     }
 }
