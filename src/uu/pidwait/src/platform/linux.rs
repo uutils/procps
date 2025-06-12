@@ -28,10 +28,9 @@ pub fn wait(procs: &[ProcessInformation], timeout: Option<Duration>) -> Result<O
         let pidfd = pidfd_open(pid, PidfdFlags::empty())?;
         pidfds.push(pidfd);
     }
-    let timespec = match timeout {
-        Some(timeout) => Some(timeout.try_into().map_err(|_| Errno::INVAL)?),
-        None => None,
-    };
+    let timespec = timeout
+        .map(|t| t.try_into().map_err(|_| Errno::INVAL))
+        .transpose()?;
     let mut fds: Vec<PollFd> = Vec::with_capacity(pidfds.len());
     for pidfd in &pidfds {
         fds.push(PollFd::new(pidfd, PollFlags::IN));
