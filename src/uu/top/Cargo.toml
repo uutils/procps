@@ -25,8 +25,8 @@ uu_w = { path = "../w" }
 
 [target.'cfg(target_os="windows")'.dependencies]
 windows-sys = { workspace = true, features = [
+    "Wdk_System_SystemInformation",
     "Win32_System_RemoteDesktop",
-    "Win32_System_SystemInformation",
 ] }
 
 
