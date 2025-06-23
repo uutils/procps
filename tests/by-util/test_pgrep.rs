@@ -685,3 +685,38 @@ fn test_ignore_ancestors() {
         .stdout_does_not_match(&Regex::new(&format!("(?m)^{our_pid}$")).unwrap())
         .stdout_does_not_match(&Regex::new("(?m)^1$").unwrap());
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_env_nonexistent() {
+    new_ucmd!().arg("--env=NONEXISTENT").fails().code_is(1);
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_env_nonmatching_value() {
+    new_ucmd!()
+        .arg("--env=PATH=not_a_valid_PATH")
+        .fails()
+        .code_is(1);
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_env_key_match() {
+    new_ucmd!().arg("--env=PATH").succeeds();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_env_key_value_match() {
+    let home = std::env::var("HOME").unwrap();
+    new_ucmd!().arg(format!("--env=HOME={}", home)).succeeds();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_env_multiple_filters() {
+    // Multiple filters use OR logic
+    new_ucmd!().arg("--env=PATH,NONEXISTENT").succeeds();
+}
