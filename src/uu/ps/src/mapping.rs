@@ -26,6 +26,65 @@ pub(crate) fn default_codes() -> Vec<String> {
     ["pid", "tname", "time", "ucmd"].map(Into::into).to_vec()
 }
 
+/// Returns the full format codes (for -f flag).
+pub(crate) fn full_format_codes() -> Vec<String> {
+    [
+        "uid_hack", "pid", "ppid", "c", "stime", "tname", "time", "cmd",
+    ]
+    .map(Into::into)
+    .to_vec()
+}
+
+/// Returns the extra full format codes (for -F flag).
+pub(crate) fn extra_full_format_codes() -> Vec<String> {
+    [
+        "uid", "pid", "ppid", "c", "sz", "rss", "psr", "stime", "tname", "time", "ucmd",
+    ]
+    .map(Into::into)
+    .to_vec()
+}
+
+/// Returns the job format codes (for -j flag).
+pub(crate) fn job_format_codes() -> Vec<String> {
+    ["pid", "pgid", "sid", "tname", "time", "ucmd"]
+        .map(Into::into)
+        .to_vec()
+}
+
+/// Returns the default codes with PSR column (for -P flag).
+pub(crate) fn default_with_psr_codes() -> Vec<String> {
+    ["pid", "psr", "tname", "time", "ucmd"]
+        .map(Into::into)
+        .to_vec()
+}
+
+/// Returns the signal format codes (for -s flag).
+pub(crate) fn signal_format_codes() -> Vec<String> {
+    [
+        "uid", "pid", "pending", "blocked", "ignored", "caught", "stat", "tname", "time", "command",
+    ]
+    .map(Into::into)
+    .to_vec()
+}
+
+/// Returns the user format codes (for -u flag).
+pub(crate) fn user_format_codes() -> Vec<String> {
+    [
+        "user", "pid", "%cpu", "%mem", "vsz", "rss", "tname", "stat", "bsdstart", "time", "command",
+    ]
+    .map(Into::into)
+    .to_vec()
+}
+
+/// Returns the virtual memory format codes (for -v flag).
+pub(crate) fn vm_format_codes() -> Vec<String> {
+    [
+        "pid", "tname", "stat", "time", "maj_flt", "trs", "drs", "rss", "%mem", "command",
+    ]
+    .map(Into::into)
+    .to_vec()
+}
+
 /// Collect mapping from argument
 pub(crate) fn default_mapping() -> HashMap<String, String> {
     let mut mapping = HashMap::new();
