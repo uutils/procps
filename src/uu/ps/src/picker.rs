@@ -30,14 +30,18 @@ pub(crate) fn collect_pickers(
             "ppid" => pickers.push(helper(ppid)),
             "uid" | "euid" => pickers.push(helper(euid)),
             "ruid" => pickers.push(helper(ruid)),
+            "suid" => pickers.push(helper(suid)),
             "user" | "euser" => pickers.push(helper(euser)),
             "ruser" => pickers.push(helper(ruser)),
+            "suser" => pickers.push(helper(suser)),
             "pgid" => pickers.push(helper(pgid)),
             "sid" | "sess" => pickers.push(helper(sid)),
             "gid" | "egid" => pickers.push(helper(egid)),
             "rgid" => pickers.push(helper(rgid)),
+            "sgid" => pickers.push(helper(sgid)),
             "group" | "egroup" => pickers.push(helper(egroup)),
             "rgroup" => pickers.push(helper(rgroup)),
+            "sgroup" => pickers.push(helper(sgroup)),
             "tname" | "tt" | "tty" => pickers.push(helper(tty)),
             "time" | "cputime" => pickers.push(helper(time)),
             "ucmd" | "comm" => pickers.push(helper(ucmd)),
@@ -72,6 +76,10 @@ fn euid(proc_info: RefCell<ProcessInformation>) -> String {
     proc_info.borrow_mut().euid().unwrap().to_string()
 }
 
+fn suid(proc_info: RefCell<ProcessInformation>) -> String {
+    proc_info.borrow_mut().suid().unwrap_or(0).to_string()
+}
+
 fn ruser(proc_info: RefCell<ProcessInformation>) -> String {
     let uid = proc_info.borrow_mut().uid().unwrap();
     uid2usr(uid).ok().unwrap_or_else(|| uid.to_string())
@@ -82,12 +90,21 @@ fn euser(proc_info: RefCell<ProcessInformation>) -> String {
     uid2usr(euid).ok().unwrap_or_else(|| euid.to_string())
 }
 
+fn suser(proc_info: RefCell<ProcessInformation>) -> String {
+    let suid = proc_info.borrow_mut().suid().unwrap_or(0);
+    uid2usr(suid).unwrap_or_else(|_| suid.to_string())
+}
+
 fn rgid(proc_info: RefCell<ProcessInformation>) -> String {
     proc_info.borrow_mut().gid().unwrap().to_string()
 }
 
 fn egid(proc_info: RefCell<ProcessInformation>) -> String {
     proc_info.borrow_mut().egid().unwrap().to_string()
+}
+
+fn sgid(proc_info: RefCell<ProcessInformation>) -> String {
+    proc_info.borrow_mut().sgid().unwrap_or(0).to_string()
 }
 
 fn rgroup(proc_info: RefCell<ProcessInformation>) -> String {
@@ -98,6 +115,11 @@ fn rgroup(proc_info: RefCell<ProcessInformation>) -> String {
 fn egroup(proc_info: RefCell<ProcessInformation>) -> String {
     let egid = proc_info.borrow_mut().egid().unwrap();
     gid2grp(egid).ok().unwrap_or_else(|| egid.to_string())
+}
+
+fn sgroup(proc_info: RefCell<ProcessInformation>) -> String {
+    let sgid = proc_info.borrow_mut().sgid().unwrap_or(0);
+    gid2grp(sgid).unwrap_or_else(|_| sgid.to_string())
 }
 
 fn pgid(proc_info: RefCell<ProcessInformation>) -> String {
