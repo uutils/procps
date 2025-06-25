@@ -6,6 +6,18 @@
 use std::cell::RefCell;
 
 use uu_pgrep::process::{ProcessInformation, Teletype};
+#[cfg(unix)]
+use uucore::entries::{gid2grp, uid2usr};
+
+#[cfg(not(unix))]
+fn uid2usr(id: u32) -> Result<String, std::io::Error> {
+    Ok(id.to_string())
+}
+
+#[cfg(not(unix))]
+fn gid2grp(id: u32) -> Result<String, std::io::Error> {
+    Ok(id.to_string())
+}
 
 pub(crate) fn collect_pickers(
     code_order: &[String],
@@ -15,6 +27,17 @@ pub(crate) fn collect_pickers(
     for code in code_order {
         match code.as_str() {
             "pid" | "tgid" => pickers.push(helper(pid)),
+            "ppid" => pickers.push(helper(ppid)),
+            "uid" => pickers.push(helper(uid)),
+            "euid" => pickers.push(helper(euid)),
+            "user" => pickers.push(helper(user)),
+            "euser" => pickers.push(helper(euser)),
+            "pgid" => pickers.push(helper(pgid)),
+            "sid" => pickers.push(helper(sid)),
+            "gid" => pickers.push(helper(gid)),
+            "egid" => pickers.push(helper(egid)),
+            "group" => pickers.push(helper(group)),
+            "egroup" => pickers.push(helper(egroup)),
             "tname" | "tt" | "tty" => pickers.push(helper(tty)),
             "time" | "cputime" => pickers.push(helper(time)),
             "ucmd" => pickers.push(helper(ucmd)),
@@ -34,7 +57,55 @@ fn helper(
 }
 
 fn pid(proc_info: RefCell<ProcessInformation>) -> String {
-    format!("{}", proc_info.borrow().pid)
+    proc_info.borrow().pid.to_string()
+}
+
+fn ppid(proc_info: RefCell<ProcessInformation>) -> String {
+    proc_info.borrow_mut().ppid().unwrap().to_string()
+}
+
+fn uid(proc_info: RefCell<ProcessInformation>) -> String {
+    proc_info.borrow_mut().uid().unwrap().to_string()
+}
+
+fn euid(proc_info: RefCell<ProcessInformation>) -> String {
+    proc_info.borrow_mut().euid().unwrap().to_string()
+}
+
+fn user(proc_info: RefCell<ProcessInformation>) -> String {
+    let uid = proc_info.borrow_mut().uid().unwrap();
+    uid2usr(uid).ok().unwrap_or_else(|| uid.to_string())
+}
+
+fn euser(proc_info: RefCell<ProcessInformation>) -> String {
+    let euid = proc_info.borrow_mut().euid().unwrap();
+    uid2usr(euid).ok().unwrap_or_else(|| euid.to_string())
+}
+
+fn gid(proc_info: RefCell<ProcessInformation>) -> String {
+    proc_info.borrow_mut().gid().unwrap().to_string()
+}
+
+fn egid(proc_info: RefCell<ProcessInformation>) -> String {
+    proc_info.borrow_mut().egid().unwrap().to_string()
+}
+
+fn group(proc_info: RefCell<ProcessInformation>) -> String {
+    let gid = proc_info.borrow_mut().gid().unwrap();
+    gid2grp(gid).ok().unwrap_or_else(|| gid.to_string())
+}
+
+fn egroup(proc_info: RefCell<ProcessInformation>) -> String {
+    let egid = proc_info.borrow_mut().egid().unwrap();
+    gid2grp(egid).ok().unwrap_or_else(|| egid.to_string())
+}
+
+fn pgid(proc_info: RefCell<ProcessInformation>) -> String {
+    proc_info.borrow_mut().pgid().unwrap().to_string()
+}
+
+fn sid(proc_info: RefCell<ProcessInformation>) -> String {
+    proc_info.borrow_mut().sid().unwrap().to_string()
 }
 
 fn tty(proc_info: RefCell<ProcessInformation>) -> String {
