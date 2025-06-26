@@ -17,6 +17,12 @@ clap = { workspace = true }
 regex = { workspace = true }
 uu_pgrep = { path = "../pgrep" }
 
+[target.'cfg(unix)'.dependencies]
+rustix = { version = "1", default-features = false, features = ["event", "process", "std"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = ["Win32_Foundation", "Win32_System_Threading"] }
+
 [lib]
 path = "src/pidwait.rs"
 

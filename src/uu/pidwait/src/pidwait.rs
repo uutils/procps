@@ -4,14 +4,15 @@
 // file that was distributed with this source code.
 
 use clap::{arg, crate_version, Command};
+use std::time::Duration;
+use uu_pgrep::process::ProcessInformation;
 use uu_pgrep::process_matcher;
 use uucore::{error::UResult, format_usage, help_about, help_usage};
-use wait::wait;
-
-mod wait;
 
 const ABOUT: &str = help_about!("pidwait.md");
 const USAGE: &str = help_usage!("pidwait.md");
+
+mod platform;
 
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
@@ -42,9 +43,21 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         }
     }
 
-    wait(&proc_infos);
+    // It should be fine to reserve a `timeout` parameter for future use.
+    wait(&proc_infos, None)?;
 
     Ok(())
+}
+
+pub(crate) fn wait(
+    procs: &[ProcessInformation],
+    timeout: Option<Duration>,
+) -> Result<Option<()>, std::io::Error> {
+    if !procs.is_empty() {
+        platform::wait(procs, timeout)
+    } else {
+        Ok(None)
+    }
 }
 
 pub fn uu_app() -> Command {
