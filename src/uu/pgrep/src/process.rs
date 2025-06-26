@@ -491,6 +491,19 @@ impl ProcessInformation {
         self.cached_thread_ids = Some(Rc::clone(&result));
         Rc::clone(&result)
     }
+
+    pub fn env_vars(&self) -> Result<HashMap<String, String>, io::Error> {
+        let content = fs::read_to_string(format!("/proc/{}/environ", self.pid))?;
+
+        let mut env_vars = HashMap::new();
+        for entry in content.split('\0') {
+            if let Some((key, value)) = entry.split_once('=') {
+                env_vars.insert(key.to_string(), value.to_string());
+            }
+        }
+
+        Ok(env_vars)
+    }
 }
 impl TryFrom<DirEntry> for ProcessInformation {
     type Error = io::Error;
@@ -691,5 +704,17 @@ mod tests {
                 assert_eq!(pid_entry.cgroup_v2_path().unwrap(), "/init.scope");
             }
         }
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn test_environ() {
+        let pid_entry = ProcessInformation::current_process_info().unwrap();
+        let env_vars = pid_entry.env_vars().unwrap();
+
+        assert_eq!(
+            *env_vars.get("HOME").unwrap(),
+            std::env::var("HOME").unwrap()
+        );
     }
 }
