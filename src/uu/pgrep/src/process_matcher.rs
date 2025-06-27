@@ -191,7 +191,7 @@ fn try_get_pattern_from(matches: &ArgMatches) -> UResult<String> {
     };
 
     let pattern = if matches.get_flag("exact") {
-        &format!("^{}$", pattern)
+        &format!("^{pattern}$")
     } else {
         pattern
     };
@@ -489,20 +489,20 @@ fn is_locked(_file: &std::fs::File) -> bool {
 
 fn read_pidfile(filename: &str, check_locked: bool) -> UResult<i64> {
     let file = std::fs::File::open(filename)
-        .map_err(|e| USimpleError::new(1, format!("Failed to open pidfile {}: {}", filename, e)))?;
+        .map_err(|e| USimpleError::new(1, format!("Failed to open pidfile {filename}: {e}")))?;
 
     if check_locked && !is_locked(&file) {
         return Err(USimpleError::new(
             1,
-            format!("Pidfile {} is not locked", filename),
+            format!("Pidfile {filename} is not locked"),
         ));
     }
 
     let content = std::fs::read_to_string(filename)
-        .map_err(|e| USimpleError::new(1, format!("Failed to read pidfile {}: {}", filename, e)))?;
+        .map_err(|e| USimpleError::new(1, format!("Failed to read pidfile {filename}: {e}")))?;
 
     let pid = parse_pidfile_content(&content)
-        .ok_or_else(|| USimpleError::new(1, format!("Pidfile {} not valid", filename)))?;
+        .ok_or_else(|| USimpleError::new(1, format!("Pidfile {filename} not valid")))?;
 
     Ok(pid)
 }

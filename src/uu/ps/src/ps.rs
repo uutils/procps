@@ -88,7 +88,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     table.set_format(*FORMAT_CLEAN);
     table.extend(rows);
 
-    print!("{}", table);
+    print!("{table}");
 
     Ok(())
 }

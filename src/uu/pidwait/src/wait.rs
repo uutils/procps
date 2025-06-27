@@ -33,7 +33,7 @@ fn is_running(pid: usize) -> bool {
     use std::{path::PathBuf, str::FromStr};
     use uu_pgrep::process::RunState;
 
-    let proc = PathBuf::from_str(&format!("/proc/{}", pid)).unwrap();
+    let proc = PathBuf::from_str(&format!("/proc/{pid}")).unwrap();
 
     if !proc.exists() {
         return false;

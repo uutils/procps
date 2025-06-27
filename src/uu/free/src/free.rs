@@ -217,7 +217,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             print!("{}", construct_str(&mem_info));
         }
         Err(e) => {
-            eprintln!("free: failed to read memory info: {}", e);
+            eprintln!("free: failed to read memory info: {e}");
             process::exit(1);
         }
     };
@@ -537,7 +537,7 @@ mod test {
                 );
             }
             Err(e) => {
-                eprintln!("free: failed to read memory info: {}", e);
+                eprintln!("free: failed to read memory info: {e}");
             }
         }
     }

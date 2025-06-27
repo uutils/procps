@@ -64,7 +64,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     };
 
     if !output.is_empty() {
-        println!("{}", output);
+        println!("{output}");
     };
 
     Ok(())

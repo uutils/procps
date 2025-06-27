@@ -110,7 +110,7 @@ fn concat_helper(
                     } else {
                         len - *data_len_excess
                     };
-                    let formatted_value = format!("{:>width$}", value, width = len);
+                    let formatted_value = format!("{value:>len$}");
                     *data_len_excess = formatted_value.len() - len;
                     data.push(formatted_value);
                 });
@@ -162,10 +162,10 @@ fn get_memory_info(
         let inactive = with_unit(memory_info.inactive.as_u64(), matches);
         let active = with_unit(memory_info.active.as_u64(), matches);
         return vec![
-            (len, format!("{}", swap_used)),
-            (len, format!("{}", free)),
-            (len, format!("{}", inactive)),
-            (len, format!("{}", active)),
+            (len, format!("{swap_used}")),
+            (len, format!("{free}")),
+            (len, format!("{inactive}")),
+            (len, format!("{active}")),
         ];
     }
 
@@ -173,10 +173,10 @@ fn get_memory_info(
     let cache = with_unit(memory_info.cached.as_u64(), matches);
 
     vec![
-        (len, format!("{}", swap_used)),
-        (len, format!("{}", free)),
-        (len, format!("{}", buffer)),
-        (len, format!("{}", cache)),
+        (len, format!("{swap_used}")),
+        (len, format!("{free}")),
+        (len, format!("{buffer}")),
+        (len, format!("{cache}")),
     ]
 }
 

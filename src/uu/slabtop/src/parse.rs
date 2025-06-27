@@ -348,7 +348,7 @@ mod tests {
     #[test]
     fn test_parse() {
         let test = include_str!("../../../../tests/fixtures/slabtop/data.txt");
-        let result = SlabInfo::parse(test.into()).unwrap();
+        let result = SlabInfo::parse(test).unwrap();
 
         assert_eq!(result.fetch("nf_conntrack_expect", "objsize").unwrap(), 208);
         assert_eq!(

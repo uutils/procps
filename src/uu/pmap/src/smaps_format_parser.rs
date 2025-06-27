@@ -541,6 +541,7 @@ mod test {
     use super::*;
     use crate::maps_format_parser::Perms;
 
+    #[allow(clippy::too_many_arguments)]
     fn create_smap_entry(
         address: &str,
         perms: Perms,

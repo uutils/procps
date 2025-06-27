@@ -97,7 +97,7 @@ fn output_list(info: &SlabInfo) {
         "{:>6} {:>6} {:>4} {:>8} {:>6} {:>8} {:>10} {:<}",
         "OBJS", "ACTIVE", "USE", "OBJ SIZE", "SLABS", "OBJ/SLAB", "CACHE SIZE", "NAME"
     );
-    println!("{}", title);
+    println!("{title}");
 
     for name in info.names() {
         let objs = info.fetch(name, "num_objs").unwrap_or_default();
@@ -111,14 +111,13 @@ fn output_list(info: &SlabInfo) {
         let obj_per_slab = info.fetch(name, "objperslab").unwrap_or_default();
 
         let cache_size = (objsize * (objs as f64)) as u64;
-        let objsize = format!("{:.2}", objsize);
+        let objsize = format!("{objsize:.2}");
 
         let content = format!(
-            "{:>6} {:>6} {:>4} {:>7}K {:>6} {:>8} {:>10} {:<}",
-            objs, active, used, objsize, slabs, obj_per_slab, cache_size, name
+            "{objs:>6} {active:>6} {used:>4} {objsize:>7}K {slabs:>6} {obj_per_slab:>8} {cache_size:>10} {name:<}"
         );
 
-        println!("{}", content);
+        println!("{content}");
     }
 }
 

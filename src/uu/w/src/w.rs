@@ -171,7 +171,7 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
                 terminal: entry.tty_device(),
                 login_time: format_time(entry.login_time().to_string()).unwrap_or_default(),
                 idle_time: fetch_idle_time(entry.tty_device())?,
-                jcpu: format!("{:.2}", jcpu),
+                jcpu: format!("{jcpu:.2}"),
                 pcpu: fetch_pcpu_time(entry.pid()).unwrap_or_default().to_string(),
                 command: fetch_cmdline(entry.pid()).unwrap_or_default(),
             };
@@ -199,26 +199,26 @@ pub fn format_uptime_procps(up_secs: i64) -> UResult<String> {
     } else {
         format!("{up_mins} min")
     };
-    Ok(format!("{}{}", day_str, hour_min_str))
+    Ok(format!("{day_str}{hour_min_str}"))
 }
 
 #[inline]
 pub fn get_formatted_uptime_procps() -> UResult<String> {
     let time_str = format_uptime_procps(get_uptime(None)?)?;
-    Ok(format!("up {}", time_str))
+    Ok(format!("up {time_str}"))
 }
 
 fn print_uptime() {
     print!(" {} ", get_formatted_time());
     if let Ok(uptime) = get_formatted_uptime_procps() {
-        print!("{}, ", uptime);
+        print!("{uptime}, ");
     } else {
         print!("up ???? days ??:??, ");
     }
 
     print!(" {}", get_formatted_nusers());
     if let Ok(loadavg) = get_formatted_loadavg() {
-        print!(",  {}", loadavg);
+        print!(",  {loadavg}");
     }
     println!();
 }
@@ -273,7 +273,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             }
         }
         Err(e) => {
-            eprintln!("w: failed to fetch user info: {}", e);
+            eprintln!("w: failed to fetch user info: {e}");
             process::exit(1);
         }
     }

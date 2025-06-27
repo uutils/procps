@@ -119,7 +119,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         .to_string()
         .lines()
         .map(cutter)
-        .for_each(|it| println!("{}", it));
+        .for_each(|it| println!("{it}"));
 
     Ok(())
 }
@@ -176,8 +176,8 @@ fn collect(settings: &Settings, fields: &[String]) -> Vec<Vec<String>> {
         .read()
         .unwrap()
         .processes()
-        .iter()
-        .map(|(it, _)| it.as_u32())
+        .keys()
+        .map(|it| it.as_u32())
         .collect::<Vec<_>>();
 
     let filter = construct_filter(settings);

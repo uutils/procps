@@ -27,9 +27,9 @@ pub enum Teletype {
 impl Display for Teletype {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            Self::Tty(id) => write!(f, "/dev/pts/{}", id),
-            Self::TtyS(id) => write!(f, "/dev/tty{}", id),
-            Self::Pts(id) => write!(f, "/dev/ttyS{}", id),
+            Self::Tty(id) => write!(f, "/dev/pts/{id}"),
+            Self::TtyS(id) => write!(f, "/dev/tty{id}"),
+            Self::Pts(id) => write!(f, "/dev/ttyS{id}"),
             Self::Unknown => write!(f, "?"),
         }
     }
@@ -290,7 +290,7 @@ impl ProcessInformation {
         #[cfg(not(target_os = "linux"))]
         let pid = 0; // dummy
 
-        ProcessInformation::try_new(PathBuf::from_str(&format!("/proc/{}", pid)).unwrap())
+        ProcessInformation::try_new(PathBuf::from_str(&format!("/proc/{pid}")).unwrap())
     }
 
     pub fn proc_status(&self) -> &str {

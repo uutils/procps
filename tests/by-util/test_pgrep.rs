@@ -711,7 +711,7 @@ fn test_env_key_match() {
 #[cfg(target_os = "linux")]
 fn test_env_key_value_match() {
     let home = std::env::var("HOME").unwrap();
-    new_ucmd!().arg(format!("--env=HOME={}", home)).succeeds();
+    new_ucmd!().arg(format!("--env=HOME={home}")).succeeds();
 }
 
 #[test]

@@ -110,9 +110,9 @@ fn sid(proc_info: RefCell<ProcessInformation>) -> String {
 
 fn tty(proc_info: RefCell<ProcessInformation>) -> String {
     match proc_info.borrow().tty() {
-        Teletype::Tty(tty) => format!("tty{}", tty),
-        Teletype::TtyS(ttys) => format!("ttyS{}", ttys),
-        Teletype::Pts(pts) => format!("pts/{}", pts),
+        Teletype::Tty(tty) => format!("tty{tty}"),
+        Teletype::TtyS(ttys) => format!("ttyS{ttys}"),
+        Teletype::Pts(pts) => format!("pts/{pts}"),
         Teletype::Unknown => "?".to_owned(),
     }
 }
@@ -137,9 +137,9 @@ fn format_time(seconds: i64) -> String {
     let second = seconds % 60;
 
     if day != 0 {
-        format!("{:02}-{:02}:{:02}:{:02}", day, hour, minute, second)
+        format!("{day:02}-{hour:02}:{minute:02}:{second:02}")
     } else {
-        format!("{:02}:{:02}:{:02}", hour, minute, second)
+        format!("{hour:02}:{minute:02}:{second:02}")
     }
 }
 
