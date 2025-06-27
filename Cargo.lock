@@ -1099,6 +1099,7 @@ dependencies = [
  "uu_pmap",
  "uu_ps",
  "uu_pwdx",
+ "uu_skill",
  "uu_slabtop",
  "uu_snice",
  "uu_sysctl",
@@ -1771,6 +1772,16 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "sysinfo",
+ "uucore",
+]
+
+[[package]]
+name = "uu_skill"
+version = "0.0.1"
+dependencies = [
+ "clap",
+ "nix",
+ "uu_pgrep",
  "uucore",
 ]
 
