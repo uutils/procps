@@ -144,11 +144,17 @@ fn format_time(seconds: i64) -> String {
 }
 
 fn cmd(proc_info: RefCell<ProcessInformation>) -> String {
-    proc_info.borrow().cmdline.clone()
+    // Use command line if available, otherwise show process name in brackets (for kernel threads)
+    let cmdline = proc_info.borrow().cmdline.clone();
+    if !cmdline.is_empty() {
+        cmdline
+    } else {
+        format!("[{}]", proc_info.borrow_mut().name().unwrap())
+    }
 }
 
 fn ucmd(proc_info: RefCell<ProcessInformation>) -> String {
-    proc_info.borrow_mut().status().get("Name").unwrap().into()
+    proc_info.borrow_mut().name().unwrap()
 }
 
 #[test]
