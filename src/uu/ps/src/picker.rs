@@ -33,15 +33,15 @@ pub(crate) fn collect_pickers(
             "user" => pickers.push(helper(user)),
             "euser" => pickers.push(helper(euser)),
             "pgid" => pickers.push(helper(pgid)),
-            "sid" => pickers.push(helper(sid)),
+            "sid" | "sess" => pickers.push(helper(sid)),
             "gid" => pickers.push(helper(gid)),
             "egid" => pickers.push(helper(egid)),
             "group" => pickers.push(helper(group)),
             "egroup" => pickers.push(helper(egroup)),
             "tname" | "tt" | "tty" => pickers.push(helper(tty)),
             "time" | "cputime" => pickers.push(helper(time)),
-            "ucmd" => pickers.push(helper(ucmd)),
-            "cmd" => pickers.push(helper(cmd)),
+            "ucmd" | "comm" => pickers.push(helper(ucmd)),
+            "cmd" | "command" | "args" => pickers.push(helper(cmd)),
             _ => {}
         }
     }
