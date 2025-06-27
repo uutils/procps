@@ -28,16 +28,16 @@ pub(crate) fn collect_pickers(
         match code.as_str() {
             "pid" | "tgid" => pickers.push(helper(pid)),
             "ppid" => pickers.push(helper(ppid)),
-            "uid" => pickers.push(helper(uid)),
-            "euid" => pickers.push(helper(euid)),
-            "user" => pickers.push(helper(user)),
-            "euser" => pickers.push(helper(euser)),
+            "uid" | "euid" => pickers.push(helper(euid)),
+            "ruid" => pickers.push(helper(ruid)),
+            "user" | "euser" => pickers.push(helper(euser)),
+            "ruser" => pickers.push(helper(ruser)),
             "pgid" => pickers.push(helper(pgid)),
             "sid" | "sess" => pickers.push(helper(sid)),
-            "gid" => pickers.push(helper(gid)),
-            "egid" => pickers.push(helper(egid)),
-            "group" => pickers.push(helper(group)),
-            "egroup" => pickers.push(helper(egroup)),
+            "gid" | "egid" => pickers.push(helper(egid)),
+            "rgid" => pickers.push(helper(rgid)),
+            "group" | "egroup" => pickers.push(helper(egroup)),
+            "rgroup" => pickers.push(helper(rgroup)),
             "tname" | "tt" | "tty" => pickers.push(helper(tty)),
             "time" | "cputime" => pickers.push(helper(time)),
             "ucmd" | "comm" => pickers.push(helper(ucmd)),
@@ -64,7 +64,7 @@ fn ppid(proc_info: RefCell<ProcessInformation>) -> String {
     proc_info.borrow_mut().ppid().unwrap().to_string()
 }
 
-fn uid(proc_info: RefCell<ProcessInformation>) -> String {
+fn ruid(proc_info: RefCell<ProcessInformation>) -> String {
     proc_info.borrow_mut().uid().unwrap().to_string()
 }
 
@@ -72,7 +72,7 @@ fn euid(proc_info: RefCell<ProcessInformation>) -> String {
     proc_info.borrow_mut().euid().unwrap().to_string()
 }
 
-fn user(proc_info: RefCell<ProcessInformation>) -> String {
+fn ruser(proc_info: RefCell<ProcessInformation>) -> String {
     let uid = proc_info.borrow_mut().uid().unwrap();
     uid2usr(uid).ok().unwrap_or_else(|| uid.to_string())
 }
@@ -82,7 +82,7 @@ fn euser(proc_info: RefCell<ProcessInformation>) -> String {
     uid2usr(euid).ok().unwrap_or_else(|| euid.to_string())
 }
 
-fn gid(proc_info: RefCell<ProcessInformation>) -> String {
+fn rgid(proc_info: RefCell<ProcessInformation>) -> String {
     proc_info.borrow_mut().gid().unwrap().to_string()
 }
 
@@ -90,7 +90,7 @@ fn egid(proc_info: RefCell<ProcessInformation>) -> String {
     proc_info.borrow_mut().egid().unwrap().to_string()
 }
 
-fn group(proc_info: RefCell<ProcessInformation>) -> String {
+fn rgroup(proc_info: RefCell<ProcessInformation>) -> String {
     let gid = proc_info.borrow_mut().gid().unwrap();
     gid2grp(gid).ok().unwrap_or_else(|| gid.to_string())
 }
