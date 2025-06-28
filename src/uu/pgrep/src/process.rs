@@ -409,6 +409,14 @@ impl ProcessInformation {
         self.get_uid_or_gid_field("Gid", 1)
     }
 
+    pub fn suid(&mut self) -> Result<u32, io::Error> {
+        self.get_uid_or_gid_field("Uid", 2)
+    }
+
+    pub fn sgid(&mut self) -> Result<u32, io::Error> {
+        self.get_uid_or_gid_field("Gid", 2)
+    }
+
     // Root directory of the process (which can be changed by chroot)
     pub fn root(&mut self) -> Result<PathBuf, io::Error> {
         read_link(format!("/proc/{}/root", self.pid))

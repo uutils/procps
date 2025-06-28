@@ -28,20 +28,24 @@ pub(crate) fn collect_pickers(
         match code.as_str() {
             "pid" | "tgid" => pickers.push(helper(pid)),
             "ppid" => pickers.push(helper(ppid)),
-            "uid" => pickers.push(helper(uid)),
-            "euid" => pickers.push(helper(euid)),
-            "user" => pickers.push(helper(user)),
-            "euser" => pickers.push(helper(euser)),
+            "uid" | "euid" => pickers.push(helper(euid)),
+            "ruid" => pickers.push(helper(ruid)),
+            "suid" => pickers.push(helper(suid)),
+            "user" | "euser" => pickers.push(helper(euser)),
+            "ruser" => pickers.push(helper(ruser)),
+            "suser" => pickers.push(helper(suser)),
             "pgid" => pickers.push(helper(pgid)),
-            "sid" => pickers.push(helper(sid)),
-            "gid" => pickers.push(helper(gid)),
-            "egid" => pickers.push(helper(egid)),
-            "group" => pickers.push(helper(group)),
-            "egroup" => pickers.push(helper(egroup)),
+            "sid" | "sess" => pickers.push(helper(sid)),
+            "gid" | "egid" => pickers.push(helper(egid)),
+            "rgid" => pickers.push(helper(rgid)),
+            "sgid" => pickers.push(helper(sgid)),
+            "group" | "egroup" => pickers.push(helper(egroup)),
+            "rgroup" => pickers.push(helper(rgroup)),
+            "sgroup" => pickers.push(helper(sgroup)),
             "tname" | "tt" | "tty" => pickers.push(helper(tty)),
             "time" | "cputime" => pickers.push(helper(time)),
-            "ucmd" => pickers.push(helper(ucmd)),
-            "cmd" => pickers.push(helper(cmd)),
+            "ucmd" | "comm" => pickers.push(helper(ucmd)),
+            "cmd" | "command" | "args" => pickers.push(helper(cmd)),
             _ => {}
         }
     }
@@ -64,7 +68,7 @@ fn ppid(proc_info: RefCell<ProcessInformation>) -> String {
     proc_info.borrow_mut().ppid().unwrap().to_string()
 }
 
-fn uid(proc_info: RefCell<ProcessInformation>) -> String {
+fn ruid(proc_info: RefCell<ProcessInformation>) -> String {
     proc_info.borrow_mut().uid().unwrap().to_string()
 }
 
@@ -72,7 +76,11 @@ fn euid(proc_info: RefCell<ProcessInformation>) -> String {
     proc_info.borrow_mut().euid().unwrap().to_string()
 }
 
-fn user(proc_info: RefCell<ProcessInformation>) -> String {
+fn suid(proc_info: RefCell<ProcessInformation>) -> String {
+    proc_info.borrow_mut().suid().unwrap_or(0).to_string()
+}
+
+fn ruser(proc_info: RefCell<ProcessInformation>) -> String {
     let uid = proc_info.borrow_mut().uid().unwrap();
     uid2usr(uid).ok().unwrap_or_else(|| uid.to_string())
 }
@@ -82,7 +90,12 @@ fn euser(proc_info: RefCell<ProcessInformation>) -> String {
     uid2usr(euid).ok().unwrap_or_else(|| euid.to_string())
 }
 
-fn gid(proc_info: RefCell<ProcessInformation>) -> String {
+fn suser(proc_info: RefCell<ProcessInformation>) -> String {
+    let suid = proc_info.borrow_mut().suid().unwrap_or(0);
+    uid2usr(suid).unwrap_or_else(|_| suid.to_string())
+}
+
+fn rgid(proc_info: RefCell<ProcessInformation>) -> String {
     proc_info.borrow_mut().gid().unwrap().to_string()
 }
 
@@ -90,7 +103,11 @@ fn egid(proc_info: RefCell<ProcessInformation>) -> String {
     proc_info.borrow_mut().egid().unwrap().to_string()
 }
 
-fn group(proc_info: RefCell<ProcessInformation>) -> String {
+fn sgid(proc_info: RefCell<ProcessInformation>) -> String {
+    proc_info.borrow_mut().sgid().unwrap_or(0).to_string()
+}
+
+fn rgroup(proc_info: RefCell<ProcessInformation>) -> String {
     let gid = proc_info.borrow_mut().gid().unwrap();
     gid2grp(gid).ok().unwrap_or_else(|| gid.to_string())
 }
@@ -98,6 +115,11 @@ fn group(proc_info: RefCell<ProcessInformation>) -> String {
 fn egroup(proc_info: RefCell<ProcessInformation>) -> String {
     let egid = proc_info.borrow_mut().egid().unwrap();
     gid2grp(egid).ok().unwrap_or_else(|| egid.to_string())
+}
+
+fn sgroup(proc_info: RefCell<ProcessInformation>) -> String {
+    let sgid = proc_info.borrow_mut().sgid().unwrap_or(0);
+    gid2grp(sgid).unwrap_or_else(|_| sgid.to_string())
 }
 
 fn pgid(proc_info: RefCell<ProcessInformation>) -> String {
@@ -144,11 +166,17 @@ fn format_time(seconds: i64) -> String {
 }
 
 fn cmd(proc_info: RefCell<ProcessInformation>) -> String {
-    proc_info.borrow().cmdline.clone()
+    // Use command line if available, otherwise show process name in brackets (for kernel threads)
+    let cmdline = proc_info.borrow().cmdline.clone();
+    if !cmdline.is_empty() {
+        cmdline
+    } else {
+        format!("[{}]", proc_info.borrow_mut().name().unwrap())
+    }
 }
 
 fn ucmd(proc_info: RefCell<ProcessInformation>) -> String {
-    proc_info.borrow_mut().status().get("Name").unwrap().into()
+    proc_info.borrow_mut().name().unwrap()
 }
 
 #[test]
