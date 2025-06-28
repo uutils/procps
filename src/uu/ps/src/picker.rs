@@ -42,6 +42,10 @@ pub(crate) fn collect_pickers(
             "group" | "egroup" => pickers.push(helper(egroup)),
             "rgroup" => pickers.push(helper(rgroup)),
             "sgroup" => pickers.push(helper(sgroup)),
+            "pending" => pickers.push(helper(pending)),
+            "blocked" => pickers.push(helper(blocked)),
+            "ignored" => pickers.push(helper(ignored)),
+            "caught" => pickers.push(helper(caught)),
             "tname" | "tt" | "tty" => pickers.push(helper(tty)),
             "time" | "cputime" => pickers.push(helper(time)),
             "ucmd" | "comm" => pickers.push(helper(ucmd)),
@@ -177,6 +181,38 @@ fn cmd(proc_info: RefCell<ProcessInformation>) -> String {
 
 fn ucmd(proc_info: RefCell<ProcessInformation>) -> String {
     proc_info.borrow_mut().name().unwrap()
+}
+
+fn pending(proc_info: RefCell<ProcessInformation>) -> String {
+    proc_info
+        .borrow_mut()
+        .signals_pending_mask()
+        .map(|mask| format!("{mask:016x}"))
+        .unwrap_or_else(|_| "?".to_string())
+}
+
+fn blocked(proc_info: RefCell<ProcessInformation>) -> String {
+    proc_info
+        .borrow_mut()
+        .signals_blocked_mask()
+        .map(|mask| format!("{mask:016x}"))
+        .unwrap_or_else(|_| "?".to_string())
+}
+
+fn ignored(proc_info: RefCell<ProcessInformation>) -> String {
+    proc_info
+        .borrow_mut()
+        .signals_ignored_mask()
+        .map(|mask| format!("{mask:016x}"))
+        .unwrap_or_else(|_| "?".to_string())
+}
+
+fn caught(proc_info: RefCell<ProcessInformation>) -> String {
+    proc_info
+        .borrow_mut()
+        .signals_caught_mask()
+        .map(|mask| format!("{mask:016x}"))
+        .unwrap_or_else(|_| "?".to_string())
 }
 
 #[test]
