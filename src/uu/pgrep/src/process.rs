@@ -417,6 +417,46 @@ impl ProcessInformation {
         self.get_uid_or_gid_field("Gid", 2)
     }
 
+    /// Helper function to get a hex field from status and parse it as u64
+    fn get_hex_status_field(&mut self, field_name: &str) -> Result<u64, io::Error> {
+        self.status()
+            .get(field_name)
+            .ok_or_else(|| {
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("{field_name} field not found"),
+                )
+            })
+            .and_then(|value| {
+                u64::from_str_radix(value.trim(), 16).map_err(|_| {
+                    io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        format!("Invalid {field_name} value"),
+                    )
+                })
+            })
+    }
+
+    /// Returns the signal caught mask for the process
+    pub fn signals_caught_mask(&mut self) -> Result<u64, io::Error> {
+        self.get_hex_status_field("SigCgt")
+    }
+
+    /// Returns the pending signals mask for the process
+    pub fn signals_pending_mask(&mut self) -> Result<u64, io::Error> {
+        self.get_hex_status_field("SigPnd")
+    }
+
+    /// Returns the blocked signals mask for the process
+    pub fn signals_blocked_mask(&mut self) -> Result<u64, io::Error> {
+        self.get_hex_status_field("SigBlk")
+    }
+
+    /// Returns the ignored signals mask for the process
+    pub fn signals_ignored_mask(&mut self) -> Result<u64, io::Error> {
+        self.get_hex_status_field("SigIgn")
+    }
+
     // Root directory of the process (which can be changed by chroot)
     pub fn root(&mut self) -> Result<PathBuf, io::Error> {
         read_link(format!("/proc/{}/root", self.pid))
