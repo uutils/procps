@@ -313,8 +313,7 @@ fn collect_matched_pids(settings: &Settings) -> UResult<Vec<ProcessInformation>>
                 } else {
                     1 << (settings.signal - 1)
                 };
-                let mask =
-                    u64::from_str_radix(pid.clone().status().get("SigCgt").unwrap(), 16).unwrap();
+                let mask = pid.clone().signals_caught_mask().unwrap();
                 mask & mask_to_test != 0
             } else {
                 true
