@@ -255,6 +255,10 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
     Ok(Vec::new())
 }
 
+fn truncate_username(user: &str) -> String {
+    user.chars().take(8).collect::<String>()
+}
+
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
@@ -281,7 +285,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 if short {
                     println!(
                         "{:<9}{:<9}{:<7}{:<}",
-                        user.user,
+                        truncate_username(&user.user),
                         user.terminal,
                         format_time_elapsed(user.idle_time, old_style).unwrap_or_default(),
                         user.command
@@ -289,7 +293,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 } else {
                     println!(
                         "{:<9}{:<10}{:<9}{:<6} {:<7}{:<6}{:<}",
-                        user.user,
+                        truncate_username(&user.user),
                         user.terminal,
                         user.login_time,
                         format_time_elapsed(user.idle_time, old_style).unwrap_or_default(),
