@@ -263,7 +263,7 @@ impl PmapConfig {
 
         for line in contents.lines() {
             let line = line.trim_ascii();
-            if line.starts_with("#") || line.len() == 0 {
+            if line.starts_with("#") || line.is_empty() {
                 continue;
             }
 
@@ -280,10 +280,8 @@ impl PmapConfig {
 
             if in_field_display {
                 self.enable_field(line);
-            } else if in_mapping {
-                if line == "ShowPath" {
-                    self.show_path = true;
-                }
+            } else if in_mapping && line == "ShowPath" {
+                self.show_path = true;
             }
         }
 
