@@ -78,7 +78,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     } else if matches.get_flag(options::READ_RC) {
         let path = pmap_config::get_rc_default_path();
         if !std::fs::exists(&path)? {
-            println!(
+            eprintln!(
                 "pmap: couldn't read {}",
                 pmap_config::get_rc_default_path_str()
             );
@@ -89,7 +89,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     } else if let Some(path) = matches.get_one::<String>(options::READ_RC_FROM) {
         let path = std::fs::canonicalize(path)?;
         if !std::fs::exists(&path)? {
-            println!("pmap: couldn't read the rc file");
+            eprintln!("pmap: couldn't read the rc file");
             set_exit_code(1);
             return Ok(());
         }
