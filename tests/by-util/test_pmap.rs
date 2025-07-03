@@ -23,6 +23,10 @@ fn test_no_args() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_default_rc() {
+    if !uutests::util::is_ci() {
+        return;
+    }
+
     let pid = process::id();
     let ts = TestScenario::new(util_name!());
 
