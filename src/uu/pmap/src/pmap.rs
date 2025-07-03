@@ -42,15 +42,15 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     if matches.get_flag(options::CREATE_RC) {
         let path = pmap_config::get_rc_default_path();
         if std::fs::exists(&path)? {
-            println!("pmap: the file already exists - delete or rename it first");
-            println!(
+            eprintln!("pmap: the file already exists - delete or rename it first");
+            eprintln!(
                 "pmap: couldn't create {}",
                 pmap_config::get_rc_default_path_str()
             );
             set_exit_code(1);
         } else {
             create_rc(&path)?;
-            println!(
+            eprintln!(
                 "pmap: {} file successfully created, feel free to edit the content",
                 pmap_config::get_rc_default_path_str()
             );
@@ -59,12 +59,12 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     } else if let Some(path_str) = matches.get_one::<String>(options::CREATE_RC_TO) {
         let path = std::path::PathBuf::from(path_str);
         if std::fs::exists(&path)? {
-            println!("pmap: the file already exists - delete or rename it first");
-            println!("pmap: couldn't create the rc file");
+            eprintln!("pmap: the file already exists - delete or rename it first");
+            eprintln!("pmap: couldn't create the rc file");
             set_exit_code(1);
         } else {
             create_rc(&path)?;
-            println!("pmap: rc file successfully created, feel free to edit the content");
+            eprintln!("pmap: rc file successfully created, feel free to edit the content");
         }
         return Ok(());
     }
