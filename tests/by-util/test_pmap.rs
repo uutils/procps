@@ -22,6 +22,78 @@ fn test_no_args() {
 
 #[test]
 #[cfg(target_os = "linux")]
+fn test_default_rc() {
+    if !uutests::util::is_ci() {
+        return;
+    }
+
+    let pid = process::id();
+    let ts = TestScenario::new(util_name!());
+
+    // Fails to read before creating rc file
+    for arg in ["-c", "--read-rc"] {
+        ts.ucmd().arg(arg).arg(pid.to_string()).fails().code_is(1);
+    }
+
+    // Create rc file
+    ts.ucmd().arg("-n").succeeds();
+
+    // Fails to create because rc file already exists
+    for arg in ["-n", "--create-rc"] {
+        ts.ucmd().arg(arg).fails().code_is(1);
+    }
+
+    // Succeeds to read now
+    for arg in ["-c", "--read-rc"] {
+        ts.ucmd().arg(arg).arg(pid.to_string()).succeeds();
+    }
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_create_rc_to() {
+    let ts = TestScenario::new(util_name!());
+
+    ts.ucmd().args(&["-N", "pmap_rc_file_name"]).succeeds();
+
+    // Fails to create because rc file already exists
+    for arg in ["-N", "--create-rc-to"] {
+        ts.ucmd()
+            .args(&[arg, "pmap_rc_file_name"])
+            .fails()
+            .code_is(1);
+    }
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_read_rc_from() {
+    let pid = process::id();
+    let ts = TestScenario::new(util_name!());
+
+    // Fails to read before creating rc file
+    for arg in ["-C", "--read-rc-from"] {
+        ts.ucmd()
+            .args(&[arg, "pmap_rc_file_name"])
+            .arg(pid.to_string())
+            .fails()
+            .code_is(1);
+    }
+
+    // Create rc file
+    ts.ucmd().args(&["-N", "pmap_rc_file_name"]).succeeds();
+
+    // Succeeds to read now
+    for arg in ["-C", "--read-rc-from"] {
+        ts.ucmd()
+            .args(&[arg, "pmap_rc_file_name"])
+            .arg(pid.to_string())
+            .succeeds();
+    }
+}
+
+#[test]
+#[cfg(target_os = "linux")]
 fn test_existing_pid() {
     let pid = process::id();
 

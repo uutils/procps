@@ -5,7 +5,7 @@
 
 use clap::{crate_version, Arg, ArgAction, Command};
 use maps_format_parser::{parse_map_line, MapLine};
-use pmap_config::{pmap_field_name, PmapConfig};
+use pmap_config::{create_rc, pmap_field_name, PmapConfig};
 use smaps_format_parser::{parse_smaps, SmapTable};
 use std::env;
 use std::fs;
@@ -39,12 +39,61 @@ mod options {
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
 
+    if matches.get_flag(options::CREATE_RC) {
+        let path = pmap_config::get_rc_default_path();
+        if std::fs::exists(&path)? {
+            eprintln!("pmap: the file already exists - delete or rename it first");
+            eprintln!(
+                "pmap: couldn't create {}",
+                pmap_config::get_rc_default_path_str()
+            );
+            set_exit_code(1);
+        } else {
+            create_rc(&path)?;
+            eprintln!(
+                "pmap: {} file successfully created, feel free to edit the content",
+                pmap_config::get_rc_default_path_str()
+            );
+        }
+        return Ok(());
+    } else if let Some(path_str) = matches.get_one::<String>(options::CREATE_RC_TO) {
+        let path = std::path::PathBuf::from(path_str);
+        if std::fs::exists(&path)? {
+            eprintln!("pmap: the file already exists - delete or rename it first");
+            eprintln!("pmap: couldn't create the rc file");
+            set_exit_code(1);
+        } else {
+            create_rc(&path)?;
+            eprintln!("pmap: rc file successfully created, feel free to edit the content");
+        }
+        return Ok(());
+    }
+
     let mut pmap_config = PmapConfig::default();
 
     if matches.get_flag(options::MORE_EXTENDED) {
         pmap_config.set_more_extended();
     } else if matches.get_flag(options::MOST_EXTENDED) {
         pmap_config.set_most_extended();
+    } else if matches.get_flag(options::READ_RC) {
+        let path = pmap_config::get_rc_default_path();
+        if !std::fs::exists(&path)? {
+            eprintln!(
+                "pmap: couldn't read {}",
+                pmap_config::get_rc_default_path_str()
+            );
+            set_exit_code(1);
+            return Ok(());
+        }
+        pmap_config.read_rc(&path)?;
+    } else if let Some(path) = matches.get_one::<String>(options::READ_RC_FROM) {
+        let path = std::fs::canonicalize(path)?;
+        if !std::fs::exists(&path)? {
+            eprintln!("pmap: couldn't read the rc file");
+            set_exit_code(1);
+            return Ok(());
+        }
+        pmap_config.read_rc(&path)?;
     }
 
     // Options independent with field selection:
@@ -405,36 +454,81 @@ pub fn uu_app() -> Command {
                 .short('c')
                 .long("read-rc")
                 .help("read the default rc")
-                .action(ArgAction::SetTrue),
-        )
+                .action(ArgAction::SetTrue)
+                .conflicts_with_all([
+                    "read-rc-from",
+                    "device",
+                    "create-rc",
+                    "create-rc-to",
+                    "extended",
+                    "more-extended",
+                    "most-extended",
+                ]),
+        ) // pmap: options -c, -C, -d, -n, -N, -x, -X are mutually exclusive
         .arg(
             Arg::new(options::READ_RC_FROM)
                 .short('C')
                 .long("read-rc-from")
                 .num_args(1)
-                .help("read the rc from file"),
-        )
+                .help("read the rc from file")
+                .conflicts_with_all([
+                    "read-rc",
+                    "device",
+                    "create-rc",
+                    "create-rc-to",
+                    "extended",
+                    "more-extended",
+                    "most-extended",
+                ]),
+        ) // pmap: options -c, -C, -d, -n, -N, -x, -X are mutually exclusive
         .arg(
             Arg::new(options::CREATE_RC)
                 .short('n')
                 .long("create-rc")
                 .help("create new default rc")
-                .action(ArgAction::SetTrue),
-        )
+                .action(ArgAction::SetTrue)
+                .conflicts_with_all([
+                    "read-rc",
+                    "read-rc-from",
+                    "device",
+                    "create-rc-to",
+                    "extended",
+                    "more-extended",
+                    "most-extended",
+                ]),
+        ) // pmap: options -c, -C, -d, -n, -N, -x, -X are mutually exclusive
         .arg(
             Arg::new(options::CREATE_RC_TO)
                 .short('N')
                 .long("create-rc-to")
                 .num_args(1)
-                .help("create new rc to file"),
-        )
+                .help("create new rc to file")
+                .conflicts_with_all([
+                    "read-rc",
+                    "read-rc-from",
+                    "device",
+                    "create-rc",
+                    "extended",
+                    "more-extended",
+                    "most-extended",
+                ]),
+        ) // pmap: options -c, -C, -d, -n, -N, -x, -X are mutually exclusive
         .arg(
             Arg::new(options::DEVICE)
                 .short('d')
                 .long("device")
                 .help("show the device format")
-                .action(ArgAction::SetTrue),
-        )
+                .action(ArgAction::SetTrue)
+                .conflicts_with_all([
+                    "read-rc",
+                    "read-rc-from",
+                    "create-rc",
+                    "create-rc-to",
+                    "extended",
+                    "more-extended",
+                    "most-extended",
+                ]),
+        ) // pmap: options -c, -C, -d, -n, -N, -x, -X are mutually exclusive
         .arg(
             Arg::new(options::QUIET)
                 .short('q')

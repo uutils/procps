@@ -3,6 +3,10 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use dirs::home_dir;
+use std::io::Error;
+use std::path::PathBuf;
+
 pub mod pmap_field_name {
     pub const ADDRESS: &str = "Address";
     pub const PERM: &str = "Perm";
@@ -200,6 +204,10 @@ impl PmapConfig {
         }
     }
 
+    pub fn enable_field(&mut self, field_name: &str) {
+        self.set_field(field_name, true);
+    }
+
     pub fn disable_field(&mut self, field_name: &str) {
         self.set_field(field_name, false);
     }
@@ -244,4 +252,91 @@ impl PmapConfig {
         self.anon_huge_pages = true;
         self.vmflags = true;
     }
+
+    pub fn read_rc(&mut self, path: &PathBuf) -> Result<(), Error> {
+        self.custom_format_enabled = true;
+
+        let contents = std::fs::read_to_string(path)?;
+
+        let mut in_field_display = false;
+        let mut in_mapping = false;
+
+        for line in contents.lines() {
+            let line = line.trim_ascii();
+            if line.starts_with("#") || line.is_empty() {
+                continue;
+            }
+
+            // The leftmost category on the line is recoginized.
+            if line.starts_with("[Fields Display]") {
+                in_field_display = true;
+                in_mapping = false;
+                continue;
+            } else if line.starts_with("[Mapping]") {
+                in_field_display = false;
+                in_mapping = true;
+                continue;
+            }
+
+            if in_field_display {
+                self.enable_field(line);
+            } else if in_mapping && line == "ShowPath" {
+                self.show_path = true;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+pub fn create_rc(path: &PathBuf) -> Result<(), Error> {
+    let contents = "# pmap's Config File\n".to_string()
+        + "\n"
+        + "# All the entries are case sensitive.\n"
+        + "# Unsupported entries are ignored!\n"
+        + "\n"
+        + "[Fields Display]\n"
+        + "\n"
+        + "# To enable a field uncomment its entry\n"
+        + "\n"
+        + "#Perm\n"
+        + "#Offset\n"
+        + "#Device\n"
+        + "#Inode\n"
+        + "#Size\n"
+        + "#Rss\n"
+        + "#Pss\n"
+        + "#Shared_Clean\n"
+        + "#Shared_Dirty\n"
+        + "#Private_Clean\n"
+        + "#Private_Dirty\n"
+        + "#Referenced\n"
+        + "#Anonymous\n"
+        + "#AnonHugePages\n"
+        + "#Swap\n"
+        + "#KernelPageSize\n"
+        + "#MMUPageSize\n"
+        + "#Locked\n"
+        + "#VmFlags\n"
+        + "#Mapping\n"
+        + "\n"
+        + "[Mapping]\n"
+        + "\n"
+        + "# to show paths in the mapping column uncomment the following line\n"
+        + "#ShowPath\n"
+        + "\n";
+
+    std::fs::write(path, contents)?;
+
+    Ok(())
+}
+
+pub fn get_rc_default_path() -> PathBuf {
+    let mut path = home_dir().expect("home directory should not be None");
+    path.push(".pmaprc");
+    path
+}
+
+pub fn get_rc_default_path_str() -> &'static str {
+    "~/.pmaprc"
 }
