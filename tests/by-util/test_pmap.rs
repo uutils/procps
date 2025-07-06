@@ -450,13 +450,13 @@ fn assert_extended_format(pid: u32, s: &str, quiet: bool, show_path: bool) {
 // Ensure `s` has the following more extended format (-X):
 //
 // 1234:   /some/path
-//          Address Perm   Offset Device      Inode Size  Rss  Pss Pss_Dirty Referenced Anonymous LazyFree ShmemPmdMapped FilePmdMapped Shared_Hugetlb Private_Hugetlb Swap SwapPss Locked THPeligible Mapping
-//     73eb5f4c7000 r-xp 00036000  08:08    2274176 1284 1148 1148         0       1148         0        0              0             0              0               0    0       0      0           0 ld-linux-x86-64.so.2
-//     7ffd588fc000 r--p 00000000  00:00    2274176   20   20   20        20         20        20        0              0             0              0               0    0       0      0           0 [stack]
-// ffffffffff600000 rw-p 00000000  00:00    2274176   36   36   36        36         36        36        0              0             0              0               0    0       0      0           0 (one intentional trailing space)
+//          Address Perm   Offset Device   Inode Size  Rss  Pss Pss_Dirty Referenced Anonymous LazyFree ShmemPmdMapped FilePmdMapped Shared_Hugetlb Private_Hugetlb Swap SwapPss Locked THPeligible Mapping
+//     73eb5f4c7000 r-xp 00036000  08:08 2274176 1284 1148 1148         0       1148         0        0              0             0              0               0    0       0      0           0 ld-linux-x86-64.so.2
+//     7ffd588fc000 r--p 00000000  00:00 2274176   20   20   20        20         20        20        0              0             0              0               0    0       0      0           0 [stack]
+// ffffffffff600000 rw-p 00000000  00:00 2274176   36   36   36        36         36        36        0              0             0              0               0    0       0      0           0 (one intentional trailing space)
 // ...
-//                                                  ==== ==== ==== ========= ========== ========= ======== ============== ============= ============== =============== ==== ======= ====== =========== (one intentional trailing space)
-//                                                  4164 3448 2826       552       3448       552        0              0             0              0               0    0       0      0           0 KB (one intentional trailing space)
+//                                               ==== ==== ==== ========= ========== ========= ======== ============== ============= ============== =============== ==== ======= ====== =========== (one intentional trailing space)
+//                                               4164 3448 2826       552       3448       552        0              0             0              0               0    0       0      0           0 KB (one intentional trailing space)
 #[cfg(target_os = "linux")]
 fn assert_more_extended_format(pid: u32, s: &str, quiet: bool, show_path: bool) {
     let lines: Vec<_> = s.lines().collect();
@@ -487,14 +487,14 @@ fn assert_more_extended_format(pid: u32, s: &str, quiet: bool, show_path: bool) 
             assert!(re.is_match(line), "failing line: '{line}'");
         }
 
-        let re = Regex::new(r"^                                              +=+ =+ =+ =+ =+ =+( =+)? =+ =+ =+ =+ =+ =+ =+ =+ =+( =+)? $").unwrap();
+        let re = Regex::new(r"^                                         +=+ =+ =+ =+ =+ =+( =+)? =+ =+ =+ =+ =+ =+ =+ =+ =+( =+)? $").unwrap();
         assert!(
             re.is_match(lines[line_count - 2]),
             "failing line: '{}'",
             lines[line_count - 2]
         );
 
-        let re = Regex::new(r"^                                              +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? KB $").unwrap();
+        let re = Regex::new(r"^                                         +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? KB $").unwrap();
         assert!(
             re.is_match(lines[line_count - 1]),
             "failing line: '{}'",
@@ -543,14 +543,14 @@ fn assert_most_extended_format(pid: u32, s: &str, quiet: bool, show_path: bool) 
             assert!(re.is_match(line), "failing line: '{line}'");
         }
 
-        let re = Regex::new(r"^                                              +=+ =+ =+ =+ =+ =+ =+ =+ =+ =+ =+ =+( =+)? =+ =+ =+ =+ =+ =+ =+ =+ =+ =+( =+)? $").unwrap();
+        let re = Regex::new(r"^                                         +=+ =+ =+ =+ =+ =+ =+ =+ =+ =+ =+ =+( =+)? =+ =+ =+ =+ =+ =+ =+ =+ =+ =+( =+)? $").unwrap();
         assert!(
             re.is_match(lines[line_count - 2]),
             "failing line: '{}'",
             lines[line_count - 2]
         );
 
-        let re = Regex::new(r"^                                              +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? KB $").unwrap();
+        let re = Regex::new(r"^                                         +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? KB $").unwrap();
         assert!(
             re.is_match(lines[line_count - 1]),
             "failing line: '{}'",
