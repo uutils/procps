@@ -184,7 +184,7 @@ fn output_default_format(pid: &str, pmap_config: &PmapConfig) -> Result<(), Erro
     process_maps(pid, None, |map_line| {
         println!(
             "{} {:>6}K {} {}",
-            map_line.address,
+            map_line.address.zero_pad(),
             map_line.size_in_kb,
             map_line.perms.mode(),
             map_line.parse_mapping(pmap_config)
@@ -209,7 +209,7 @@ fn output_extended_format(pid: &str, pmap_config: &PmapConfig) -> Result<(), Err
     for smap_entry in smap_table.entries {
         println!(
             "{} {:>7} {:>7} {:>7} {} {}",
-            smap_entry.map_line.address,
+            smap_entry.map_line.address.zero_pad(),
             smap_entry.map_line.size_in_kb,
             smap_entry.rss_in_kb,
             smap_entry.shared_dirty_in_kb + smap_entry.private_dirty_in_kb,
@@ -361,12 +361,12 @@ fn output_device_format(pid: &str, pmap_config: &PmapConfig) -> Result<(), Error
         },
         |map_line| {
             println!(
-                "{} {:>7} {} {} {} {}",
-                map_line.address,
+                "{} {:>7} {} {:0>16} {} {}",
+                map_line.address.zero_pad(),
                 map_line.size_in_kb,
                 map_line.perms.mode(),
                 map_line.offset,
-                map_line.device,
+                map_line.device.device(),
                 map_line.parse_mapping(pmap_config)
             );
             total_mapped += map_line.size_in_kb;
