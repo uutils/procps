@@ -9,8 +9,8 @@ use pmap_config::{create_rc, pmap_field_name, PmapConfig};
 use smaps_format_parser::{parse_smaps, SmapTable};
 use std::env;
 use std::fs;
-use std::io::Error;
-use uucore::error::{set_exit_code, UResult};
+use std::io::{Error, ErrorKind};
+use uucore::error::{set_exit_code, UResult, USimpleError};
 use uucore::{format_usage, help_about, help_usage};
 
 mod maps_format_parser;
@@ -98,8 +98,45 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     // Options independent with field selection:
     pmap_config.quiet = matches.get_flag(options::QUIET);
-    if matches.get_flag(options::SHOW_PATH) {
-        pmap_config.show_path = true;
+    pmap_config.show_path = matches.get_flag(options::SHOW_PATH);
+
+    if let Some(range) = matches.get_one::<String>(options::RANGE) {
+        match range.matches(',').count() {
+            0 => {
+                let address = u64::from_str_radix(range, 16).map_err(|_| {
+                    USimpleError::new(1, format!("failed to parse argument: '{}'", range))
+                })?;
+                pmap_config.range_low = address;
+                pmap_config.range_high = address;
+            }
+            1 => {
+                let (low, high) = range
+                    .split_once(',')
+                    .ok_or_else(|| Error::from(ErrorKind::InvalidData))?;
+                pmap_config.range_low = if low.is_empty() {
+                    0
+                } else {
+                    u64::from_str_radix(low, 16).map_err(|_| {
+                        USimpleError::new(1, format!("failed to parse argument: '{}'", range))
+                    })?
+                };
+                pmap_config.range_high = if high.is_empty() {
+                    u64::MAX
+                } else {
+                    u64::from_str_radix(high, 16).map_err(|_| {
+                        USimpleError::new(1, format!("failed to parse argument: '{}'", range))
+                    })?
+                };
+            }
+            _ => {
+                eprintln!("pmap: failed to parse argument: '{range}'");
+                set_exit_code(1);
+                return Ok(());
+            }
+        }
+    } else {
+        pmap_config.range_low = 0;
+        pmap_config.range_high = u64::MAX;
     }
 
     let pids = matches
@@ -182,14 +219,16 @@ fn output_default_format(pid: &str, pmap_config: &PmapConfig) -> Result<(), Erro
     let mut total = 0;
 
     process_maps(pid, None, |map_line| {
-        println!(
-            "{} {:>6}K {} {}",
-            map_line.address.zero_pad(),
-            map_line.size_in_kb,
-            map_line.perms.mode(),
-            map_line.parse_mapping(pmap_config)
-        );
-        total += map_line.size_in_kb;
+        if map_line.address.is_within_range(pmap_config) {
+            println!(
+                "{} {:>6}K {} {}",
+                map_line.address.zero_pad(),
+                map_line.size_in_kb,
+                map_line.perms.mode(),
+                map_line.parse_mapping(pmap_config)
+            );
+            total += map_line.size_in_kb;
+        }
     })?;
 
     if !pmap_config.quiet {
@@ -206,25 +245,32 @@ fn output_extended_format(pid: &str, pmap_config: &PmapConfig) -> Result<(), Err
         println!("Address           Kbytes     RSS   Dirty Mode  Mapping");
     }
 
+    let mut total_size_in_kb = 0;
+    let mut total_rss_in_kb = 0;
+    let mut total_dirty_in_kb = 0;
+
     for smap_entry in smap_table.entries {
-        println!(
-            "{} {:>7} {:>7} {:>7} {} {}",
-            smap_entry.map_line.address.zero_pad(),
-            smap_entry.map_line.size_in_kb,
-            smap_entry.rss_in_kb,
-            smap_entry.shared_dirty_in_kb + smap_entry.private_dirty_in_kb,
-            smap_entry.map_line.perms.mode(),
-            smap_entry.map_line.parse_mapping(pmap_config)
-        );
+        if smap_entry.map_line.address.is_within_range(pmap_config) {
+            println!(
+                "{} {:>7} {:>7} {:>7} {} {}",
+                smap_entry.map_line.address.zero_pad(),
+                smap_entry.map_line.size_in_kb,
+                smap_entry.rss_in_kb,
+                smap_entry.shared_dirty_in_kb + smap_entry.private_dirty_in_kb,
+                smap_entry.map_line.perms.mode(),
+                smap_entry.map_line.parse_mapping(pmap_config)
+            );
+            total_size_in_kb += smap_entry.map_line.size_in_kb;
+            total_rss_in_kb += smap_entry.rss_in_kb;
+            total_dirty_in_kb += smap_entry.shared_dirty_in_kb + smap_entry.private_dirty_in_kb;
+        }
     }
 
     if !pmap_config.quiet {
         println!("---------------- ------- ------- ------- ");
         println!(
             "total kB         {:>7} {:>7} {:>7}",
-            smap_table.info.total_size_in_kb,
-            smap_table.info.total_rss_in_kb,
-            smap_table.info.total_shared_dirty_in_kb + smap_table.info.total_private_dirty_in_kb,
+            total_size_in_kb, total_rss_in_kb, total_dirty_in_kb,
         );
     }
 
@@ -360,23 +406,25 @@ fn output_device_format(pid: &str, pmap_config: &PmapConfig) -> Result<(), Error
             None
         },
         |map_line| {
-            println!(
-                "{} {:>7} {} {:0>16} {} {}",
-                map_line.address.zero_pad(),
-                map_line.size_in_kb,
-                map_line.perms.mode(),
-                map_line.offset,
-                map_line.device.device(),
-                map_line.parse_mapping(pmap_config)
-            );
-            total_mapped += map_line.size_in_kb;
+            if map_line.address.is_within_range(pmap_config) {
+                println!(
+                    "{} {:>7} {} {:0>16} {} {}",
+                    map_line.address.zero_pad(),
+                    map_line.size_in_kb,
+                    map_line.perms.mode(),
+                    map_line.offset,
+                    map_line.device.device(),
+                    map_line.parse_mapping(pmap_config)
+                );
+                total_mapped += map_line.size_in_kb;
 
-            if map_line.perms.writable && !map_line.perms.shared {
-                total_writeable_private += map_line.size_in_kb;
-            }
+                if map_line.perms.writable && !map_line.perms.shared {
+                    total_writeable_private += map_line.size_in_kb;
+                }
 
-            if map_line.perms.shared {
-                total_shared += map_line.size_in_kb;
+                if map_line.perms.shared {
+                    total_shared += map_line.size_in_kb;
+                }
             }
         },
     )?;
@@ -547,7 +595,9 @@ pub fn uu_app() -> Command {
             Arg::new(options::RANGE)
                 .short('A')
                 .long("range")
-                .num_args(1..=2)
-                .help("limit results to the given range"),
+                .num_args(1)
+                .help("limit results to the given range <low>[,<high>]"),
+            // This option applies only to the default, extended, or device formats,
+            // yet it will not raise an error in any other case.
         )
 }

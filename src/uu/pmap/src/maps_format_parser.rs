@@ -39,6 +39,13 @@ impl Address {
     pub fn zero_pad(&self) -> String {
         format!("{:0>16}", self.start)
     }
+
+    // Checks whether an entry's address range overlaps the limits specified by the range option.
+    // Note: Even if a reversed range (high < low) is given, an entry still hits
+    // only if the specified range lies entirely within the entry's address range.
+    pub fn is_within_range(&self, pmap_config: &PmapConfig) -> bool {
+        pmap_config.range_low < self.high && self.low <= pmap_config.range_high
+    }
 }
 
 // Represents a set of permissions from the "perms" column of /proc/<PID>/maps.
