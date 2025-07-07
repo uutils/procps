@@ -3,7 +3,7 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use crate::parse::SlabInfo;
+pub use crate::parse::SlabInfo;
 use clap::{arg, crate_version, ArgAction, Command};
 use uucore::{error::UResult, format_usage, help_about, help_section, help_usage};
 
@@ -24,6 +24,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         .unwrap_or(&'o');
 
     let slabinfo = SlabInfo::new()?.sort(*sort_flag, false);
+
+    println!("{slabinfo:?}");
 
     if matches.get_flag("once") {
         output_header(&slabinfo);

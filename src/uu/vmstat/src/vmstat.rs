@@ -38,6 +38,13 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
         let one_header = matches.get_flag("one-header");
         let no_first = matches.get_flag("no-first");
+        let term_height = terminal_size::terminal_size()
+            .map(|size| size.1 .0)
+            .unwrap_or(0);
+
+        if matches.get_flag("slabs") {
+            return print_slabs(one_header, term_height);
+        }
 
         let delay = matches.get_one::<u64>("delay");
         let count = matches.get_one::<u64>("count");
@@ -57,14 +64,10 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             line_count += 1;
         }
 
-        let term_height = terminal_size::terminal_size()
-            .map(|size| size.1 .0)
-            .unwrap_or(0);
-
         while count.is_none() || line_count < count.unwrap() {
             std::thread::sleep(std::time::Duration::from_secs(delay));
             let proc_data_now = ProcData::new();
-            if !one_header && term_height > 0 && ((line_count + 3) % term_height as u64 == 0) {
+            if needs_header(one_header, term_height, line_count) {
                 print_header(&pickers);
             }
             print_data(&pickers, &proc_data_now, Some(&proc_data), &matches);
@@ -74,6 +77,41 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     }
 
     Ok(())
+}
+
+#[cfg(target_os = "linux")]
+fn print_slabs(one_header: bool, term_height: u16) -> UResult<()> {
+    let mut slab_data = uu_slabtop::SlabInfo::new()?.data;
+
+    slab_data.sort_by_key(|k| k.0.to_lowercase());
+
+    print_slab_header();
+
+    for (line_count, slab_item) in slab_data.into_iter().enumerate() {
+        if needs_header(one_header, term_height, line_count as u64) {
+            print_slab_header();
+        }
+
+        println!(
+            "{:<24} {:>6} {:>6} {:>6} {:>6}",
+            slab_item.0, slab_item.1[0], slab_item.1[1], slab_item.1[2], slab_item.1[3]
+        );
+    }
+
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+fn needs_header(one_header: bool, term_height: u16, line_count: u64) -> bool {
+    !one_header && term_height > 0 && ((line_count + 3) % term_height as u64 == 0)
+}
+
+#[cfg(target_os = "linux")]
+fn print_slab_header() {
+    println!(
+        "{:<24} {:>6} {:>6} {:>6} {:>6}",
+        "Cache", "Num", "Total", "Size", "Pages"
+    );
 }
 
 #[cfg(target_os = "linux")]
@@ -126,7 +164,7 @@ pub fn uu_app() -> Command {
                 .value_parser(value_parser!(u64)),
             arg!(-a --active "Display active and inactive memory"),
             // arg!(-f --forks "switch displays the number of forks since boot"),
-            // arg!(-m --slabs "Display slabinfo"),
+            arg!(-m --slabs "Display slabinfo"),
             arg!(-n --"one-header" "Display the header only once rather than periodically"),
             // arg!(-s --stats "Displays a table of various event counters and memory statistics"),
             // arg!(-d --disk "Report disk statistics"),

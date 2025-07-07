@@ -10,9 +10,9 @@ use std::{
 };
 
 #[derive(Debug, Default)]
-pub(crate) struct SlabInfo {
-    pub(crate) meta: Vec<String>,
-    pub(crate) data: Vec<(String, Vec<u64>)>,
+pub struct SlabInfo {
+    pub meta: Vec<String>,
+    pub data: Vec<(String, Vec<u64>)>,
 }
 
 impl SlabInfo {
