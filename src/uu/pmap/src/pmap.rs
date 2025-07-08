@@ -104,7 +104,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         match range.matches(',').count() {
             0 => {
                 let address = u64::from_str_radix(range, 16).map_err(|_| {
-                    USimpleError::new(1, format!("failed to parse argument: '{}'", range))
+                    USimpleError::new(1, format!("failed to parse argument: '{range}'"))
                 })?;
                 pmap_config.range_low = address;
                 pmap_config.range_high = address;
@@ -117,14 +117,14 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                     0
                 } else {
                     u64::from_str_radix(low, 16).map_err(|_| {
-                        USimpleError::new(1, format!("failed to parse argument: '{}'", range))
+                        USimpleError::new(1, format!("failed to parse argument: '{range}'"))
                     })?
                 };
                 pmap_config.range_high = if high.is_empty() {
                     u64::MAX
                 } else {
                     u64::from_str_radix(high, 16).map_err(|_| {
-                        USimpleError::new(1, format!("failed to parse argument: '{}'", range))
+                        USimpleError::new(1, format!("failed to parse argument: '{range}'"))
                     })?
                 };
             }
@@ -269,8 +269,7 @@ fn output_extended_format(pid: &str, pmap_config: &PmapConfig) -> Result<(), Err
     if !pmap_config.quiet {
         println!("---------------- ------- ------- ------- ");
         println!(
-            "total kB         {:>7} {:>7} {:>7}",
-            total_size_in_kb, total_rss_in_kb, total_dirty_in_kb,
+            "total kB         {total_size_in_kb:>7} {total_rss_in_kb:>7} {total_dirty_in_kb:>7}"
         );
     }
 
