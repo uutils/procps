@@ -348,6 +348,90 @@ mod test {
         assert!(parse_address("ffffffffff600000-zfffffffff601000").is_err());
     }
 
+    fn limit_address_range_and_assert(address: &Address, low: u64, high: u64, expected: bool) {
+        let mut pmap_config = PmapConfig::default();
+        (pmap_config.range_low, pmap_config.range_high) = (low, high);
+        assert_eq!(
+            address.is_within_range(&pmap_config),
+            expected,
+            "`--range 0x{low:x},0x{high:x}` expected to be {expected} for address 0x{:x},0x{:x}",
+            address.low,
+            address.high,
+        );
+    }
+
+    #[test]
+    fn test_limit_address_range() {
+        let low: u64 = 0x71af50000000;
+        let high: u64 = 0x71af50021000;
+        let address = Address {
+            start: "0x71af50000000".to_string(),
+            low,
+            high,
+        };
+
+        limit_address_range_and_assert(&address, 0x0, u64::MAX, true);
+        limit_address_range_and_assert(&address, 0x70000000, 0xffffffffffff, true);
+
+        limit_address_range_and_assert(&address, 0x0, 0x0, false);
+        limit_address_range_and_assert(&address, 0x0, 0x70000000, false);
+        limit_address_range_and_assert(&address, 0x0, low - 1, false);
+        limit_address_range_and_assert(&address, low - 1, low - 1, false);
+
+        limit_address_range_and_assert(&address, 0x0, low + 0, true);
+        limit_address_range_and_assert(&address, low - 1, low + 0, true);
+        limit_address_range_and_assert(&address, low + 0, low + 0, true);
+
+        limit_address_range_and_assert(&address, low - 1, high - 1, true);
+        limit_address_range_and_assert(&address, low - 1, high + 0, true);
+        limit_address_range_and_assert(&address, low - 1, high + 1, true);
+        limit_address_range_and_assert(&address, low + 0, high - 1, true);
+        limit_address_range_and_assert(&address, low + 0, high + 0, true);
+        limit_address_range_and_assert(&address, low + 0, high + 1, true);
+        limit_address_range_and_assert(&address, low + 1, high - 1, true);
+        limit_address_range_and_assert(&address, low + 1, high + 0, true);
+        limit_address_range_and_assert(&address, low + 1, high + 1, true);
+
+        limit_address_range_and_assert(&address, high - 1, high - 1, true);
+        limit_address_range_and_assert(&address, high - 1, high + 0, true);
+        limit_address_range_and_assert(&address, high - 1, u64::MAX, true);
+
+        limit_address_range_and_assert(&address, high + 0, high + 0, false);
+        limit_address_range_and_assert(&address, high + 0, high + 1, false);
+        limit_address_range_and_assert(&address, high + 0, u64::MAX, false);
+        limit_address_range_and_assert(&address, 0xffffffffffff, u64::MAX, false);
+        limit_address_range_and_assert(&address, u64::MAX, u64::MAX, false);
+
+        // Reversed range
+
+        limit_address_range_and_assert(&address, u64::MAX, 0, false);
+        limit_address_range_and_assert(&address, 0xffffffffffff, 0x70000000, false);
+
+        limit_address_range_and_assert(&address, 0x70000000, 0x0, false);
+        limit_address_range_and_assert(&address, low - 1, 0x0, false);
+        limit_address_range_and_assert(&address, low - 1, low - 1, false);
+
+        limit_address_range_and_assert(&address, low + 0, 0x0, false);
+        limit_address_range_and_assert(&address, low + 0, low - 1, false);
+
+        limit_address_range_and_assert(&address, high - 1, low - 1, false);
+        limit_address_range_and_assert(&address, high + 0, low - 1, false);
+        limit_address_range_and_assert(&address, high + 1, low - 1, false);
+        limit_address_range_and_assert(&address, high - 1, low + 0, true); // true
+        limit_address_range_and_assert(&address, high + 0, low + 0, false);
+        limit_address_range_and_assert(&address, high + 1, low + 0, false);
+        limit_address_range_and_assert(&address, high - 1, low + 1, true); // true
+        limit_address_range_and_assert(&address, high + 0, low + 1, false);
+        limit_address_range_and_assert(&address, high + 1, low + 1, false);
+
+        limit_address_range_and_assert(&address, high + 0, high - 1, false);
+        limit_address_range_and_assert(&address, u64::MAX, high - 1, false);
+
+        limit_address_range_and_assert(&address, high + 1, high + 0, false);
+        limit_address_range_and_assert(&address, u64::MAX, high + 0, false);
+        limit_address_range_and_assert(&address, u64::MAX, 0xffffffffffff, false);
+    }
+
     #[test]
     fn test_parse_device() {
         assert_eq!("12:34", parse_device("12:34").unwrap().to_string());
