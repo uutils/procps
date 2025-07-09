@@ -3,11 +3,9 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use std::{
-    cmp::Ordering,
-    fs,
-    io::{Error, ErrorKind},
-};
+use std::io::Error;
+use std::{cmp::Ordering, fs, io::ErrorKind};
+use uucore::error::{UError, UResult, USimpleError};
 
 #[derive(Debug, Default)]
 pub struct SlabInfo {
@@ -18,10 +16,22 @@ pub struct SlabInfo {
 impl SlabInfo {
     // parse slabinfo from /proc/slabinfo
     // need root permission
-    pub fn new() -> Result<SlabInfo, Error> {
-        let content = fs::read_to_string("/proc/slabinfo")?;
+    pub fn new() -> UResult<SlabInfo> {
+        let error_wrapper = |e: Error| {
+            USimpleError::new(
+                1,
+                format!(
+                    "Unable to create slabinfo structure: {}",
+                    Box::<dyn UError>::from(e) // We need Display impl of UError
+                ),
+            )
+        };
 
-        Self::parse(&content).ok_or(ErrorKind::Unsupported.into())
+        let content = fs::read_to_string("/proc/slabinfo").map_err(error_wrapper)?;
+
+        Self::parse(&content)
+            .ok_or(ErrorKind::Unsupported.into())
+            .map_err(error_wrapper)
     }
 
     pub fn parse(content: &str) -> Option<SlabInfo> {
