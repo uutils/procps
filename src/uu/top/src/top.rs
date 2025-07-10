@@ -19,7 +19,7 @@ const ABOUT: &str = help_about!("top.md");
 const USAGE: &str = help_usage!("top.md");
 
 mod field;
-mod header;
+pub mod header;
 mod picker;
 
 #[allow(unused)]

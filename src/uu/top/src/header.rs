@@ -39,7 +39,7 @@ fn format_memory(memory_b: u64, unit: u64) -> f64 {
 }
 
 #[inline]
-fn uptime() -> String {
+pub fn uptime() -> String {
     get_formatted_uptime_procps().unwrap_or_default()
 }
 
@@ -91,7 +91,7 @@ pub fn get_nusers_systemd() -> uucore::error::UResult<usize> {
 }
 
 // see: https://gitlab.com/procps-ng/procps/-/blob/4740a0efa79cade867cfc7b32955fe0f75bf5173/library/uptime.c#L63-L115
-fn user() -> String {
+pub fn user() -> String {
     #[cfg(target_os = "linux")]
     if let Ok(nusers) = get_nusers_systemd() {
         return uucore::uptime::format_nusers(nusers);

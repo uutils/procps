@@ -14,8 +14,7 @@ use uucore::error::{set_exit_code, UResult};
 use uucore::{format_usage, help_about, help_usage};
 
 mod maps_format_parser;
-mod pmap_config;
-mod smaps_format_parser;
+pub mod smaps_format_parser;
 
 const ABOUT: &str = help_about!("pmap.md");
 const USAGE: &str = help_usage!("pmap.md");
