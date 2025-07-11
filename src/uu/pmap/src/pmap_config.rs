@@ -81,6 +81,8 @@ pub struct PmapConfig {
     // Misc
     pub quiet: bool,
     pub custom_format_enabled: bool,
+    pub range_low: u64,
+    pub range_high: u64,
 }
 
 impl PmapConfig {

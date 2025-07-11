@@ -264,8 +264,8 @@ fn test_device_permission_denied() {
 fn test_quiet() {
     let pid = process::id();
 
-    for arg in ["-q", "--quiet"] {
-        _test_multiple_formats(pid, arg, true, false);
+    for args in [&["-q"], &["--quiet"]] {
+        _test_multiple_formats(pid, args, true, false);
     }
 }
 
@@ -274,8 +274,8 @@ fn test_quiet() {
 fn test_showpath() {
     let pid = process::id();
 
-    for arg in ["-p", "--show-path"] {
-        _test_multiple_formats(pid, arg, false, true);
+    for args in [&["-p"], &["--show-path"]] {
+        _test_multiple_formats(pid, args, false, true);
     }
 }
 
@@ -284,16 +284,26 @@ fn test_showpath() {
 fn test_quiet_showpath() {
     let pid = process::id();
 
-    for arg in ["-qp", "-pq"] {
-        _test_multiple_formats(pid, arg, true, true);
+    for args in [&["-qp"], &["-pq"]] {
+        _test_multiple_formats(pid, args, true, true);
+    }
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_range() {
+    let pid = process::id();
+
+    for args in [&["-A", ","], &["--range", ","]] {
+        _test_multiple_formats(pid, args, false, false);
     }
 }
 
 #[cfg(target_os = "linux")]
-fn _test_multiple_formats(pid: u32, arg: &str, quiet: bool, show_path: bool) {
+fn _test_multiple_formats(pid: u32, args: &[&str], quiet: bool, show_path: bool) {
     // default format
     let result = new_ucmd!()
-        .arg(arg)
+        .args(args)
         .arg(pid.to_string())
         .succeeds()
         .stdout_move_str();
@@ -302,7 +312,7 @@ fn _test_multiple_formats(pid: u32, arg: &str, quiet: bool, show_path: bool) {
 
     // extended format
     let result = new_ucmd!()
-        .arg(arg)
+        .args(args)
         .arg("--extended")
         .arg(pid.to_string())
         .succeeds()
@@ -312,7 +322,7 @@ fn _test_multiple_formats(pid: u32, arg: &str, quiet: bool, show_path: bool) {
 
     // more-extended format
     let result = new_ucmd!()
-        .arg(arg)
+        .args(args)
         .arg("-X")
         .arg(pid.to_string())
         .succeeds()
@@ -322,7 +332,7 @@ fn _test_multiple_formats(pid: u32, arg: &str, quiet: bool, show_path: bool) {
 
     // most-extended format
     let result = new_ucmd!()
-        .arg(arg)
+        .args(args)
         .arg("--XX")
         .arg(pid.to_string())
         .succeeds()
@@ -332,13 +342,68 @@ fn _test_multiple_formats(pid: u32, arg: &str, quiet: bool, show_path: bool) {
 
     // device format
     let result = new_ucmd!()
-        .arg(arg)
+        .args(args)
         .arg("--device")
         .arg(pid.to_string())
         .succeeds()
         .stdout_move_str();
 
     assert_device_format(pid, &result, quiet, show_path);
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_range_arg() {
+    let pid_s = process::id().to_string();
+
+    for opt in ["-A", "--range"] {
+        // option without an argument
+        new_ucmd!().arg(&pid_s).arg(opt).fails().code_is(1);
+
+        // valid arguments
+        for arg in [
+            ",",
+            "c00fee",
+            "c00fee,",
+            ",c00fee",
+            "c00,fee",
+            "0",
+            "0,",
+            ",0",
+            "0,0",
+            "ffffffffffffffff",
+            "ffffffffffffffff,",
+            ",ffffffffffffffff",
+            "ffffffffffffffff,ffffffffffffffff",
+        ] {
+            new_ucmd!().arg(&pid_s).arg(opt).arg(arg).succeeds();
+        }
+
+        // invalid arguments
+        for arg in [
+            // white spaces
+            ", ",
+            " ,",
+            " , ",
+            "bad ",
+            " bad",
+            // multiple commas
+            ",,",
+            ",bad,",
+            // underscore separator
+            "bad_beef",
+            // non-numeric value
+            "someinvalidtext",
+            "someinvalidtext,",
+            ",someinvalidtext",
+            "someinvalidtext,someinvalidtext",
+            // too large value (> u64)
+            "f0000000000000000",
+            "f0000000000000000,f0000000000000000",
+        ] {
+            new_ucmd!().arg(&pid_s).arg(opt).arg(arg).fails().code_is(1);
+        }
+    }
 }
 
 #[test]
