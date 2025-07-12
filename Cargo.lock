@@ -1881,6 +1881,7 @@ dependencies = [
  "chrono",
  "clap",
  "terminal_size",
+ "uu_slabtop",
  "uucore",
 ]
 
