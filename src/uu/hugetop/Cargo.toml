@@ -1,0 +1,27 @@
+[package]
+name = "uu_hugetop"
+version = "0.0.1"
+edition = "2021"
+authors = ["uutils developers"]
+license = "MIT"
+description = "hugetop ~ (uutils) Report huge page information"
+
+homepage = "https://github.com/uutils/procps"
+repository = "https://github.com/uutils/procps/tree/main/src/uu/hugetop"
+keywords = ["acl", "uutils", "cross-platform", "cli", "utility"]
+categories = ["command-line-utilities"]
+
+[dependencies]
+bytesize = { workspace = true }
+clap = { workspace = true }
+sysinfo = { workspace = true }
+uucore = { workspace = true }
+uu_pmap = { path = "../pmap" }
+uu_top= { path = "../top" }
+
+[lib]
+path = "src/hugetop.rs"
+
+[[bin]]
+name = "hugetop"
+path = "src/main.rs"
