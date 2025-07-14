@@ -12,7 +12,6 @@ use std::{
     time::Duration,
 };
 
-use crate::parse::SlabInfo;
 use clap::{arg, crate_version, value_parser, ArgAction, ArgMatches, Command};
 use crossterm::event::{self, KeyCode, KeyEvent, KeyModifiers};
 use parking_lot::RwLock;
@@ -20,11 +19,13 @@ use ratatui::widgets::Widget;
 use tui::Tui;
 use uucore::{error::UResult, format_usage, help_about, help_section, help_usage};
 
+use crate::parse::SlabInfo;
+
 const ABOUT: &str = help_about!("slabtop.md");
 const AFTER_HELP: &str = help_section!("after help", "slabtop.md");
 const USAGE: &str = help_usage!("slabtop.md");
 
-mod parse;
+pub mod parse;
 mod tui;
 
 #[derive(Debug)]

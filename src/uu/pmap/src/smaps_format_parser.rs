@@ -40,10 +40,10 @@ pub struct SmapEntry {
 impl SmapEntry {
     pub fn get_field(&self, field_name: &str) -> String {
         match field_name {
-            pmap_field_name::ADDRESS => self.map_line.address.clone(),
+            pmap_field_name::ADDRESS => self.map_line.address.to_string(),
             pmap_field_name::PERM => self.map_line.perms.to_string(),
             pmap_field_name::OFFSET => self.map_line.offset.clone(),
-            pmap_field_name::DEVICE => self.map_line.device.clone(),
+            pmap_field_name::DEVICE => self.map_line.device.to_string(),
             pmap_field_name::INODE => self.map_line.inode.to_string(),
             pmap_field_name::SIZE => self.map_line.size_in_kb.to_string(),
             pmap_field_name::KERNEL_PAGE_SIZE => self.kernel_page_size_in_kb.to_string(),
@@ -107,6 +107,9 @@ pub struct SmapTableInfo {
     pub total_thp_eligible: u64,
     pub total_protection_key: u64,
     // Width
+    pub offset_width: usize,
+    pub device_width: usize,
+    pub inode_width: usize,
     pub size_in_kb_width: usize,
     pub kernel_page_size_in_kb_width: usize,
     pub mmu_page_size_in_kb_width: usize,
@@ -165,6 +168,9 @@ impl Default for SmapTableInfo {
             total_thp_eligible: 0,
             total_protection_key: 0,
 
+            device_width: pmap_field_name::DEVICE.len(),
+            offset_width: pmap_field_name::OFFSET.len(),
+            inode_width: pmap_field_name::INODE.len(),
             size_in_kb_width: pmap_field_name::SIZE.len(),
             kernel_page_size_in_kb_width: pmap_field_name::KERNEL_PAGE_SIZE.len(),
             mmu_page_size_in_kb_width: pmap_field_name::MMU_PAGE_SIZE.len(),
@@ -200,9 +206,9 @@ impl SmapTableInfo {
         match field_name {
             pmap_field_name::ADDRESS => 16, // See maps_format_parser.rs
             pmap_field_name::PERM => 4,     // See maps_format_parser.rs
-            pmap_field_name::OFFSET => 16,  // See maps_format_parser.rs
-            pmap_field_name::DEVICE => 9,   // See maps_format_parser.rs
-            pmap_field_name::INODE => 10,   // See maps_format_parser.rs
+            pmap_field_name::OFFSET => self.offset_width,
+            pmap_field_name::DEVICE => self.device_width,
+            pmap_field_name::INODE => self.inode_width,
             pmap_field_name::SIZE => self.size_in_kb_width,
             pmap_field_name::KERNEL_PAGE_SIZE => self.kernel_page_size_in_kb_width,
             pmap_field_name::MMU_PAGE_SIZE => self.mmu_page_size_in_kb_width,
@@ -289,6 +295,12 @@ pub fn parse_smaps(contents: &str) -> Result<SmapTable, Error> {
                 smap_entry = SmapEntry::default();
             }
             smap_table.info.total_size_in_kb += map_line.size_in_kb;
+            smap_table.info.offset_width = smap_table.info.offset_width.max(map_line.offset.len());
+            smap_table.info.device_width = smap_table.info.device_width.max(map_line.device.width);
+            smap_table.info.inode_width = smap_table
+                .info
+                .inode_width
+                .max(map_line.inode.to_string().len());
             smap_entry.map_line = map_line;
         } else {
             let (key, val) = line
@@ -544,9 +556,13 @@ mod test {
     #[allow(clippy::too_many_arguments)]
     fn create_smap_entry(
         address: &str,
+        low: u64,
+        high: u64,
         perms: Perms,
         offset: &str,
-        device: &str,
+        major: &str,
+        minor: &str,
+        width: usize,
         inode: u64,
         mapping: &str,
         size_in_kb: u64,
@@ -577,11 +593,19 @@ mod test {
     ) -> SmapEntry {
         SmapEntry {
             map_line: MapLine {
-                address: address.to_string(),
+                address: crate::maps_format_parser::Address {
+                    start: address.to_string(),
+                    low,
+                    high,
+                },
                 size_in_kb,
                 perms,
                 offset: offset.to_string(),
-                device: device.to_string(),
+                device: crate::maps_format_parser::Device {
+                    major: major.to_string(),
+                    minor: minor.to_string(),
+                    width,
+                },
                 inode,
                 mapping: mapping.to_string(),
             },
@@ -617,7 +641,7 @@ mod test {
         let data = [
             (
                 vec![create_smap_entry(
-                    "0000560880413000", Perms::from("r--p"), "0000000000000000", "008:00008", 10813151, "/usr/bin/konsole",
+                    "560880413000", 0x560880413000, 0x560880440000, Perms::from("r--p"), "00000000", "08", "08", 5, 10813151, "/usr/bin/konsole",
                     180, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
                     22, 0, "rd mr mw me dw sd")],
                 concat!(
@@ -651,7 +675,7 @@ mod test {
             ),
             (
                 vec![create_smap_entry(
-                    "000071af50000000", Perms::from("rw-p"), "0000000000000000", "000:00000", 0, "",
+                    "71af50000000", 0x71af50000000, 0x71af50021000, Perms::from("rw-p"), "00000000", "00", "00", 5, 0, "",
                     132, 4, 4, 128, 9, 9, 128, 0, 0, 0, 128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, 2, "rd mr mw me sd")],
                 concat!(
@@ -684,7 +708,7 @@ mod test {
             ),
             (
                 vec![create_smap_entry(
-                    "00007ffc3f8df000", Perms::from("rw-p"), "0000000000000000", "000:00000", 0, "[stack]",
+                    "7ffc3f8df000", 0x7ffc3f8df000, 0x7ffc3f900000, Perms::from("rw-p"), "00000000", "00", "00", 5, 0, "[stack]",
                     132, 4, 4, 108, 108, 108, 0, 0, 0, 108, 108, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, 3, "rd wr mr mw me gd ac")],
                 concat!(
@@ -717,7 +741,7 @@ mod test {
             ),
             (
                 vec![create_smap_entry(
-                    "000071af8c9e6000", Perms::from("rw-s"), "0000000105830000", "000:00010", 1075, "anon_inode:i915.gem",
+                    "71af8c9e6000", 0x71af8c9e6000, 0x71af8c9ea000, Perms::from("rw-s"), "105830000", "00", "10", 5, 1075, "anon_inode:i915.gem",
                     16, 4, 4, 16, 16, 16, 0, 0, 0, 16, 16, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, 0, "rd wr mr mw me ac sd")],
                 concat!(
@@ -749,7 +773,7 @@ mod test {
             ),
             (
                 vec![create_smap_entry(
-                    "000071af6cf0c000", Perms::from("rw-s"), "0000000000000000", "000:00001", 256481, "/memfd:wayland-shm (deleted)",
+                    "71af6cf0c000", 0x71af6cf0c000, 0x71af6d286000, Perms::from("rw-s"), "00000000", "00", "01", 5, 256481, "/memfd:wayland-shm (deleted)",
                     3560, 4, 4, 532, 108, 0, 524, 0, 8, 0, 532, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, 0, "rd mr mw me sd")],
                 concat!(
@@ -781,7 +805,7 @@ mod test {
             ),
             (
                 vec![create_smap_entry(
-                    "ffffffffff600000", Perms::from("--xp"), "0000000000000000", "000:00000", 0, "[vsyscall]",
+                    "ffffffffff600000", 0xffffffffff600000, 0xffffffffff601000, Perms::from("--xp"), "00000000", "00", "00", 5, 0, "[vsyscall]",
                     4, 4, 4, 4, 4, 4, 0, 0, 0, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, 0, "rd wr mr mw me ac sd")],
                 concat!(
@@ -813,7 +837,7 @@ mod test {
             ),
             (
                 vec![create_smap_entry(
-                    "00005e8187da8000", Perms::from("r--p"), "0000000000000000", "008:00008", 9524160, "/usr/bin/hello   world",
+                    "5e8187da8000", 0x5e8187da8000, 0x5e8187dae000, Perms::from("r--p"), "00000000", "08", "08", 5, 9524160, "/usr/bin/hello   world",
                     24, 4, 4, 24, 0, 0, 24, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, 0, "rd ex mr mw me sd")],
                 concat!(
@@ -846,11 +870,11 @@ mod test {
             (
                 vec![
                     create_smap_entry(
-                        "000071af8c9e6000", Perms::from("rw-s"), "0000000105830000", "000:00010", 1075, "anon_inode:i915.gem",
+                        "71af8c9e6000", 0x71af8c9e6000, 0x71af8c9ea000, Perms::from("rw-s"), "105830000", "00", "10", 5, 1075, "anon_inode:i915.gem",
                         16, 4, 4, 16, 16, 16, 0, 0, 0, 16, 16, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                         0, 0, "rd wr mr mw me ac sd"),
                     create_smap_entry(
-                        "000071af6cf0c000", Perms::from("rw-s"), "0000000000000000", "000:00001", 256481, "/memfd:wayland-shm (deleted)",
+                        "71af6cf0c000", 0x71af6cf0c000, 0x71af6d286000, Perms::from("rw-s"), "00000000", "00", "01", 5, 256481, "/memfd:wayland-shm (deleted)",
                         3560, 4, 4, 532, 108, 0, 524, 0, 8, 0, 532, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                         0, 0, "rd mr mw me sd"),
                 ],
@@ -909,15 +933,15 @@ mod test {
             (
                 vec![
                     create_smap_entry(
-                        "000071af8c9e6000", Perms::from("rw-s"), "0000000105830000", "000:00010", 1075, "anon_inode:i915.gem",
+                        "71af8c9e6000", 0x71af8c9e6000, 0x71af8c9ea000, Perms::from("rw-s"), "105830000", "00", "10", 5, 1075, "anon_inode:i915.gem",
                         16, 4, 4, 16, 16, 16, 0, 0, 0, 16, 16, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                         0, 3, "rd wr mr mw me ac sd"),
                     create_smap_entry(
-                        "0000560880413000", Perms::from("r--p"), "0000000000000000", "008:00008", 10813151, "/usr/bin/konsole",
+                        "560880413000", 0x560880413000, 0x560880440000, Perms::from("r--p"), "00000000", "08", "08", 5, 10813151, "/usr/bin/konsole",
                         180, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                         0, 0, ""),
                     create_smap_entry(
-                        "000071af6cf0c000", Perms::from("rw-s"), "0000000000000000", "000:00001", 256481, "/memfd:wayland-shm (deleted)",
+                        "71af6cf0c000", 0x71af6cf0c000, 0x71af6d286000, Perms::from("rw-s"), "00000000", "00", "01", 5, 256481, "/memfd:wayland-shm (deleted)",
                         3560, 4, 4, 532, 108, 0, 524, 0, 8, 0, 532, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                         0, 0, "rd mr mw me sd"),
                 ],
