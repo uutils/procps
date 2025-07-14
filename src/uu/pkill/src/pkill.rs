@@ -80,7 +80,7 @@ fn handle_obsolete(args: &mut [String]) {
             let opt_signal = signal_by_name_or_value(signal);
             if opt_signal.is_some() {
                 // Replace with long option that clap can parse
-                args[1] = format!("--signal={}", signal);
+                args[1] = format!("--signal={signal}");
             }
         }
     }

@@ -4,7 +4,7 @@
 // file that was distributed with this source code.
 
 #[cfg(target_os = "linux")]
-use chrono::Datelike;
+use chrono::{Datelike, Local};
 use clap::crate_version;
 use clap::{Arg, ArgAction, Command};
 #[cfg(target_os = "linux")]
@@ -134,7 +134,7 @@ fn format_time(time: String) -> Result<String, chrono::format::ParseError> {
         t = t.drain(..time_offset).collect();
     }
     // If login time day is not current day, format like Sat16, or Fri06
-    let current_dt = chrono::Local::now().fixed_offset();
+    let current_dt = Local::now().fixed_offset();
     let dt = chrono::DateTime::parse_from_str(&t, "%Y-%m-%d %H:%M:%S%.f %:z")?;
 
     if current_dt.day() == dt.day() {
@@ -171,7 +171,7 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
                 terminal: entry.tty_device(),
                 login_time: format_time(entry.login_time().to_string()).unwrap_or_default(),
                 idle_time: fetch_idle_time(entry.tty_device())?,
-                jcpu: format!("{:.2}", jcpu),
+                jcpu: format!("{jcpu:.2}"),
                 pcpu: fetch_pcpu_time(entry.pid()).unwrap_or_default().to_string(),
                 command: fetch_cmdline(entry.pid()).unwrap_or_default(),
             };
@@ -180,6 +180,17 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
     }
 
     Ok(user_info_list)
+}
+
+#[cfg(target_os = "linux")]
+fn get_uptime_container() -> UResult<i64> {
+    let proc_file = fs::read_to_string("/proc/1/stat")?;
+    let proc_stat: Vec<&str> = proc_file.split_whitespace().collect();
+    let start_time_str = proc_stat.get(21).ok_or(UptimeError::SystemUptime)?;
+    let start_time: i64 = start_time_str
+        .parse()
+        .map_err(|_| UptimeError::SystemUptime)?;
+    Ok(get_uptime(None)? + start_time / get_clock_tick())
 }
 
 pub fn format_uptime_procps(up_secs: i64) -> UResult<String> {
@@ -199,26 +210,42 @@ pub fn format_uptime_procps(up_secs: i64) -> UResult<String> {
     } else {
         format!("{up_mins} min")
     };
-    Ok(format!("{}{}", day_str, hour_min_str))
+    Ok(format!("{day_str}{hour_min_str}"))
 }
 
 #[inline]
 pub fn get_formatted_uptime_procps() -> UResult<String> {
     let time_str = format_uptime_procps(get_uptime(None)?)?;
-    Ok(format!("up {}", time_str))
+    Ok(format!("up {time_str}"))
 }
 
-fn print_uptime() {
+#[cfg(target_os = "linux")]
+#[inline]
+fn get_formatted_uptime_container_procps() -> UResult<String> {
+    let time_str = format_uptime_procps(get_uptime_container()?)?;
+    Ok(format!("up {time_str}"))
+}
+
+#[allow(unused_variables)]
+fn print_uptime(from_container: bool) {
     print!(" {} ", get_formatted_time());
-    if let Ok(uptime) = get_formatted_uptime_procps() {
-        print!("{}, ", uptime);
+    #[cfg(target_os = "linux")]
+    let uptime = if from_container {
+        get_formatted_uptime_container_procps()
+    } else {
+        get_formatted_uptime_procps()
+    };
+    #[cfg(not(target_os = "linux"))]
+    let uptime = get_formatted_uptime_procps();
+    if let Ok(uptime) = uptime {
+        print!("{uptime}, ");
     } else {
         print!("up ???? days ??:??, ");
     }
 
     print!(" {}", get_formatted_nusers());
     if let Ok(loadavg) = get_formatted_loadavg() {
-        print!(",  {}", loadavg);
+        print!(",  {loadavg}");
     }
     println!();
 }
@@ -228,6 +255,10 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
     Ok(Vec::new())
 }
 
+fn truncate_username(user: &str) -> String {
+    user.chars().take(8).collect::<String>()
+}
+
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
@@ -235,11 +266,12 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let no_header = matches.get_flag("no-header");
     let short = matches.get_flag("short");
     let old_style = matches.get_flag("old-style");
+    let container = matches.get_flag("container");
 
     match fetch_user_info() {
         Ok(user_info) => {
             if !no_header {
-                print_uptime();
+                print_uptime(container);
                 if short {
                     println!("{:<9}{:<9}{:<7}{:<}", "USER", "TTY", "IDLE", "WHAT");
                 } else {
@@ -253,7 +285,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 if short {
                     println!(
                         "{:<9}{:<9}{:<7}{:<}",
-                        user.user,
+                        truncate_username(&user.user),
                         user.terminal,
                         format_time_elapsed(user.idle_time, old_style).unwrap_or_default(),
                         user.command
@@ -261,7 +293,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 } else {
                     println!(
                         "{:<9}{:<10}{:<9}{:<6} {:<7}{:<6}{:<}",
-                        user.user,
+                        truncate_username(&user.user),
                         user.terminal,
                         user.login_time,
                         format_time_elapsed(user.idle_time, old_style).unwrap_or_default(),
@@ -273,7 +305,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             }
         }
         Err(e) => {
-            eprintln!("w: failed to fetch user info: {}", e);
+            eprintln!("w: failed to fetch user info: {e}");
             process::exit(1);
         }
     }
@@ -293,6 +325,13 @@ pub fn uu_app() -> Command {
                 .long("help")
                 .help("Print help information")
                 .action(ArgAction::Help),
+        )
+        .arg(
+            Arg::new("container")
+                .short('c')
+                .long("container")
+                .help("show the container uptime instead of system uptime in the header")
+                .action(ArgAction::SetTrue),
         )
         .arg(
             Arg::new("no-header")

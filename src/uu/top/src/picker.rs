@@ -55,7 +55,7 @@ fn cpu(pid: u32) -> String {
 
     let usage = proc.cpu_usage();
 
-    format!("{:.2}", usage)
+    format!("{usage:.2}")
 }
 
 fn pid(pid: u32) -> String {
@@ -90,7 +90,7 @@ fn pr(pid: u32) -> String {
         0
     };
 
-    format!("{}", result)
+    format!("{result}")
 }
 
 // TODO: Implement this function for Windows
@@ -137,7 +137,7 @@ fn time_plus(pid: u32) -> String {
         (hour, minute, second)
     };
 
-    format!("{}:{:0>2}.{:0>2}", hour, min, sec)
+    format!("{hour}:{min:0>2}.{sec:0>2}")
 }
 
 fn mem(pid: u32) -> String {
@@ -165,7 +165,7 @@ fn command(pid: u32) -> String {
 
         if cfg!(target_os = "linux") && result.is_empty() {
             {
-                match PathBuf::from_str(&format!("/proc/{}/status", pid)) {
+                match PathBuf::from_str(&format!("/proc/{pid}/status")) {
                     Ok(path) => {
                         let file = File::open(path).unwrap();
                         let content = read_to_string(file).unwrap();

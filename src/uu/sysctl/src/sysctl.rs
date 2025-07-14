@@ -69,7 +69,7 @@ mod linux {
 
         if let Some(value_to_set) = split.next() {
             set_sysctl(&var, value_to_set)
-                .map_err(|e| e.map_err_context(|| format!("error writing key '{}'", var)))?;
+                .map_err(|e| e.map_err_context(|| format!("error writing key '{var}'")))?;
             if quiet {
                 Ok(None)
             } else {
@@ -77,7 +77,7 @@ mod linux {
             }
         } else {
             let value = get_sysctl(&var)
-                .map_err(|e| e.map_err_context(|| format!("error reading key '{}'", var)))?;
+                .map_err(|e| e.map_err_context(|| format!("error reading key '{var}'")))?;
             Ok(Some((var, value)))
         }
     }
@@ -105,11 +105,11 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             Ok(Some((var, value_to_print))) => {
                 for line in value_to_print.split('\n') {
                     if matches.get_flag("names") {
-                        println!("{}", var);
+                        println!("{var}");
                     } else if matches.get_flag("values") {
-                        println!("{}", line);
+                        println!("{line}");
                     } else {
-                        println!("{} = {}", var, line);
+                        println!("{var} = {line}");
                     }
                 }
             }

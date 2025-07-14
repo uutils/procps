@@ -47,6 +47,7 @@ pub struct Settings {
     pub pgroup: Option<HashSet<u64>>,
     pub session: Option<HashSet<u64>>,
     pub cgroup: Option<HashSet<String>>,
+    pub env: Option<HashSet<String>>,
     pub threads: bool,
 
     pub pidfile: Option<String>,
@@ -111,6 +112,9 @@ pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
         cgroup: matches
             .get_many::<String>("cgroup")
             .map(|groups| groups.cloned().collect()),
+        env: matches
+            .get_many::<String>("env")
+            .map(|env_vars| env_vars.cloned().collect()),
         threads: false,
         pidfile: matches.get_one::<String>("pidfile").cloned(),
         logpidfile: matches.get_flag("logpidfile"),
@@ -129,6 +133,7 @@ pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
         && settings.pgroup.is_none()
         && settings.session.is_none()
         && settings.cgroup.is_none()
+        && settings.env.is_none()
         && !settings.require_handler
         && settings.pidfile.is_none()
         && pattern.is_empty()
@@ -186,7 +191,7 @@ fn try_get_pattern_from(matches: &ArgMatches) -> UResult<String> {
     };
 
     let pattern = if matches.get_flag("exact") {
-        &format!("^{}$", pattern)
+        &format!("^{pattern}$")
     } else {
         pattern
     };
@@ -279,6 +284,22 @@ fn collect_matched_pids(settings: &Settings) -> UResult<Vec<ProcessInformation>>
                 pid.cgroup_v2_path().unwrap_or("/".to_string()),
             );
 
+            let env_matched = match &settings.env {
+                Some(env_filters) => {
+                    let env_vars = pid.env_vars().unwrap_or_default();
+                    env_filters.iter().any(|filter| {
+                        if let Some((key, expected_value)) = filter.split_once('=') {
+                            // Match specific key=value pair
+                            env_vars.get(key) == Some(&expected_value.to_string())
+                        } else {
+                            // Match key existence only
+                            env_vars.contains_key(filter)
+                        }
+                    })
+                }
+                None => true,
+            };
+
             let ids_matched = any_matches(&settings.uid, pid.uid().unwrap())
                 && any_matches(&settings.euid, pid.euid().unwrap())
                 && any_matches(&settings.gid, pid.gid().unwrap());
@@ -292,8 +313,7 @@ fn collect_matched_pids(settings: &Settings) -> UResult<Vec<ProcessInformation>>
                 } else {
                     1 << (settings.signal - 1)
                 };
-                let mask =
-                    u64::from_str_radix(pid.clone().status().get("SigCgt").unwrap(), 16).unwrap();
+                let mask = pid.clone().signals_caught_mask().unwrap();
                 mask & mask_to_test != 0
             } else {
                 true
@@ -311,6 +331,7 @@ fn collect_matched_pids(settings: &Settings) -> UResult<Vec<ProcessInformation>>
                 && pgroup_matched
                 && session_matched
                 && cgroup_matched
+                && env_matched
                 && ids_matched
                 && handler_matched
                 && pidfile_matched)
@@ -467,20 +488,20 @@ fn is_locked(_file: &std::fs::File) -> bool {
 
 fn read_pidfile(filename: &str, check_locked: bool) -> UResult<i64> {
     let file = std::fs::File::open(filename)
-        .map_err(|e| USimpleError::new(1, format!("Failed to open pidfile {}: {}", filename, e)))?;
+        .map_err(|e| USimpleError::new(1, format!("Failed to open pidfile {filename}: {e}")))?;
 
     if check_locked && !is_locked(&file) {
         return Err(USimpleError::new(
             1,
-            format!("Pidfile {} is not locked", filename),
+            format!("Pidfile {filename} is not locked"),
         ));
     }
 
     let content = std::fs::read_to_string(filename)
-        .map_err(|e| USimpleError::new(1, format!("Failed to read pidfile {}: {}", filename, e)))?;
+        .map_err(|e| USimpleError::new(1, format!("Failed to read pidfile {filename}: {e}")))?;
 
     let pid = parse_pidfile_content(&content)
-        .ok_or_else(|| USimpleError::new(1, format!("Pidfile {} not valid", filename)))?;
+        .ok_or_else(|| USimpleError::new(1, format!("Pidfile {filename} not valid")))?;
 
     Ok(pid)
 }
@@ -530,6 +551,7 @@ pub fn clap_args(pattern_help: &'static str, enable_v_flag: bool) -> Vec<Arg> {
         arg!(-r --runstates <state>    "match runstates [D,S,Z,...]"),
         arg!(-A --"ignore-ancestors"   "exclude our ancestors from results"),
         arg!(--cgroup <grp>            "match by cgroup v2 names").value_delimiter(','),
+        arg!(--env <"name[=val],...">      "match on environment variable").value_delimiter(','),
         // arg!(--ns <PID>                "match the processes that belong to the same namespace as <pid>"),
         // arg!(--nslist <ns>             "list which namespaces will be considered for the --ns option.")
         //     .value_delimiter(',')

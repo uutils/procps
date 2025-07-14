@@ -59,7 +59,7 @@ impl SelectedTarget {
             .iter()
             .filter(|(pid, _)| {
                 let pid = pid.as_u32();
-                let path = PathBuf::from_str(&format!("/proc/{}/", pid)).unwrap();
+                let path = PathBuf::from_str(&format!("/proc/{pid}/")).unwrap();
 
                 ProcessInformation::try_new(path).unwrap().tty() == *tty
             })

@@ -183,7 +183,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
         if settings.verbose {
             let output = construct_verbose_result(&pids, &results).trim().to_owned();
-            println!("{}", output);
+            println!("{output}");
         }
     }
 
@@ -202,7 +202,7 @@ fn construct_verbose_result(pids: &[u32], action_results: &[Option<ActionResult>
             let process = process_snapshot().process(Pid::from_u32(pid)).unwrap();
 
             let tty =
-                ProcessInformation::try_new(PathBuf::from_str(&format!("/proc/{}", pid)).unwrap());
+                ProcessInformation::try_new(PathBuf::from_str(&format!("/proc/{pid}")).unwrap());
 
             let user = process
                 .user_id()

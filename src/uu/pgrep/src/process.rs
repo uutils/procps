@@ -27,9 +27,9 @@ pub enum Teletype {
 impl Display for Teletype {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            Self::Tty(id) => write!(f, "/dev/pts/{}", id),
-            Self::TtyS(id) => write!(f, "/dev/tty{}", id),
-            Self::Pts(id) => write!(f, "/dev/ttyS{}", id),
+            Self::Tty(id) => write!(f, "/dev/pts/{id}"),
+            Self::TtyS(id) => write!(f, "/dev/tty{id}"),
+            Self::Pts(id) => write!(f, "/dev/ttyS{id}"),
             Self::Unknown => write!(f, "?"),
         }
     }
@@ -290,7 +290,7 @@ impl ProcessInformation {
         #[cfg(not(target_os = "linux"))]
         let pid = 0; // dummy
 
-        ProcessInformation::try_new(PathBuf::from_str(&format!("/proc/{}", pid)).unwrap())
+        ProcessInformation::try_new(PathBuf::from_str(&format!("/proc/{pid}")).unwrap())
     }
 
     pub fn proc_status(&self) -> &str {
@@ -409,6 +409,54 @@ impl ProcessInformation {
         self.get_uid_or_gid_field("Gid", 1)
     }
 
+    pub fn suid(&mut self) -> Result<u32, io::Error> {
+        self.get_uid_or_gid_field("Uid", 2)
+    }
+
+    pub fn sgid(&mut self) -> Result<u32, io::Error> {
+        self.get_uid_or_gid_field("Gid", 2)
+    }
+
+    /// Helper function to get a hex field from status and parse it as u64
+    fn get_hex_status_field(&mut self, field_name: &str) -> Result<u64, io::Error> {
+        self.status()
+            .get(field_name)
+            .ok_or_else(|| {
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("{field_name} field not found"),
+                )
+            })
+            .and_then(|value| {
+                u64::from_str_radix(value.trim(), 16).map_err(|_| {
+                    io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        format!("Invalid {field_name} value"),
+                    )
+                })
+            })
+    }
+
+    /// Returns the signal caught mask for the process
+    pub fn signals_caught_mask(&mut self) -> Result<u64, io::Error> {
+        self.get_hex_status_field("SigCgt")
+    }
+
+    /// Returns the pending signals mask for the process
+    pub fn signals_pending_mask(&mut self) -> Result<u64, io::Error> {
+        self.get_hex_status_field("SigPnd")
+    }
+
+    /// Returns the blocked signals mask for the process
+    pub fn signals_blocked_mask(&mut self) -> Result<u64, io::Error> {
+        self.get_hex_status_field("SigBlk")
+    }
+
+    /// Returns the ignored signals mask for the process
+    pub fn signals_ignored_mask(&mut self) -> Result<u64, io::Error> {
+        self.get_hex_status_field("SigIgn")
+    }
+
     // Root directory of the process (which can be changed by chroot)
     pub fn root(&mut self) -> Result<PathBuf, io::Error> {
         read_link(format!("/proc/{}/root", self.pid))
@@ -490,6 +538,19 @@ impl ProcessInformation {
 
         self.cached_thread_ids = Some(Rc::clone(&result));
         Rc::clone(&result)
+    }
+
+    pub fn env_vars(&self) -> Result<HashMap<String, String>, io::Error> {
+        let content = fs::read_to_string(format!("/proc/{}/environ", self.pid))?;
+
+        let mut env_vars = HashMap::new();
+        for entry in content.split('\0') {
+            if let Some((key, value)) = entry.split_once('=') {
+                env_vars.insert(key.to_string(), value.to_string());
+            }
+        }
+
+        Ok(env_vars)
     }
 }
 impl TryFrom<DirEntry> for ProcessInformation {
@@ -691,5 +752,17 @@ mod tests {
                 assert_eq!(pid_entry.cgroup_v2_path().unwrap(), "/init.scope");
             }
         }
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn test_environ() {
+        let pid_entry = ProcessInformation::current_process_info().unwrap();
+        let env_vars = pid_entry.env_vars().unwrap();
+
+        assert_eq!(
+            *env_vars.get("HOME").unwrap(),
+            std::env::var("HOME").unwrap()
+        );
     }
 }

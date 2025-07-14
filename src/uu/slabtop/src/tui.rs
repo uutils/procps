@@ -15,7 +15,7 @@ pub(crate) struct Tui<'a> {
 }
 
 impl Tui<'_> {
-    pub(crate) fn new(slabinfo: &SlabInfo) -> Tui {
+    pub(crate) fn new(slabinfo: &'_ SlabInfo) -> Tui<'_> {
         Tui { slabinfo }
     }
 
@@ -101,11 +101,10 @@ impl Tui<'_> {
         let obj_per_slab = self.slabinfo.fetch(name, "objperslab").unwrap_or_default();
 
         let cache_size = (objsize * (objs as f64)) as u64;
-        let objsize = format!("{:.2}", objsize);
+        let objsize = format!("{objsize:.2}");
 
         ListItem::from(format!(
-            "{:>6} {:>6} {:>4} {:>7}K {:>6} {:>8} {:>10} {:<}",
-            objs, active, used, objsize, slabs, obj_per_slab, cache_size, name
+            "{objs:>6} {active:>6} {used:>4} {objsize:>7}K {slabs:>6} {obj_per_slab:>8} {cache_size:>10} {name:<}"
         ))
     }
 }

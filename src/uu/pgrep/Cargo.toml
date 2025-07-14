@@ -11,7 +11,7 @@ license.workspace = true
 version.workspace = true
 
 [dependencies]
-uucore = { workspace = true, features = ["entries"] }
+uucore = { workspace = true, features = ["entries", "signals", "process"] }
 clap = { workspace = true }
 walkdir = { workspace = true }
 regex = { workspace = true }

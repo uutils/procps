@@ -75,7 +75,7 @@ impl ModernTui<'_> {
         let label = {
             let min = "0.0".to_owned();
             let mid = format!("{:.1}", y_axis_upper_bound / 2.0);
-            let max = format!("{:.1}", y_axis_upper_bound);
+            let max = format!("{y_axis_upper_bound:.1}");
             vec![min, mid, max]
         };
         let y_axis = Axis::default()

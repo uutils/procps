@@ -37,7 +37,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             }
         } else {
             for ele in proc_infos.iter_mut() {
-                println!("waiting for {} (pid {})", ele.status()["Name"], ele.pid);
+                println!("waiting for {} (pid {})", ele.name().unwrap(), ele.pid);
             }
         }
     }
@@ -48,7 +48,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 }
 
 pub fn uu_app() -> Command {
-    Command::new(env!("CARGO_PKG_NAME"))
+    Command::new(uucore::util_name())
         .version(crate_version!())
         .about(ABOUT)
         .override_usage(format_usage(USAGE))
