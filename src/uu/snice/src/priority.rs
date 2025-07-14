@@ -13,7 +13,7 @@ pub enum Error {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) enum Priority {
+pub enum Priority {
     // The default priority is +4. (snice +4 ...)
     Increase(u32),
     Decrease(u32),
