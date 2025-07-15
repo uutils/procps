@@ -40,6 +40,7 @@ feat_common_core = [
     "pmap",
     "ps",
     "pwdx",
+    "skill",
     "slabtop",
     "snice",
     "sysctl",
@@ -98,6 +99,7 @@ pkill = { optional = true, version = "0.0.1", package = "uu_pkill", path = "src/
 pmap = { optional = true, version = "0.0.1", package = "uu_pmap", path = "src/uu/pmap" }
 ps = { optional = true, version = "0.0.1", package = "uu_ps", path = "src/uu/ps" }
 pwdx = { optional = true, version = "0.0.1", package = "uu_pwdx", path = "src/uu/pwdx" }
+skill = { optional = true, version = "0.0.1", package = "uu_skill", path = "src/uu/skill" }
 slabtop = { optional = true, version = "0.0.1", package = "uu_slabtop", path = "src/uu/slabtop" }
 snice = { optional = true, version = "0.0.1", package = "uu_snice", path = "src/uu/snice" }
 sysctl = { optional = true, version = "0.0.1", package = "uu_sysctl", path = "src/uu/sysctl" }
