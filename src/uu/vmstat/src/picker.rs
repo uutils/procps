@@ -4,7 +4,7 @@
 // file that was distributed with this source code.
 
 #[cfg(target_os = "linux")]
-use crate::{CpuLoad, Meminfo, ProcData};
+use crate::{CpuLoad, CpuLoadRaw, Meminfo, ProcData};
 #[cfg(target_os = "linux")]
 use clap::ArgMatches;
 
@@ -74,6 +74,133 @@ pub fn get_pickers(matches: &ArgMatches) -> Vec<Picker> {
     }
 
     pickers
+}
+
+#[cfg(target_os = "linux")]
+pub fn get_stats() -> Vec<(String, u64)> {
+    let proc_data = ProcData::new();
+    let memory_info = Meminfo::from_proc_map(&proc_data.meminfo);
+    let cpu_load = CpuLoadRaw::from_proc_map(&proc_data.stat);
+
+    vec![
+        (
+            "K total memory".to_string(),
+            memory_info.mem_total.0 / bytesize::KB,
+        ),
+        (
+            "K used memory".to_string(),
+            (memory_info.mem_total - memory_info.mem_available).0 / bytesize::KB,
+        ),
+        (
+            "K active memory".to_string(),
+            memory_info.active.0 / bytesize::KB,
+        ),
+        (
+            "K inactive memory".to_string(),
+            memory_info.inactive.0 / bytesize::KB,
+        ),
+        (
+            "K free memory".to_string(),
+            memory_info.mem_free.0 / bytesize::KB,
+        ),
+        (
+            "K buffer memory".to_string(),
+            memory_info.buffers.0 / bytesize::KB,
+        ),
+        (
+            "K swap cache".to_string(),
+            memory_info.cached.0 / bytesize::KB,
+        ),
+        (
+            "K total swap".to_string(),
+            memory_info.swap_total.0 / bytesize::KB,
+        ),
+        (
+            "K used swap".to_string(),
+            (memory_info.swap_total - memory_info.swap_free).0 / bytesize::KB,
+        ),
+        (
+            "K free swap".to_string(),
+            memory_info.swap_free.0 / bytesize::KB,
+        ),
+        (
+            "non-nice user cpu ticks".to_string(),
+            cpu_load.user - cpu_load.nice,
+        ),
+        ("nice user cpu ticks".to_string(), cpu_load.nice),
+        ("system cpu ticks".to_string(), cpu_load.system),
+        ("idle cpu ticks".to_string(), cpu_load.idle),
+        ("IO-wait cpu ticks".to_string(), cpu_load.io_wait),
+        ("IRQ cpu ticks".to_string(), cpu_load.hardware_interrupt),
+        ("softirq cpu ticks".to_string(), cpu_load.software_interrupt),
+        ("stolen cpu ticks".to_string(), cpu_load.steal_time),
+        ("non-nice guest cpu ticks".to_string(), cpu_load.guest),
+        ("nice guest cpu ticks".to_string(), cpu_load.guest_nice),
+        (
+            "K paged in".to_string(),
+            ProcData::get_one(&proc_data.vmstat, "pgpgin"),
+        ),
+        (
+            "K paged out".to_string(),
+            ProcData::get_one(&proc_data.vmstat, "pgpgout"),
+        ),
+        (
+            "pages swapped in".to_string(),
+            ProcData::get_one(&proc_data.vmstat, "pswpin"),
+        ),
+        (
+            "pages swapped out".to_string(),
+            ProcData::get_one(&proc_data.vmstat, "pswpout"),
+        ),
+        (
+            "pages alloc in dma".to_string(),
+            ProcData::get_one(&proc_data.vmstat, "pgalloc_dma"),
+        ),
+        (
+            "pages alloc in dma32".to_string(),
+            ProcData::get_one(&proc_data.vmstat, "pgalloc_dma32"),
+        ),
+        (
+            "pages alloc in high".to_string(),
+            ProcData::get_one(&proc_data.vmstat, "pgalloc_high"),
+        ),
+        (
+            "pages alloc in movable".to_string(),
+            ProcData::get_one(&proc_data.vmstat, "pgalloc_movable"),
+        ),
+        (
+            "pages alloc in normal".to_string(),
+            ProcData::get_one(&proc_data.vmstat, "pgalloc_normal"),
+        ),
+        (
+            "pages free".to_string(),
+            ProcData::get_one(&proc_data.vmstat, "pgfree"),
+        ),
+        (
+            "interrupts".to_string(),
+            proc_data
+                .stat
+                .get("intr")
+                .unwrap()
+                .split_whitespace()
+                .next()
+                .unwrap()
+                .parse::<u64>()
+                .unwrap(),
+        ),
+        (
+            "CPU context switches".to_string(),
+            ProcData::get_one(&proc_data.stat, "ctxt"),
+        ),
+        (
+            "boot time".to_string(),
+            ProcData::get_one(&proc_data.stat, "btime"),
+        ),
+        (
+            "forks".to_string(),
+            ProcData::get_one(&proc_data.stat, "processes"),
+        ),
+    ]
 }
 
 #[cfg(target_os = "linux")]

@@ -7,7 +7,7 @@ mod parser;
 mod picker;
 
 #[cfg(target_os = "linux")]
-use crate::picker::{get_pickers, Picker};
+use crate::picker::{get_pickers, get_stats, Picker};
 use clap::value_parser;
 #[allow(unused_imports)]
 use clap::{arg, crate_version, ArgMatches, Command};
@@ -26,14 +26,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
     #[cfg(target_os = "linux")]
     {
-        // validate unit
-        if let Some(unit) = matches.get_one::<String>("unit") {
-            if !["k", "K", "m", "M"].contains(&unit.as_str()) {
-                Err(USimpleError::new(
-                    1,
-                    "-S requires k, K, m or M (default is KiB)",
-                ))?;
-            }
+        if matches.get_flag("stats") {
+            return print_stats();
         }
 
         let one_header = matches.get_flag("one-header");
@@ -44,6 +38,16 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
         if matches.get_flag("slabs") {
             return print_slabs(one_header, term_height);
+        }
+
+        // validate unit
+        if let Some(unit) = matches.get_one::<String>("unit") {
+            if !["k", "K", "m", "M"].contains(&unit.as_str()) {
+                Err(USimpleError::new(
+                    1,
+                    "-S requires k, K, m or M (default is KiB)",
+                ))?;
+            }
         }
 
         let delay = matches.get_one::<u64>("delay");
@@ -75,6 +79,16 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             proc_data = proc_data_now;
         }
     }
+
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+fn print_stats() -> UResult<()> {
+    let data = get_stats();
+
+    data.iter()
+        .for_each(|(name, value)| println!("{value:>13} {name}"));
 
     Ok(())
 }
@@ -166,7 +180,7 @@ pub fn uu_app() -> Command {
             // arg!(-f --forks "switch displays the number of forks since boot"),
             arg!(-m --slabs "Display slabinfo"),
             arg!(-n --"one-header" "Display the header only once rather than periodically"),
-            // arg!(-s --stats "Displays a table of various event counters and memory statistics"),
+            arg!(-s --stats "Displays a table of various event counters and memory statistics"),
             // arg!(-d --disk "Report disk statistics"),
             // arg!(-D --"disk-sum" "Report some summary statistics about disk activity"),
             // arg!(-p --partition <device> "Detailed statistics about partition"),

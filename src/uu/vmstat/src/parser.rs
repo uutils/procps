@@ -61,6 +61,30 @@ impl ProcData {
         let idle_time = parts.next().unwrap().parse::<f64>().unwrap();
         (uptime, idle_time)
     }
+
+    pub fn get_one<T>(table: &HashMap<String, String>, name: &str) -> T
+    where
+        T: Default + std::str::FromStr,
+    {
+        table
+            .get(name)
+            .and_then(|v| v.parse().ok())
+            .unwrap_or_default()
+    }
+}
+
+#[cfg(target_os = "linux")]
+pub struct CpuLoadRaw {
+    pub user: u64,
+    pub nice: u64,
+    pub system: u64,
+    pub idle: u64,
+    pub io_wait: u64,
+    pub hardware_interrupt: u64,
+    pub software_interrupt: u64,
+    pub steal_time: u64,
+    pub guest: u64,
+    pub guest_nice: u64,
 }
 
 #[cfg(target_os = "linux")]
@@ -78,7 +102,7 @@ pub struct CpuLoad {
 }
 
 #[cfg(target_os = "linux")]
-impl CpuLoad {
+impl CpuLoadRaw {
     pub fn current() -> Self {
         let file = std::fs::File::open(std::path::Path::new("/proc/stat")).unwrap(); // do not use `parse_proc_file` here because only one line is used
         let content = std::io::read_to_string(file).unwrap();
@@ -93,37 +117,64 @@ impl CpuLoad {
 
     fn from_str(s: &str) -> Self {
         let load = s.split(' ').filter(|s| !s.is_empty()).collect::<Vec<_>>();
-        let user = load[0].parse::<f64>().unwrap();
-        let nice = load[1].parse::<f64>().unwrap();
-        let system = load[2].parse::<f64>().unwrap();
-        let idle = load[3].parse::<f64>().unwrap_or_default(); // since 2.5.41
-        let io_wait = load[4].parse::<f64>().unwrap_or_default(); // since 2.5.41
-        let hardware_interrupt = load[5].parse::<f64>().unwrap_or_default(); // since 2.6.0
-        let software_interrupt = load[6].parse::<f64>().unwrap_or_default(); // since 2.6.0
-        let steal_time = load[7].parse::<f64>().unwrap_or_default(); // since 2.6.11
-        let guest = load[8].parse::<f64>().unwrap_or_default(); // since 2.6.24
-        let guest_nice = load[9].parse::<f64>().unwrap_or_default(); // since 2.6.33
-        let total = user
-            + nice
-            + system
-            + idle
-            + io_wait
-            + hardware_interrupt
-            + software_interrupt
-            + steal_time
-            + guest
-            + guest_nice;
+        let user = load[0].parse::<u64>().unwrap();
+        let nice = load[1].parse::<u64>().unwrap();
+        let system = load[2].parse::<u64>().unwrap();
+        let idle = load[3].parse::<u64>().unwrap_or_default(); // since 2.5.41
+        let io_wait = load[4].parse::<u64>().unwrap_or_default(); // since 2.5.41
+        let hardware_interrupt = load[5].parse::<u64>().unwrap_or_default(); // since 2.6.0
+        let software_interrupt = load[6].parse::<u64>().unwrap_or_default(); // since 2.6.0
+        let steal_time = load[7].parse::<u64>().unwrap_or_default(); // since 2.6.11
+        let guest = load[8].parse::<u64>().unwrap_or_default(); // since 2.6.24
+        let guest_nice = load[9].parse::<u64>().unwrap_or_default(); // since 2.6.33
+
         Self {
-            user: user / total * 100.0,
-            system: system / total * 100.0,
-            nice: nice / total * 100.0,
-            idle: idle / total * 100.0,
-            io_wait: io_wait / total * 100.0,
-            hardware_interrupt: hardware_interrupt / total * 100.0,
-            software_interrupt: software_interrupt / total * 100.0,
-            steal_time: steal_time / total * 100.0,
-            guest: guest / total * 100.0,
-            guest_nice: guest_nice / total * 100.0,
+            user,
+            system,
+            nice,
+            idle,
+            io_wait,
+            hardware_interrupt,
+            software_interrupt,
+            steal_time,
+            guest,
+            guest_nice,
+        }
+    }
+}
+
+#[cfg(target_os = "linux")]
+impl CpuLoad {
+    pub fn current() -> Self {
+        Self::from_raw(CpuLoadRaw::current())
+    }
+
+    pub fn from_proc_map(proc_map: &HashMap<String, String>) -> Self {
+        Self::from_raw(CpuLoadRaw::from_proc_map(proc_map))
+    }
+
+    pub fn from_raw(raw_data: CpuLoadRaw) -> Self {
+        let total = (raw_data.user
+            + raw_data.nice
+            + raw_data.system
+            + raw_data.idle
+            + raw_data.io_wait
+            + raw_data.hardware_interrupt
+            + raw_data.software_interrupt
+            + raw_data.steal_time
+            + raw_data.guest
+            + raw_data.guest_nice) as f64;
+        Self {
+            user: raw_data.user as f64 / total * 100.0,
+            system: raw_data.system as f64 / total * 100.0,
+            nice: raw_data.nice as f64 / total * 100.0,
+            idle: raw_data.idle as f64 / total * 100.0,
+            io_wait: raw_data.io_wait as f64 / total * 100.0,
+            hardware_interrupt: raw_data.hardware_interrupt as f64 / total * 100.0,
+            software_interrupt: raw_data.software_interrupt as f64 / total * 100.0,
+            steal_time: raw_data.steal_time as f64 / total * 100.0,
+            guest: raw_data.guest as f64 / total * 100.0,
+            guest_nice: raw_data.guest_nice as f64 / total * 100.0,
         }
     }
 }
