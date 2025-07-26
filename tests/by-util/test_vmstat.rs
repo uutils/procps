@@ -81,3 +81,9 @@ fn test_timestamp() {
         .unwrap()
         .contains("timestamp"));
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_stats() {
+    new_ucmd!().arg("-s").succeeds();
+}
