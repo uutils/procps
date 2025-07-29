@@ -173,9 +173,10 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     }
 
     // Case1: Perform priority
+    let take_action = !matches.get_flag("no-action");
     if let Some(targets) = settings.expressions {
         let pids = collect_pids(&targets);
-        let results = perform_action(&pids, &settings.priority);
+        let results = perform_action(&pids, &settings.priority, take_action);
 
         if results.iter().all(|it| it.is_none()) || results.is_empty() {
             return Err(USimpleError::new(1, "no process selection criteria"));
@@ -184,6 +185,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         if settings.verbose {
             let output = construct_verbose_result(&pids, &results).trim().to_owned();
             println!("{output}");
+        } else if !take_action {
+            pids.iter().for_each(|pid| println!("{pid}"));
         }
     }
 
@@ -255,7 +258,7 @@ pub fn uu_app() -> Command {
             // arg!(-i --interactive   "interactive"),
             arg!(-l --list                  "list all signal names"),
             arg!(-L --table                 "list all signal names in a nice table"),
-            // arg!(-n --"no-action"   "do not actually kill processes; just print what would happen"),
+            arg!(-n --"no-action"   "do not actually kill processes; just print what would happen"),
             arg!(-v --verbose               "explain what is being done"),
             // arg!(-w --warnings      "enable warnings (not implemented)"),
             // Expressions
