@@ -20,6 +20,11 @@ fn test_invalid_arg() {
 }
 
 #[test]
+fn test_conflict_arg() {
+    new_ucmd!().args(&["-s", "-m"]).fails().code_is(1);
+}
+
+#[test]
 fn test_invalid_number() {
     new_ucmd!().arg("-1").fails().code_is(1);
     new_ucmd!().arg("0").fails().code_is(1);

@@ -26,6 +26,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
     #[cfg(target_os = "linux")]
     {
+        if matches.get_flag("forks") {
+            return print_forks();
+        }
         if matches.get_flag("stats") {
             return print_stats();
         }
@@ -79,6 +82,16 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             proc_data = proc_data_now;
         }
     }
+
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+fn print_forks() -> UResult<()> {
+    let data = get_stats();
+
+    let fork_data = data.last().unwrap();
+    println!("{:>13} {}", fork_data.1, fork_data.0);
 
     Ok(())
 }
@@ -177,10 +190,13 @@ pub fn uu_app() -> Command {
                 .required(false)
                 .value_parser(value_parser!(u64)),
             arg!(-a --active "Display active and inactive memory"),
-            // arg!(-f --forks "switch displays the number of forks since boot"),
-            arg!(-m --slabs "Display slabinfo"),
+            arg!(-f --forks "switch displays the number of forks since boot")
+                .conflicts_with_all(["slabs", "stats", /*"disk", "disk-sum", "partition"*/]),
+            arg!(-m --slabs "Display slabinfo")
+                .conflicts_with_all(["forks", "stats", /*"disk", "disk-sum", "partition"*/]),
             arg!(-n --"one-header" "Display the header only once rather than periodically"),
-            arg!(-s --stats "Displays a table of various event counters and memory statistics"),
+            arg!(-s --stats "Displays a table of various event counters and memory statistics")
+                .conflicts_with_all(["forks", "slabs", /*"disk", "disk-sum", "partition"*/]),
             // arg!(-d --disk "Report disk statistics"),
             // arg!(-D --"disk-sum" "Report some summary statistics about disk activity"),
             // arg!(-p --partition <device> "Detailed statistics about partition"),
