@@ -4,9 +4,11 @@
 // file that was distributed with this source code.
 
 #[cfg(target_os = "linux")]
-use crate::{CpuLoad, CpuLoadRaw, Meminfo, ProcData};
+use crate::{CpuLoad, CpuLoadRaw, DiskStat, Meminfo, ProcData};
 #[cfg(target_os = "linux")]
 use clap::ArgMatches;
+#[cfg(target_os = "linux")]
+use uucore::error::{UResult, USimpleError};
 
 #[cfg(target_os = "linux")]
 pub type Picker = (
@@ -201,6 +203,61 @@ pub fn get_stats() -> Vec<(String, u64)> {
             ProcData::get_one(&proc_data.stat, "processes"),
         ),
     ]
+}
+
+#[cfg(target_os = "linux")]
+pub fn get_disk_sum() -> UResult<Vec<(String, u64)>> {
+    let disk_data = DiskStat::current()
+        .map_err(|_| USimpleError::new(1, "Unable to retrieve disk statistics"))?;
+
+    let mut disks = 0;
+    let mut partitions = 0;
+    let mut total_reads = 0;
+    let mut merged_reads = 0;
+    let mut read_sectors = 0;
+    let mut milli_reading = 0;
+    let mut writes = 0;
+    let mut merged_writes = 0;
+    let mut written_sectors = 0;
+    let mut milli_writing = 0;
+    let mut inprogress_io = 0;
+    let mut milli_spent_io = 0;
+    let mut milli_weighted_io = 0;
+
+    for disk in disk_data.iter() {
+        if disk.is_disk() {
+            disks += 1;
+            total_reads += disk.reads_completed;
+            merged_reads += disk.reads_merged;
+            read_sectors += disk.sectors_read;
+            milli_reading += disk.milliseconds_spent_reading;
+            writes += disk.writes_completed;
+            merged_writes += disk.writes_merged;
+            written_sectors += disk.sectors_written;
+            milli_writing += disk.milliseconds_spent_writing;
+            inprogress_io += disk.ios_currently_in_progress;
+            milli_spent_io += disk.milliseconds_spent_doing_ios / 1000;
+            milli_weighted_io += disk.weighted_milliseconds_spent_doing_ios / 1000;
+        } else {
+            partitions += 1;
+        }
+    }
+
+    Ok(vec![
+        ("disks".to_string(), disks),
+        ("partitions".to_string(), partitions),
+        ("total reads".to_string(), total_reads),
+        ("merged reads".to_string(), merged_reads),
+        ("read sectors".to_string(), read_sectors),
+        ("milli reading".to_string(), milli_reading),
+        ("writes".to_string(), writes),
+        ("merged writes".to_string(), merged_writes),
+        ("written sectors".to_string(), written_sectors),
+        ("milli writing".to_string(), milli_writing),
+        ("in progress IO".to_string(), inprogress_io),
+        ("milli spent IO".to_string(), milli_spent_io),
+        ("milli weighted IO".to_string(), milli_weighted_io),
+    ])
 }
 
 #[cfg(target_os = "linux")]
