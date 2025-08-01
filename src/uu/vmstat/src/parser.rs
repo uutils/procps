@@ -5,6 +5,8 @@
 
 #[cfg(target_os = "linux")]
 use std::collections::HashMap;
+#[cfg(target_os = "linux")]
+use std::fmt::{Debug, Display, Formatter};
 
 #[cfg(target_os = "linux")]
 pub fn parse_proc_file(path: &str) -> HashMap<String, String> {
@@ -31,6 +33,7 @@ pub struct ProcData {
     pub stat: HashMap<String, String>,
     pub meminfo: HashMap<String, String>,
     pub vmstat: HashMap<String, String>,
+    pub diskstat: Vec<String>,
 }
 #[cfg(target_os = "linux")]
 impl Default for ProcData {
@@ -45,11 +48,17 @@ impl ProcData {
         let stat = parse_proc_file("/proc/stat");
         let meminfo = parse_proc_file("/proc/meminfo");
         let vmstat = parse_proc_file("/proc/vmstat");
+        let diskstat = std::fs::read_to_string("/proc/diskstats")
+            .unwrap()
+            .lines()
+            .map(|line| line.to_string())
+            .collect();
         Self {
             uptime,
             stat,
             meminfo,
             vmstat,
+            diskstat,
         }
     }
 
@@ -226,5 +235,106 @@ impl Meminfo {
             swap_total,
             swap_free,
         }
+    }
+}
+
+#[cfg(target_os = "linux")]
+#[derive(Debug)]
+pub struct DiskStatParseError;
+
+#[cfg(target_os = "linux")]
+impl Display for DiskStatParseError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt("Failed to parse diskstat line", f)
+    }
+}
+
+#[cfg(target_os = "linux")]
+impl std::error::Error for DiskStatParseError {}
+
+#[cfg(target_os = "linux")]
+pub struct DiskStat {
+    // Name from https://www.kernel.org/doc/html/latest/admin-guide/iostats.html
+    pub major: u64,
+    pub minor: u64,
+    pub device: String,
+    pub reads_completed: u64,
+    pub reads_merged: u64,
+    pub sectors_read: u64,
+    pub milliseconds_spent_reading: u64,
+    pub writes_completed: u64,
+    pub writes_merged: u64,
+    pub sectors_written: u64,
+    pub milliseconds_spent_writing: u64,
+    pub ios_currently_in_progress: u64,
+    pub milliseconds_spent_doing_ios: u64,
+    pub weighted_milliseconds_spent_doing_ios: u64,
+    pub discards_completed: u64,
+    pub discards_merged: u64,
+    pub sectors_discarded: u64,
+    pub milliseconds_spent_discarding: u64,
+    pub flush_requests_completed: u64,
+    pub milliseconds_spent_flushing: u64,
+}
+
+#[cfg(target_os = "linux")]
+impl std::str::FromStr for DiskStat {
+    type Err = DiskStatParseError;
+
+    fn from_str(line: &str) -> Result<Self, Self::Err> {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() < 14 {
+            Err(DiskStatParseError)?;
+        }
+
+        let parse_value = |s: &str| s.parse::<u64>().map_err(|_| DiskStatParseError);
+        let parse_optional_value = |s: Option<&&str>| match s {
+            None => Ok(0),
+            Some(value) => value.parse::<u64>().map_err(|_| DiskStatParseError),
+        };
+
+        Ok(Self {
+            major: parse_value(parts[0])?,
+            minor: parse_value(parts[1])?,
+            device: parts[2].to_string(),
+            reads_completed: parse_value(parts[3])?,
+            reads_merged: parse_value(parts[4])?,
+            sectors_read: parse_value(parts[5])?,
+            milliseconds_spent_reading: parse_value(parts[6])?,
+            writes_completed: parse_value(parts[7])?,
+            writes_merged: parse_value(parts[8])?,
+            sectors_written: parse_value(parts[9])?,
+            milliseconds_spent_writing: parse_value(parts[10])?,
+            ios_currently_in_progress: parse_value(parts[11])?,
+            milliseconds_spent_doing_ios: parse_value(parts[12])?,
+            weighted_milliseconds_spent_doing_ios: parse_optional_value(parts.get(13))?,
+            discards_completed: parse_optional_value(parts.get(14))?,
+            discards_merged: parse_optional_value(parts.get(15))?,
+            sectors_discarded: parse_optional_value(parts.get(16))?,
+            milliseconds_spent_discarding: parse_optional_value(parts.get(17))?,
+            flush_requests_completed: parse_optional_value(parts.get(18))?,
+            milliseconds_spent_flushing: parse_optional_value(parts.get(19))?,
+        })
+    }
+}
+
+#[cfg(target_os = "linux")]
+impl DiskStat {
+    pub fn is_disk(&self) -> bool {
+        std::path::Path::new(&format!("/sys/block/{}", self.device)).exists()
+    }
+
+    pub fn current() -> Result<Vec<Self>, DiskStatParseError> {
+        let diskstats =
+            std::fs::read_to_string("/proc/diskstats").map_err(|_| DiskStatParseError)?;
+        let lines = diskstats.lines();
+        Self::from_proc_vec(&lines.map(|line| line.to_string()).collect::<Vec<_>>())
+    }
+
+    pub fn from_proc_vec(proc_vec: &[String]) -> Result<Vec<Self>, DiskStatParseError> {
+        proc_vec
+            .iter()
+            .map(|line| line.parse::<DiskStat>())
+            .collect()
     }
 }

@@ -92,3 +92,15 @@ fn test_timestamp() {
 fn test_stats() {
     new_ucmd!().arg("-s").succeeds();
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_disk() {
+    new_ucmd!().arg("-d").succeeds();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_disk_sum() {
+    new_ucmd!().arg("-D").succeeds();
+}
