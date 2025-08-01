@@ -74,3 +74,9 @@ fn test_too_long_pattern() {
         .code_is(1)
         .stderr_contains("pattern that searches for process name longer than 15 characters will result in zero matches");
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_invalid_queue() {
+    new_ucmd!().args(&["-q"]).fails().code_is(1);
+}
