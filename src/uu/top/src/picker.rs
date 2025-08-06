@@ -26,6 +26,7 @@ pub(crate) fn pickers(fields: &[String]) -> Vec<Box<dyn Fn(u32) -> String>> {
             "PID" => helper(pid),
             "USER" => helper(user),
             "PR" => helper(pr),
+            "NI" => helper(ni),
             "RES" => helper(res),
             "SHR" => helper(shr),
             "S" => helper(s),
@@ -76,11 +77,39 @@ fn user(pid: u32) -> String {
     .to_string()
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "linux")]
 fn pr(pid: u32) -> String {
+    use uucore::libc::*;
+    let policy = unsafe { sched_getscheduler(pid as i32) };
+    if policy == -1 {
+        return String::new();
+    }
+
+    // normal processes
+    if policy == SCHED_OTHER || policy == SCHED_BATCH || policy == SCHED_IDLE {
+        return (get_nice(pid) + 20).to_string();
+    }
+
+    // real-time processes
+    let mut param = sched_param { sched_priority: 0 };
+    unsafe { sched_getparam(pid as c_int, &mut param) };
+    if param.sched_priority == -1 {
+        return String::new();
+    }
+    param.sched_priority.to_string()
+}
+
+#[cfg(not(target_os = "linux"))]
+fn pr(pid: u32) -> String {
+    todo(pid)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn get_nice(pid: u32) -> i32 {
     use libc::{getpriority, PRIO_PROCESS};
     use nix::errno::Errno;
 
+    // this is nice value, not priority value
     let result = unsafe { getpriority(PRIO_PROCESS, pid) };
 
     let result = if Errno::last() == Errno::UnknownErrno {
@@ -90,12 +119,17 @@ fn pr(pid: u32) -> String {
         0
     };
 
-    format!("{result}")
+    result as i32
+}
+
+#[cfg(not(target_os = "windows"))]
+fn ni(pid: u32) -> String {
+    format!("{}", get_nice(pid))
 }
 
 // TODO: Implement this function for Windows
 #[cfg(target_os = "windows")]
-fn pr(_pid: u32) -> String {
+fn ni(_pid: u32) -> String {
     "0".into()
 }
 
