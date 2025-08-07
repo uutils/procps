@@ -378,27 +378,27 @@ mod test {
         limit_address_range_and_assert(&address, 0x0, low - 1, false);
         limit_address_range_and_assert(&address, low - 1, low - 1, false);
 
-        limit_address_range_and_assert(&address, 0x0, low + 0, true);
-        limit_address_range_and_assert(&address, low - 1, low + 0, true);
-        limit_address_range_and_assert(&address, low + 0, low + 0, true);
+        limit_address_range_and_assert(&address, 0x0, low, true);
+        limit_address_range_and_assert(&address, low - 1, low, true);
+        limit_address_range_and_assert(&address, low, low, true);
 
         limit_address_range_and_assert(&address, low - 1, high - 1, true);
-        limit_address_range_and_assert(&address, low - 1, high + 0, true);
+        limit_address_range_and_assert(&address, low - 1, high, true);
         limit_address_range_and_assert(&address, low - 1, high + 1, true);
-        limit_address_range_and_assert(&address, low + 0, high - 1, true);
-        limit_address_range_and_assert(&address, low + 0, high + 0, true);
-        limit_address_range_and_assert(&address, low + 0, high + 1, true);
+        limit_address_range_and_assert(&address, low, high - 1, true);
+        limit_address_range_and_assert(&address, low, high, true);
+        limit_address_range_and_assert(&address, low, high + 1, true);
         limit_address_range_and_assert(&address, low + 1, high - 1, true);
-        limit_address_range_and_assert(&address, low + 1, high + 0, true);
+        limit_address_range_and_assert(&address, low + 1, high, true);
         limit_address_range_and_assert(&address, low + 1, high + 1, true);
 
         limit_address_range_and_assert(&address, high - 1, high - 1, true);
-        limit_address_range_and_assert(&address, high - 1, high + 0, true);
+        limit_address_range_and_assert(&address, high - 1, high, true);
         limit_address_range_and_assert(&address, high - 1, u64::MAX, true);
 
-        limit_address_range_and_assert(&address, high + 0, high + 0, false);
-        limit_address_range_and_assert(&address, high + 0, high + 1, false);
-        limit_address_range_and_assert(&address, high + 0, u64::MAX, false);
+        limit_address_range_and_assert(&address, high, high, false);
+        limit_address_range_and_assert(&address, high, high + 1, false);
+        limit_address_range_and_assert(&address, high, u64::MAX, false);
         limit_address_range_and_assert(&address, 0xffffffffffff, u64::MAX, false);
         limit_address_range_and_assert(&address, u64::MAX, u64::MAX, false);
 
@@ -411,24 +411,24 @@ mod test {
         limit_address_range_and_assert(&address, low - 1, 0x0, false);
         limit_address_range_and_assert(&address, low - 1, low - 1, false);
 
-        limit_address_range_and_assert(&address, low + 0, 0x0, false);
-        limit_address_range_and_assert(&address, low + 0, low - 1, false);
+        limit_address_range_and_assert(&address, low, 0x0, false);
+        limit_address_range_and_assert(&address, low, low - 1, false);
 
         limit_address_range_and_assert(&address, high - 1, low - 1, false);
-        limit_address_range_and_assert(&address, high + 0, low - 1, false);
+        limit_address_range_and_assert(&address, high, low - 1, false);
         limit_address_range_and_assert(&address, high + 1, low - 1, false);
-        limit_address_range_and_assert(&address, high - 1, low + 0, true); // true
-        limit_address_range_and_assert(&address, high + 0, low + 0, false);
-        limit_address_range_and_assert(&address, high + 1, low + 0, false);
-        limit_address_range_and_assert(&address, high - 1, low + 1, true); // true
-        limit_address_range_and_assert(&address, high + 0, low + 1, false);
+        limit_address_range_and_assert(&address, high - 1, low, true);
+        limit_address_range_and_assert(&address, high, low, false);
+        limit_address_range_and_assert(&address, high + 1, low, false);
+        limit_address_range_and_assert(&address, high - 1, low + 1, true);
+        limit_address_range_and_assert(&address, high, low + 1, false);
         limit_address_range_and_assert(&address, high + 1, low + 1, false);
 
-        limit_address_range_and_assert(&address, high + 0, high - 1, false);
+        limit_address_range_and_assert(&address, high, high - 1, false);
         limit_address_range_and_assert(&address, u64::MAX, high - 1, false);
 
-        limit_address_range_and_assert(&address, high + 1, high + 0, false);
-        limit_address_range_and_assert(&address, u64::MAX, high + 0, false);
+        limit_address_range_and_assert(&address, high + 1, high, false);
+        limit_address_range_and_assert(&address, u64::MAX, high, false);
         limit_address_range_and_assert(&address, u64::MAX, 0xffffffffffff, false);
     }
 
