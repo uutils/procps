@@ -63,6 +63,10 @@ mod test_top;
 #[path = "by-util/test_vmstat.rs"]
 mod test_vmstat;
 
+#[cfg(feature = "skill")]
+#[path = "by-util/test_skill.rs"]
+mod test_skill;
+
 #[cfg(feature = "snice")]
 #[path = "by-util/test_snice.rs"]
 mod test_snice;
