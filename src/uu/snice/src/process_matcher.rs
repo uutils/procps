@@ -14,6 +14,7 @@ pub struct Settings {
     pub display: Option<SignalDisplay>,
     pub expressions: Option<Vec<SelectedTarget>>,
     pub verbose: bool,
+    pub warnings: bool,
     pub no_action: bool,
 }
 
@@ -31,6 +32,7 @@ impl Settings {
             display,
             expressions: Self::targets(matches),
             verbose: matches.get_flag("verbose"),
+            warnings: matches.get_flag("warnings"),
             no_action: matches.get_flag("no-action"),
         })
     }
@@ -88,7 +90,7 @@ pub fn clap_args() -> Vec<Arg> {
         arg!(-L --table                 "list all signal names in a nice table"),
         arg!(-n --"no-action"   "do not actually kill processes; just print what would happen"),
         arg!(-v --verbose               "explain what is being done"),
-        // arg!(-w --warnings      "enable warnings (not implemented)"),
+        arg!(-w --warnings      "enable warnings (not implemented)"),
         // Expressions
         arg!(-c --command   <command>   ...   "expression is a command name"),
         arg!(-p --pid       <pid>       ...   "expression is a process id number")

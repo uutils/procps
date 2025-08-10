@@ -110,8 +110,11 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             return Err(USimpleError::new(1, "no process selection criteria"));
         }
 
-        if settings.verbose {
-            let output = construct_verbose_result(&pids, &results).trim().to_owned();
+        let error_only = settings.warnings || !settings.verbose;
+        if settings.verbose || settings.warnings {
+            let output = construct_verbose_result(&pids, &results, error_only, take_action)
+                .trim()
+                .to_owned();
             println!("{output}");
         } else if !take_action {
             pids.iter().for_each(|pid| println!("{pid}"));
@@ -122,14 +125,30 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 }
 
 #[allow(unused)]
-pub fn construct_verbose_result(pids: &[u32], action_results: &[Option<ActionResult>]) -> String {
+pub fn construct_verbose_result(
+    pids: &[u32],
+    action_results: &[Option<ActionResult>],
+    error_only: bool,
+    take_action: bool,
+) -> String {
     let mut table = action_results
         .iter()
         .enumerate()
         .map(|(index, it)| (pids[index], it))
         .filter(|(_, it)| it.is_some())
+        .filter(|v| {
+            !error_only
+                || !take_action
+                || v.1
+                    .clone()
+                    .is_some_and(|v| v == ActionResult::PermissionDenied)
+        })
         .map(|(pid, action)| (pid, action.clone().unwrap()))
         .map(|(pid, action)| {
+            if !take_action && action == ActionResult::Success {
+                return (pid, None);
+            }
+
             let process = process_snapshot().process(Pid::from_u32(pid)).unwrap();
 
             let tty =
@@ -148,10 +167,20 @@ pub fn construct_verbose_result(pids: &[u32], action_results: &[Option<ActionRes
                 .unwrap_or("?".as_ref());
             let cmd = cmd.to_str().unwrap();
 
-            (tty, user, pid, cmd, action)
+            (pid, Some((tty, user, cmd, action)))
         })
-        .filter(|(tty, _, _, _, _)| tty.is_ok())
-        .map(|(tty, user, pid, cmd, action)| row![tty.unwrap().tty(), user, pid, cmd, action])
+        .filter(|(_, v)| match v {
+            None => true,
+            Some((tty, _, _, _)) => tty.is_ok(),
+        })
+        .map(|(pid, v)| match v {
+            None => {
+                row![pid]
+            }
+            Some((tty, user, cmd, action)) => {
+                row![tty.unwrap().tty(), user, pid, cmd, action]
+            }
+        })
         .collect::<Table>();
 
     table.set_format(*FORMAT_CLEAN);

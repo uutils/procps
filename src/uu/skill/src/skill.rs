@@ -52,8 +52,11 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             return Err(USimpleError::new(1, "no process selection criteria"));
         }
 
-        if settings.verbose {
-            let output = construct_verbose_result(&pids, &results).trim().to_owned();
+        let error_only = settings.warnings || !settings.verbose;
+        if settings.verbose || settings.warnings {
+            let output = construct_verbose_result(&pids, &results, error_only, take_action)
+                .trim()
+                .to_owned();
             println!("{output}");
         } else if !take_action {
             pids.iter().for_each(|pid| println!("{pid}"));
