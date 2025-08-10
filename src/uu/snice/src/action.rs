@@ -24,7 +24,7 @@ pub(crate) fn users() -> &'static Users {
 }
 
 #[derive(Debug)]
-pub(crate) enum SelectedTarget {
+pub enum SelectedTarget {
     Command(String),
     Pid(u32),
     Tty(Teletype),
@@ -93,7 +93,7 @@ impl SelectedTarget {
 
 #[allow(unused)]
 #[derive(Debug, Clone)]
-pub(crate) enum ActionResult {
+pub enum ActionResult {
     PermissionDenied,
     Success,
 }
