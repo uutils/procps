@@ -10,6 +10,7 @@ pub use action::ActionResult;
 use action::{perform_action, process_snapshot, users, SelectedTarget};
 use clap::{crate_version, Arg, Command};
 use prettytable::{format::consts::FORMAT_CLEAN, row, Table};
+pub use process_matcher::clap_args;
 use process_matcher::*;
 use sysinfo::Pid;
 use uu_pgrep::process::ProcessInformation;
