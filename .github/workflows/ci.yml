@@ -52,8 +52,8 @@ jobs:
       - name: build and test all programs separately
         shell: bash
         run: |
-          ## TODO: add hugetop and skill
-          programs="free pgrep pidof pidwait pkill pmap ps pwdx slabtop snice sysctl tload top vmstat w watch"
+          ## TODO: add hugetop
+          programs="free pgrep pidof pidwait pkill pmap ps pwdx skill slabtop snice sysctl tload top vmstat w watch"
           for program in $programs; do
             echo "Building and testing $program"
             cargo test -p "uu_$program" || exit 1
