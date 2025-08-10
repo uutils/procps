@@ -15,6 +15,7 @@ pub struct Settings {
     pub expressions: Option<Vec<SelectedTarget>>,
     pub verbose: bool,
     pub warnings: bool,
+    pub interactive: bool,
     pub no_action: bool,
 }
 
@@ -33,6 +34,7 @@ impl Settings {
             expressions: Self::targets(matches),
             verbose: matches.get_flag("verbose"),
             warnings: matches.get_flag("warnings"),
+            interactive: matches.get_flag("interactive"),
             no_action: matches.get_flag("no-action"),
         })
     }
@@ -85,7 +87,7 @@ impl Settings {
 pub fn clap_args() -> Vec<Arg> {
     vec![
         // arg!(-f --fast          "fast mode (not implemented)"),
-        // arg!(-i --interactive   "interactive"),
+        arg!(-i --interactive   "interactive").conflicts_with_all(["verbose", "no-action"]),
         arg!(-l --list                  "list all signal names"),
         arg!(-L --table                 "list all signal names in a nice table"),
         arg!(-n --"no-action"   "do not actually kill processes; just print what would happen"),

@@ -44,7 +44,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         };
 
         #[cfg(unix)]
-        let results = perform_action(&pids, &signal, take_action);
+        let results = perform_action(&pids, &signal, take_action, settings.interactive);
         #[cfg(not(unix))]
         let results: Vec<Option<ActionResult>> = Vec::new();
 
@@ -67,15 +67,23 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 }
 
 #[cfg(unix)]
-fn perform_action(pids: &[u32], signal: &Signal, take_action: bool) -> Vec<Option<ActionResult>> {
+fn perform_action(
+    pids: &[u32],
+    signal: &Signal,
+    take_action: bool,
+    ask: bool,
+) -> Vec<Option<ActionResult>> {
     let sig = if take_action { Some(*signal) } else { None };
     pids.iter()
         .map(|pid| {
-            {
+            if !ask || uu_snice::ask_user(*pid) {
                 Some(match signal::kill(Pid::from_raw(*pid as i32), sig) {
                     Ok(_) => ActionResult::Success,
                     Err(_) => ActionResult::PermissionDenied,
                 })
+            } else {
+                // won't be used, but we need to return (not None)
+                Some(ActionResult::Success)
             }
         })
         .collect()

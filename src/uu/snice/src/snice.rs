@@ -10,6 +10,7 @@ use clap::{crate_version, Arg, Command};
 use prettytable::{format::consts::FORMAT_CLEAN, row, Table};
 pub use process_matcher::clap_args;
 use process_matcher::*;
+use std::io::Write;
 use std::{collections::HashSet, path::PathBuf, str::FromStr};
 use sysinfo::Pid;
 use uu_pgrep::process::ProcessInformation;
@@ -104,7 +105,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         };
 
         let pids = collect_pids(&targets);
-        let results = perform_action(&pids, &priority, take_action);
+        let results = perform_action(&pids, &priority, take_action, settings.interactive);
 
         if results.iter().all(|it| it.is_none()) || results.is_empty() {
             return Err(USimpleError::new(1, "no process selection criteria"));
@@ -122,6 +123,41 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     }
 
     Ok(())
+}
+
+pub fn ask_user(pid: u32) -> bool {
+    let process = process_snapshot().process(Pid::from_u32(pid)).unwrap();
+
+    let tty = ProcessInformation::try_new(PathBuf::from_str(&format!("/proc/{pid}")).unwrap())
+        .map(|v| v.tty().to_string())
+        .unwrap_or(String::from("?"));
+
+    let user = process
+        .user_id()
+        .and_then(|uid| users().iter().find(|it| it.id() == uid))
+        .map(|it| it.name())
+        .unwrap_or("?")
+        .to_owned();
+
+    let cmd = process
+        .exe()
+        .and_then(|it| it.iter().next_back())
+        .unwrap_or("?".as_ref());
+    let cmd = cmd.to_str().unwrap();
+
+    // no newline at the end
+    print!("{tty:<8} {user:<8} {pid:<5} {cmd:<18} ? ");
+    std::io::stdout().flush().unwrap();
+    let mut input = String::new();
+    if std::io::stdin().read_line(&mut input).is_err() {
+        return false;
+    }
+    let input = input.trim();
+    if input.eq_ignore_ascii_case("y") || input.eq_ignore_ascii_case("yes") {
+        return true;
+    }
+
+    false
 }
 
 #[allow(unused)]
