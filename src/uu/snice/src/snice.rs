@@ -3,14 +3,14 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use std::{collections::HashSet, path::PathBuf, str::FromStr};
-
 use crate::priority::Priority;
 pub use action::ActionResult;
 use action::{perform_action, process_snapshot, users, SelectedTarget};
 use clap::{crate_version, Arg, Command};
 use prettytable::{format::consts::FORMAT_CLEAN, row, Table};
+pub use process_matcher::clap_args;
 use process_matcher::*;
+use std::{collections::HashSet, path::PathBuf, str::FromStr};
 use sysinfo::Pid;
 use uu_pgrep::process::ProcessInformation;
 #[cfg(target_family = "unix")]
@@ -92,7 +92,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     }
 
     // Case1: Perform priority
-    let take_action = !matches.get_flag("no-action");
+    let take_action = !settings.no_action;
     if let Some(targets) = settings.expressions {
         let priority_str = matches.get_one::<String>("priority").cloned();
 

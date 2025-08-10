@@ -14,6 +14,7 @@ pub struct Settings {
     pub display: Option<SignalDisplay>,
     pub expressions: Option<Vec<SelectedTarget>>,
     pub verbose: bool,
+    pub no_action: bool,
 }
 
 impl Settings {
@@ -30,6 +31,7 @@ impl Settings {
             display,
             expressions: Self::targets(matches),
             verbose: matches.get_flag("verbose"),
+            no_action: matches.get_flag("no-action"),
         })
     }
 
