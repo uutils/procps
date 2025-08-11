@@ -13,8 +13,9 @@ use clap::crate_version;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use mapping::{
     collect_code_mapping, default_codes, default_mapping, default_with_psr_codes,
-    extra_full_format_codes, full_format_codes, job_format_codes, signal_format_codes,
-    user_format_codes, vm_format_codes,
+    extra_full_format_codes, full_format_codes, job_format_codes, long_format_codes,
+    long_y_format_codes, register_format_codes, signal_format_codes, user_format_codes,
+    vm_format_codes,
 };
 use parser::{parser, OptionalKeyValue};
 use prettytable::{format::consts::FORMAT_CLEAN, Row, Table};
@@ -57,6 +58,10 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         extra_full_format_codes()
     } else if matches.get_flag("j") {
         job_format_codes()
+    } else if matches.get_flag("l") && matches.get_flag("y") {
+        long_y_format_codes()
+    } else if matches.get_flag("l") {
+        long_format_codes()
     } else if matches.get_flag("P") {
         default_with_psr_codes()
     } else if matches.get_flag("s") {
@@ -65,6 +70,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         user_format_codes()
     } else if matches.get_flag("v") {
         vm_format_codes()
+    } else if matches.get_flag("X") {
+        register_format_codes()
     } else if arg_formats.is_empty() {
         default_codes()
     } else {
@@ -201,6 +208,12 @@ pub fn uu_app() -> Command {
                 .help("job format"),
         )
         .arg(
+            Arg::new("l")
+                .short('l')
+                .action(ArgAction::SetTrue)
+                .help("long format"),
+        )
+        .arg(
             Arg::new("P")
                 .short('P')
                 .action(ArgAction::SetTrue)
@@ -224,6 +237,18 @@ pub fn uu_app() -> Command {
                 .short('v')
                 .action(ArgAction::SetTrue)
                 .help("virtual memory format"),
+        )
+        .arg(
+            Arg::new("y")
+                .short('y')
+                .action(ArgAction::SetTrue)
+                .help("do not show flags, show rss vs. addr (used with -l)"),
+        )
+        .arg(
+            Arg::new("X")
+                .short('X')
+                .action(ArgAction::SetTrue)
+                .help("register format"),
         )
         .arg(
             Arg::new("format")
