@@ -13,7 +13,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - if: ${{ contains(matrix.os, 'ubuntu') }}
         run: |
@@ -28,7 +28,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - if: ${{ contains(matrix.os, 'ubuntu') }}
         run: |
@@ -43,7 +43,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - if: ${{ contains(matrix.os, 'ubuntu') }}
         run: |
@@ -70,7 +70,7 @@ jobs:
           - { os: macos-latest   , features: macos }
           - { os: windows-latest , features: windows }
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Initialize workflow variables
       id: vars
       shell: bash
