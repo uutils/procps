@@ -5,12 +5,14 @@
 
 use std::{collections::HashSet, path::PathBuf, str::FromStr};
 
-use action::{perform_action, process_snapshot, users, ActionResult, SelectedTarget};
-use clap::{arg, crate_version, value_parser, Arg, ArgMatches, Command};
+use crate::priority::Priority;
+pub use action::ActionResult;
+use action::{perform_action, process_snapshot, users, SelectedTarget};
+use clap::{crate_version, Arg, Command};
 use prettytable::{format::consts::FORMAT_CLEAN, row, Table};
-use priority::Priority;
+use process_matcher::*;
 use sysinfo::Pid;
-use uu_pgrep::process::{ProcessInformation, Teletype};
+use uu_pgrep::process::ProcessInformation;
 #[cfg(target_family = "unix")]
 use uucore::signals::ALL_SIGNALS;
 use uucore::{
@@ -23,9 +25,10 @@ const USAGE: &str = help_usage!("snice.md");
 
 mod action;
 mod priority;
+pub mod process_matcher;
 
 #[derive(Debug)]
-enum SignalDisplay {
+pub enum SignalDisplay {
     List,
     Table,
 }
@@ -66,85 +69,13 @@ impl SignalDisplay {
     }
 }
 
-#[derive(Debug)]
-struct Settings {
-    display: Option<SignalDisplay>,
-    expressions: Option<Vec<SelectedTarget>>,
-    priority: Priority,
-    verbose: bool,
-}
+#[allow(unused)] // unused argument under non-unix targets
+pub fn print_signals(display: &SignalDisplay) {
+    #[cfg(target_family = "unix")]
+    {
+        let result = display.display(&ALL_SIGNALS);
 
-impl Settings {
-    fn try_new(matches: &ArgMatches) -> UResult<Self> {
-        let priority = matches
-            .try_get_one::<String>("priority")
-            .unwrap_or(Some(&String::new()))
-            .cloned();
-
-        let expression = match priority {
-            Some(expr) => {
-                Priority::try_from(expr).map_err(|err| USimpleError::new(1, err.to_string()))?
-            }
-            None => Priority::default(),
-        };
-
-        let display = if matches.get_flag("table") {
-            Some(SignalDisplay::Table)
-        } else if matches.get_flag("list") {
-            Some(SignalDisplay::List)
-        } else {
-            None
-        };
-
-        Ok(Self {
-            display,
-            expressions: Self::targets(matches),
-            priority: expression,
-            verbose: matches.get_flag("verbose"),
-        })
-    }
-
-    fn targets(matches: &ArgMatches) -> Option<Vec<SelectedTarget>> {
-        let cmd = matches
-            .get_many::<String>("command")
-            .unwrap_or_default()
-            .map(Into::into)
-            .map(SelectedTarget::Command)
-            .collect::<Vec<_>>();
-
-        let pid = matches
-            .get_many::<u32>("pid")
-            .unwrap_or_default()
-            .map(Clone::clone)
-            .map(SelectedTarget::Pid)
-            .collect::<Vec<_>>();
-
-        let tty = matches
-            .get_many::<String>("tty")
-            .unwrap_or_default()
-            .flat_map(|it| Teletype::try_from(it.as_str()))
-            .map(SelectedTarget::Tty)
-            .collect::<Vec<_>>();
-
-        let user = matches
-            .get_many::<String>("user")
-            .unwrap_or_default()
-            .map(Into::into)
-            .map(SelectedTarget::User)
-            .collect::<Vec<_>>();
-
-        let collected = cmd
-            .into_iter()
-            .chain(pid)
-            .chain(tty)
-            .chain(user)
-            .collect::<Vec<_>>();
-
-        if collected.is_empty() {
-            None
-        } else {
-            Some(collected)
-        }
+        println!("{result}");
     }
 }
 
@@ -155,27 +86,25 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let settings = Settings::try_new(&matches)?;
 
     // Case0: Print SIGNALS
-    #[cfg(target_family = "unix")]
-    {
-        if let Some(display) = settings.display {
-            let result = display.display(&ALL_SIGNALS);
-
-            println!("{result}");
-            return Ok(());
-        }
-    }
-
-    #[cfg(not(target_family = "unix"))]
-    {
-        if let Some(_display) = settings.display {
-            return Ok(());
-        }
+    if let Some(display) = &settings.display {
+        print_signals(display);
+        return Ok(());
     }
 
     // Case1: Perform priority
+    let take_action = !matches.get_flag("no-action");
     if let Some(targets) = settings.expressions {
+        let priority_str = matches.get_one::<String>("priority").cloned();
+
+        let priority = match priority_str {
+            Some(expr) => {
+                Priority::try_from(expr).map_err(|err| USimpleError::new(1, err.to_string()))?
+            }
+            None => Priority::default(),
+        };
+
         let pids = collect_pids(&targets);
-        let results = perform_action(&pids, &settings.priority);
+        let results = perform_action(&pids, &priority, take_action);
 
         if results.iter().all(|it| it.is_none()) || results.is_empty() {
             return Err(USimpleError::new(1, "no process selection criteria"));
@@ -184,6 +113,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         if settings.verbose {
             let output = construct_verbose_result(&pids, &results).trim().to_owned();
             println!("{output}");
+        } else if !take_action {
+            pids.iter().for_each(|pid| println!("{pid}"));
         }
     }
 
@@ -191,7 +122,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 }
 
 #[allow(unused)]
-fn construct_verbose_result(pids: &[u32], action_results: &[Option<ActionResult>]) -> String {
+pub fn construct_verbose_result(pids: &[u32], action_results: &[Option<ActionResult>]) -> String {
     let mut table = action_results
         .iter()
         .enumerate()
@@ -229,7 +160,7 @@ fn construct_verbose_result(pids: &[u32], action_results: &[Option<ActionResult>
 }
 
 /// Map and sort `SelectedTarget` to pids.
-fn collect_pids(targets: &[SelectedTarget]) -> Vec<u32> {
+pub fn collect_pids(targets: &[SelectedTarget]) -> Vec<u32> {
     let collected = targets
         .iter()
         .flat_map(SelectedTarget::to_pids)
@@ -240,7 +171,6 @@ fn collect_pids(targets: &[SelectedTarget]) -> Vec<u32> {
     collected
 }
 
-#[allow(clippy::cognitive_complexity)]
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
@@ -249,22 +179,7 @@ pub fn uu_app() -> Command {
         .infer_long_args(true)
         .arg_required_else_help(true)
         .arg(Arg::new("priority"))
-        .args([
-            // Options
-            // arg!(-f --fast          "fast mode (not implemented)"),
-            // arg!(-i --interactive   "interactive"),
-            arg!(-l --list                  "list all signal names"),
-            arg!(-L --table                 "list all signal names in a nice table"),
-            // arg!(-n --"no-action"   "do not actually kill processes; just print what would happen"),
-            arg!(-v --verbose               "explain what is being done"),
-            // arg!(-w --warnings      "enable warnings (not implemented)"),
-            // Expressions
-            arg!(-c --command   <command>   ...   "expression is a command name"),
-            arg!(-p --pid       <pid>       ...   "expression is a process id number")
-                .value_parser(value_parser!(u32)),
-            arg!(-t --tty       <tty>       ...   "expression is a terminal"),
-            arg!(-u --user      <username>  ...   "expression is a username"),
-        ])
+        .args(clap_args())
 }
 
 #[cfg(test)]

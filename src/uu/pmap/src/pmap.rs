@@ -5,12 +5,12 @@
 
 use clap::{crate_version, Arg, ArgAction, Command};
 use maps_format_parser::{parse_map_line, MapLine};
-use pmap_config::{pmap_field_name, PmapConfig};
+use pmap_config::{create_rc, pmap_field_name, PmapConfig};
 use smaps_format_parser::{parse_smaps, SmapTable};
 use std::env;
 use std::fs;
-use std::io::Error;
-use uucore::error::{set_exit_code, UResult};
+use std::io::{Error, ErrorKind};
+use uucore::error::{set_exit_code, UResult, USimpleError};
 use uucore::{format_usage, help_about, help_usage};
 
 mod maps_format_parser;
@@ -39,18 +39,104 @@ mod options {
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
 
+    if matches.get_flag(options::CREATE_RC) {
+        let path = pmap_config::get_rc_default_path();
+        if std::fs::exists(&path)? {
+            eprintln!("pmap: the file already exists - delete or rename it first");
+            eprintln!(
+                "pmap: couldn't create {}",
+                pmap_config::get_rc_default_path_str()
+            );
+            set_exit_code(1);
+        } else {
+            create_rc(&path)?;
+            eprintln!(
+                "pmap: {} file successfully created, feel free to edit the content",
+                pmap_config::get_rc_default_path_str()
+            );
+        }
+        return Ok(());
+    } else if let Some(path_str) = matches.get_one::<String>(options::CREATE_RC_TO) {
+        let path = std::path::PathBuf::from(path_str);
+        if std::fs::exists(&path)? {
+            eprintln!("pmap: the file already exists - delete or rename it first");
+            eprintln!("pmap: couldn't create the rc file");
+            set_exit_code(1);
+        } else {
+            create_rc(&path)?;
+            eprintln!("pmap: rc file successfully created, feel free to edit the content");
+        }
+        return Ok(());
+    }
+
     let mut pmap_config = PmapConfig::default();
 
     if matches.get_flag(options::MORE_EXTENDED) {
         pmap_config.set_more_extended();
     } else if matches.get_flag(options::MOST_EXTENDED) {
         pmap_config.set_most_extended();
+    } else if matches.get_flag(options::READ_RC) {
+        let path = pmap_config::get_rc_default_path();
+        if !std::fs::exists(&path)? {
+            eprintln!(
+                "pmap: couldn't read {}",
+                pmap_config::get_rc_default_path_str()
+            );
+            set_exit_code(1);
+            return Ok(());
+        }
+        pmap_config.read_rc(&path)?;
+    } else if let Some(path) = matches.get_one::<String>(options::READ_RC_FROM) {
+        let path = std::fs::canonicalize(path)?;
+        if !std::fs::exists(&path)? {
+            eprintln!("pmap: couldn't read the rc file");
+            set_exit_code(1);
+            return Ok(());
+        }
+        pmap_config.read_rc(&path)?;
     }
 
     // Options independent with field selection:
     pmap_config.quiet = matches.get_flag(options::QUIET);
-    if matches.get_flag(options::SHOW_PATH) {
-        pmap_config.show_path = true;
+    pmap_config.show_path = matches.get_flag(options::SHOW_PATH);
+
+    if let Some(range) = matches.get_one::<String>(options::RANGE) {
+        match range.matches(',').count() {
+            0 => {
+                let address = u64::from_str_radix(range, 16).map_err(|_| {
+                    USimpleError::new(1, format!("failed to parse argument: '{range}'"))
+                })?;
+                pmap_config.range_low = address;
+                pmap_config.range_high = address;
+            }
+            1 => {
+                let (low, high) = range
+                    .split_once(',')
+                    .ok_or_else(|| Error::from(ErrorKind::InvalidData))?;
+                pmap_config.range_low = if low.is_empty() {
+                    0
+                } else {
+                    u64::from_str_radix(low, 16).map_err(|_| {
+                        USimpleError::new(1, format!("failed to parse argument: '{range}'"))
+                    })?
+                };
+                pmap_config.range_high = if high.is_empty() {
+                    u64::MAX
+                } else {
+                    u64::from_str_radix(high, 16).map_err(|_| {
+                        USimpleError::new(1, format!("failed to parse argument: '{range}'"))
+                    })?
+                };
+            }
+            _ => {
+                eprintln!("pmap: failed to parse argument: '{range}'");
+                set_exit_code(1);
+                return Ok(());
+            }
+        }
+    } else {
+        pmap_config.range_low = 0;
+        pmap_config.range_high = u64::MAX;
     }
 
     let pids = matches
@@ -133,14 +219,16 @@ fn output_default_format(pid: &str, pmap_config: &PmapConfig) -> Result<(), Erro
     let mut total = 0;
 
     process_maps(pid, None, |map_line| {
-        println!(
-            "{} {:>6}K {} {}",
-            map_line.address,
-            map_line.size_in_kb,
-            map_line.perms.mode(),
-            map_line.parse_mapping(pmap_config)
-        );
-        total += map_line.size_in_kb;
+        if map_line.address.is_within_range(pmap_config) {
+            println!(
+                "{} {:>6}K {} {}",
+                map_line.address.zero_pad(),
+                map_line.size_in_kb,
+                map_line.perms.mode(),
+                map_line.parse_mapping(pmap_config)
+            );
+            total += map_line.size_in_kb;
+        }
     })?;
 
     if !pmap_config.quiet {
@@ -157,25 +245,31 @@ fn output_extended_format(pid: &str, pmap_config: &PmapConfig) -> Result<(), Err
         println!("Address           Kbytes     RSS   Dirty Mode  Mapping");
     }
 
+    let mut total_size_in_kb = 0;
+    let mut total_rss_in_kb = 0;
+    let mut total_dirty_in_kb = 0;
+
     for smap_entry in smap_table.entries {
-        println!(
-            "{} {:>7} {:>7} {:>7} {} {}",
-            smap_entry.map_line.address,
-            smap_entry.map_line.size_in_kb,
-            smap_entry.rss_in_kb,
-            smap_entry.shared_dirty_in_kb + smap_entry.private_dirty_in_kb,
-            smap_entry.map_line.perms.mode(),
-            smap_entry.map_line.parse_mapping(pmap_config)
-        );
+        if smap_entry.map_line.address.is_within_range(pmap_config) {
+            println!(
+                "{} {:>7} {:>7} {:>7} {} {}",
+                smap_entry.map_line.address.zero_pad(),
+                smap_entry.map_line.size_in_kb,
+                smap_entry.rss_in_kb,
+                smap_entry.shared_dirty_in_kb + smap_entry.private_dirty_in_kb,
+                smap_entry.map_line.perms.mode(),
+                smap_entry.map_line.parse_mapping(pmap_config)
+            );
+            total_size_in_kb += smap_entry.map_line.size_in_kb;
+            total_rss_in_kb += smap_entry.rss_in_kb;
+            total_dirty_in_kb += smap_entry.shared_dirty_in_kb + smap_entry.private_dirty_in_kb;
+        }
     }
 
     if !pmap_config.quiet {
         println!("---------------- ------- ------- ------- ");
         println!(
-            "total kB         {:>7} {:>7} {:>7}",
-            smap_table.info.total_size_in_kb,
-            smap_table.info.total_rss_in_kb,
-            smap_table.info.total_shared_dirty_in_kb + smap_table.info.total_private_dirty_in_kb,
+            "total kB         {total_size_in_kb:>7} {total_rss_in_kb:>7} {total_dirty_in_kb:>7}"
         );
     }
 
@@ -311,23 +405,25 @@ fn output_device_format(pid: &str, pmap_config: &PmapConfig) -> Result<(), Error
             None
         },
         |map_line| {
-            println!(
-                "{} {:>7} {} {} {} {}",
-                map_line.address,
-                map_line.size_in_kb,
-                map_line.perms.mode(),
-                map_line.offset,
-                map_line.device,
-                map_line.parse_mapping(pmap_config)
-            );
-            total_mapped += map_line.size_in_kb;
+            if map_line.address.is_within_range(pmap_config) {
+                println!(
+                    "{} {:>7} {} {:0>16} {} {}",
+                    map_line.address.zero_pad(),
+                    map_line.size_in_kb,
+                    map_line.perms.mode(),
+                    map_line.offset,
+                    map_line.device.device(),
+                    map_line.parse_mapping(pmap_config)
+                );
+                total_mapped += map_line.size_in_kb;
 
-            if map_line.perms.writable && !map_line.perms.shared {
-                total_writeable_private += map_line.size_in_kb;
-            }
+                if map_line.perms.writable && !map_line.perms.shared {
+                    total_writeable_private += map_line.size_in_kb;
+                }
 
-            if map_line.perms.shared {
-                total_shared += map_line.size_in_kb;
+                if map_line.perms.shared {
+                    total_shared += map_line.size_in_kb;
+                }
             }
         },
     )?;
@@ -405,36 +501,81 @@ pub fn uu_app() -> Command {
                 .short('c')
                 .long("read-rc")
                 .help("read the default rc")
-                .action(ArgAction::SetTrue),
-        )
+                .action(ArgAction::SetTrue)
+                .conflicts_with_all([
+                    "read-rc-from",
+                    "device",
+                    "create-rc",
+                    "create-rc-to",
+                    "extended",
+                    "more-extended",
+                    "most-extended",
+                ]),
+        ) // pmap: options -c, -C, -d, -n, -N, -x, -X are mutually exclusive
         .arg(
             Arg::new(options::READ_RC_FROM)
                 .short('C')
                 .long("read-rc-from")
                 .num_args(1)
-                .help("read the rc from file"),
-        )
+                .help("read the rc from file")
+                .conflicts_with_all([
+                    "read-rc",
+                    "device",
+                    "create-rc",
+                    "create-rc-to",
+                    "extended",
+                    "more-extended",
+                    "most-extended",
+                ]),
+        ) // pmap: options -c, -C, -d, -n, -N, -x, -X are mutually exclusive
         .arg(
             Arg::new(options::CREATE_RC)
                 .short('n')
                 .long("create-rc")
                 .help("create new default rc")
-                .action(ArgAction::SetTrue),
-        )
+                .action(ArgAction::SetTrue)
+                .conflicts_with_all([
+                    "read-rc",
+                    "read-rc-from",
+                    "device",
+                    "create-rc-to",
+                    "extended",
+                    "more-extended",
+                    "most-extended",
+                ]),
+        ) // pmap: options -c, -C, -d, -n, -N, -x, -X are mutually exclusive
         .arg(
             Arg::new(options::CREATE_RC_TO)
                 .short('N')
                 .long("create-rc-to")
                 .num_args(1)
-                .help("create new rc to file"),
-        )
+                .help("create new rc to file")
+                .conflicts_with_all([
+                    "read-rc",
+                    "read-rc-from",
+                    "device",
+                    "create-rc",
+                    "extended",
+                    "more-extended",
+                    "most-extended",
+                ]),
+        ) // pmap: options -c, -C, -d, -n, -N, -x, -X are mutually exclusive
         .arg(
             Arg::new(options::DEVICE)
                 .short('d')
                 .long("device")
                 .help("show the device format")
-                .action(ArgAction::SetTrue),
-        )
+                .action(ArgAction::SetTrue)
+                .conflicts_with_all([
+                    "read-rc",
+                    "read-rc-from",
+                    "create-rc",
+                    "create-rc-to",
+                    "extended",
+                    "more-extended",
+                    "most-extended",
+                ]),
+        ) // pmap: options -c, -C, -d, -n, -N, -x, -X are mutually exclusive
         .arg(
             Arg::new(options::QUIET)
                 .short('q')
@@ -453,7 +594,9 @@ pub fn uu_app() -> Command {
             Arg::new(options::RANGE)
                 .short('A')
                 .long("range")
-                .num_args(1..=2)
-                .help("limit results to the given range"),
+                .num_args(1)
+                .help("limit results to the given range <low>[,<high>]"),
+            // This option applies only to the default, extended, or device formats,
+            // yet it will not raise an error in any other case.
         )
 }

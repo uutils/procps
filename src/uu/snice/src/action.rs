@@ -24,7 +24,7 @@ pub(crate) fn users() -> &'static Users {
 }
 
 #[derive(Debug)]
-pub(crate) enum SelectedTarget {
+pub enum SelectedTarget {
     Command(String),
     Pid(u32),
     Tty(Teletype),
@@ -93,7 +93,7 @@ impl SelectedTarget {
 
 #[allow(unused)]
 #[derive(Debug, Clone)]
-pub(crate) enum ActionResult {
+pub enum ActionResult {
     PermissionDenied,
     Success,
 }
@@ -111,7 +111,7 @@ impl Display for ActionResult {
 ///
 /// But we don't know if the process of pid are exist, if [None], the process doesn't exist
 #[cfg(target_os = "linux")]
-fn set_priority(pid: u32, prio: &Priority) -> Option<ActionResult> {
+fn set_priority(pid: u32, prio: &Priority, take_action: bool) -> Option<ActionResult> {
     use libc::{getpriority, setpriority, PRIO_PROCESS};
     use nix::errno::Errno;
 
@@ -136,6 +136,10 @@ fn set_priority(pid: u32, prio: &Priority) -> Option<ActionResult> {
         prio
     };
 
+    if !take_action {
+        return Some(ActionResult::Success);
+    }
+
     let prio = match prio {
         Priority::Increase(prio) => current_priority + *prio as i32,
         Priority::Decrease(prio) => current_priority - *prio as i32,
@@ -159,11 +163,15 @@ fn set_priority(pid: u32, prio: &Priority) -> Option<ActionResult> {
 
 // TODO: Implemented this on other platform
 #[cfg(not(target_os = "linux"))]
-fn set_priority(_pid: u32, _prio: &Priority) -> Option<ActionResult> {
+fn set_priority(_pid: u32, _prio: &Priority, _take_action: bool) -> Option<ActionResult> {
     None
 }
 
-pub(crate) fn perform_action(pids: &[u32], prio: &Priority) -> Vec<Option<ActionResult>> {
-    let f = |pid: &u32| set_priority(*pid, prio);
+pub(crate) fn perform_action(
+    pids: &[u32],
+    prio: &Priority,
+    take_action: bool,
+) -> Vec<Option<ActionResult>> {
+    let f = |pid: &u32| set_priority(*pid, prio, take_action);
     pids.iter().map(f).collect()
 }

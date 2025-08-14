@@ -10,13 +10,42 @@ use std::io::{Error, ErrorKind};
 // Represents a parsed single line from /proc/<PID>/maps.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct MapLine {
-    pub address: String,
+    pub address: Address,
     pub size_in_kb: u64,
     pub perms: Perms,
     pub offset: String,
-    pub device: String,
+    pub device: Device,
     pub inode: u64,
     pub mapping: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Address {
+    pub start: String,
+    pub low: u64,
+    pub high: u64,
+}
+
+impl fmt::Display for Address {
+    // By default, pads with white spaces.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{: >16}", self.start)
+    }
+}
+
+impl Address {
+    // Format for default, extended option, and device option.
+    // Pads the start address with zero.
+    pub fn zero_pad(&self) -> String {
+        format!("{:0>16}", self.start)
+    }
+
+    // Checks whether an entry's address range overlaps the limits specified by the range option.
+    // Note: Even if a reversed range (high < low) is given, an entry still hits
+    // only if the specified range lies entirely within the entry's address range.
+    pub fn is_within_range(&self, pmap_config: &PmapConfig) -> bool {
+        pmap_config.range_low < self.high && self.low <= pmap_config.range_high
+    }
 }
 
 // Represents a set of permissions from the "perms" column of /proc/<PID>/maps.
@@ -69,6 +98,28 @@ impl Perms {
     }
 }
 
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Device {
+    pub major: String,
+    pub minor: String,
+    pub width: usize,
+}
+
+impl fmt::Display for Device {
+    // By default, does not pad.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}", self.major, self.minor)
+    }
+}
+
+impl Device {
+    // Format for device option.
+    // Pads the device info from /proc/<PID>/maps with zeros and turns AB:CD into 0AB:000CD.
+    pub fn device(&self) -> String {
+        format!("{:0>3}:{:0>5}", self.major, self.minor)
+    }
+}
+
 // Parses a single line from /proc/<PID>/maps. See
 // https://www.kernel.org/doc/html/latest/filesystems/proc.html for details about the expected
 // format.
@@ -90,7 +141,7 @@ pub fn parse_map_line(line: &str) -> Result<MapLine, Error> {
     let (offset, rest) = rest
         .split_once(' ')
         .ok_or_else(|| Error::from(ErrorKind::InvalidData))?;
-    let offset = format!("{offset:0>16}");
+    let offset = format!("{offset:0>8}");
 
     let (device, rest) = rest
         .split_once(' ')
@@ -116,9 +167,8 @@ pub fn parse_map_line(line: &str) -> Result<MapLine, Error> {
     })
 }
 
-// Returns the start address and the size of the provided memory range. The start address is always
-// 16-digits and padded with 0, if necessary. The size is in KB.
-fn parse_address(memory_range: &str) -> Result<(String, u64), Error> {
+// Returns Address instance and the size of the provided memory range. The size is in KB.
+fn parse_address(memory_range: &str) -> Result<(Address, u64), Error> {
     let (start, end) = memory_range
         .split_once('-')
         .ok_or_else(|| Error::from(ErrorKind::InvalidData))?;
@@ -127,15 +177,26 @@ fn parse_address(memory_range: &str) -> Result<(String, u64), Error> {
     let high = u64::from_str_radix(end, 16).map_err(|_| Error::from(ErrorKind::InvalidData))?;
     let size_in_kb = (high - low) / 1024;
 
-    Ok((format!("{start:0>16}"), size_in_kb))
+    Ok((
+        Address {
+            start: start.to_string(),
+            low,
+            high,
+        },
+        size_in_kb,
+    ))
 }
 
-// Pads the device info from /proc/<PID>/maps with zeros and turns AB:CD into 0AB:000CD.
-fn parse_device(device: &str) -> Result<String, Error> {
+// Returns Device instance.
+fn parse_device(device: &str) -> Result<Device, Error> {
     let (major, minor) = device
         .split_once(':')
         .ok_or_else(|| Error::from(ErrorKind::InvalidData))?;
-    Ok(format!("{major:0>3}:{minor:0>5}"))
+    Ok(Device {
+        major: major.to_string(),
+        minor: minor.to_string(),
+        width: device.len(),
+    })
 }
 
 impl MapLine {
@@ -174,19 +235,31 @@ mod test {
 
     fn create_map_line(
         address: &str,
+        low: u64,
+        high: u64,
         size_in_kb: u64,
         perms: Perms,
         offset: &str,
-        device: &str,
+        major: &str,
+        minor: &str,
+        width: usize,
         inode: u64,
         mapping: &str,
     ) -> MapLine {
         MapLine {
-            address: address.to_string(),
+            address: Address {
+                start: address.to_string(),
+                low,
+                high,
+            },
             size_in_kb,
             perms,
             offset: offset.to_string(),
-            device: device.to_string(),
+            device: Device {
+                major: major.to_string(),
+                minor: minor.to_string(),
+                width,
+            },
             inode,
             mapping: mapping.to_string(),
         }
@@ -210,31 +283,31 @@ mod test {
     fn test_parse_map_line() {
         let data = [
             (
-                create_map_line("000062442eb9e000", 16, Perms::from("r--p"), "0000000000000000", "008:00008", 10813151, "/usr/bin/konsole"),
+                create_map_line("62442eb9e000", 0x62442eb9e000, 0x62442eba2000, 16, Perms::from("r--p"), "00000000", "08", "08", 5, 10813151, "/usr/bin/konsole"),
                 "62442eb9e000-62442eba2000 r--p 00000000 08:08 10813151                   /usr/bin/konsole"
             ),
             (
-                create_map_line("000071af50000000", 132, Perms::from("rw-p"), "0000000000000000", "000:00000", 0, ""),
+                create_map_line("71af50000000", 0x71af50000000, 0x71af50021000,  132, Perms::from("rw-p"), "00000000", "00", "00", 5, 0, ""),
                 "71af50000000-71af50021000 rw-p 00000000 00:00 0 "
             ),
             (
-                create_map_line("00007ffc3f8df000", 132, Perms::from("rw-p"), "0000000000000000", "000:00000", 0, "[stack]"),
+                create_map_line("7ffc3f8df000", 0x7ffc3f8df000, 0x7ffc3f900000, 132, Perms::from("rw-p"), "00000000", "00", "00", 5, 0, "[stack]"),
                 "7ffc3f8df000-7ffc3f900000 rw-p 00000000 00:00 0                          [stack]"
             ),
             (
-                create_map_line("000071af8c9e6000", 16, Perms::from("rw-s"), "0000000105830000", "000:00010", 1075, "anon_inode:i915.gem"),
+                create_map_line("71af8c9e6000", 0x71af8c9e6000, 0x71af8c9ea000, 16, Perms::from("rw-s"), "105830000", "00", "10", 5, 1075, "anon_inode:i915.gem"),
                 "71af8c9e6000-71af8c9ea000 rw-s 105830000 00:10 1075                      anon_inode:i915.gem"
             ),
             (
-                create_map_line("000071af6cf0c000", 3560, Perms::from("rw-s"), "0000000000000000", "000:00001", 256481, "/memfd:wayland-shm (deleted)"),
+                create_map_line("71af6cf0c000", 0x71af6cf0c000, 0x71af6d286000, 3560, Perms::from("rw-s"), "00000000", "00", "01", 5, 256481, "/memfd:wayland-shm (deleted)"),
                 "71af6cf0c000-71af6d286000 rw-s 00000000 00:01 256481                     /memfd:wayland-shm (deleted)"
             ),
             (
-                create_map_line("ffffffffff600000", 4, Perms::from("--xp"), "0000000000000000", "000:00000", 0, "[vsyscall]"),
+                create_map_line("ffffffffff600000", 0xffffffffff600000, 0xffffffffff601000, 4, Perms::from("--xp"), "00000000", "00", "00", 5, 0, "[vsyscall]"),
                 "ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]"
             ),
             (
-                create_map_line("00005e8187da8000", 24, Perms::from("r--p"), "0000000000000000", "008:00008", 9524160, "/usr/bin/hello   world"),
+                create_map_line("5e8187da8000", 0x5e8187da8000, 0x5e8187dae000, 24, Perms::from("r--p"), "00000000", "08", "08", 5, 9524160, "/usr/bin/hello   world"),
                 "5e8187da8000-5e8187dae000 r--p 00000000 08:08 9524160                    /usr/bin/hello   world"
             ),
         ];
@@ -251,12 +324,16 @@ mod test {
 
     #[test]
     fn test_parse_address() {
-        let (start, size) = parse_address("ffffffffff600000-ffffffffff601000").unwrap();
-        assert_eq!(start, "ffffffffff600000");
+        let (address, size) = parse_address("ffffffffff600000-ffffffffff601000").unwrap();
+        assert_eq!(address.start, "ffffffffff600000");
+        assert_eq!(address.low, 0xffffffffff600000);
+        assert_eq!(address.high, 0xffffffffff601000);
         assert_eq!(size, 4);
 
-        let (start, size) = parse_address("7ffc4f0c2000-7ffc4f0e3000").unwrap();
-        assert_eq!(start, "00007ffc4f0c2000");
+        let (address, size) = parse_address("7ffc4f0c2000-7ffc4f0e3000").unwrap();
+        assert_eq!(address.start, "7ffc4f0c2000");
+        assert_eq!(address.low, 0x7ffc4f0c2000);
+        assert_eq!(address.high, 0x7ffc4f0e3000);
         assert_eq!(size, 132);
     }
 
@@ -271,10 +348,101 @@ mod test {
         assert!(parse_address("ffffffffff600000-zfffffffff601000").is_err());
     }
 
+    fn limit_address_range_and_assert(address: &Address, low: u64, high: u64, expected: bool) {
+        let mut pmap_config = PmapConfig::default();
+        (pmap_config.range_low, pmap_config.range_high) = (low, high);
+        assert_eq!(
+            address.is_within_range(&pmap_config),
+            expected,
+            "`--range 0x{low:x},0x{high:x}` expected to be {expected} for address 0x{:x},0x{:x}",
+            address.low,
+            address.high,
+        );
+    }
+
+    #[test]
+    fn test_limit_address_range() {
+        let low: u64 = 0x71af50000000;
+        let high: u64 = 0x71af50021000;
+        let address = Address {
+            start: "0x71af50000000".to_string(),
+            low,
+            high,
+        };
+
+        limit_address_range_and_assert(&address, 0x0, u64::MAX, true);
+        limit_address_range_and_assert(&address, 0x70000000, 0xffffffffffff, true);
+
+        limit_address_range_and_assert(&address, 0x0, 0x0, false);
+        limit_address_range_and_assert(&address, 0x0, 0x70000000, false);
+        limit_address_range_and_assert(&address, 0x0, low - 1, false);
+        limit_address_range_and_assert(&address, low - 1, low - 1, false);
+
+        limit_address_range_and_assert(&address, 0x0, low, true);
+        limit_address_range_and_assert(&address, low - 1, low, true);
+        limit_address_range_and_assert(&address, low, low, true);
+
+        limit_address_range_and_assert(&address, low - 1, high - 1, true);
+        limit_address_range_and_assert(&address, low - 1, high, true);
+        limit_address_range_and_assert(&address, low - 1, high + 1, true);
+        limit_address_range_and_assert(&address, low, high - 1, true);
+        limit_address_range_and_assert(&address, low, high, true);
+        limit_address_range_and_assert(&address, low, high + 1, true);
+        limit_address_range_and_assert(&address, low + 1, high - 1, true);
+        limit_address_range_and_assert(&address, low + 1, high, true);
+        limit_address_range_and_assert(&address, low + 1, high + 1, true);
+
+        limit_address_range_and_assert(&address, high - 1, high - 1, true);
+        limit_address_range_and_assert(&address, high - 1, high, true);
+        limit_address_range_and_assert(&address, high - 1, u64::MAX, true);
+
+        limit_address_range_and_assert(&address, high, high, false);
+        limit_address_range_and_assert(&address, high, high + 1, false);
+        limit_address_range_and_assert(&address, high, u64::MAX, false);
+        limit_address_range_and_assert(&address, 0xffffffffffff, u64::MAX, false);
+        limit_address_range_and_assert(&address, u64::MAX, u64::MAX, false);
+
+        // Reversed range
+
+        limit_address_range_and_assert(&address, u64::MAX, 0, false);
+        limit_address_range_and_assert(&address, 0xffffffffffff, 0x70000000, false);
+
+        limit_address_range_and_assert(&address, 0x70000000, 0x0, false);
+        limit_address_range_and_assert(&address, low - 1, 0x0, false);
+        limit_address_range_and_assert(&address, low - 1, low - 1, false);
+
+        limit_address_range_and_assert(&address, low, 0x0, false);
+        limit_address_range_and_assert(&address, low, low - 1, false);
+
+        limit_address_range_and_assert(&address, high - 1, low - 1, false);
+        limit_address_range_and_assert(&address, high, low - 1, false);
+        limit_address_range_and_assert(&address, high + 1, low - 1, false);
+        limit_address_range_and_assert(&address, high - 1, low, true);
+        limit_address_range_and_assert(&address, high, low, false);
+        limit_address_range_and_assert(&address, high + 1, low, false);
+        limit_address_range_and_assert(&address, high - 1, low + 1, true);
+        limit_address_range_and_assert(&address, high, low + 1, false);
+        limit_address_range_and_assert(&address, high + 1, low + 1, false);
+
+        limit_address_range_and_assert(&address, high, high - 1, false);
+        limit_address_range_and_assert(&address, u64::MAX, high - 1, false);
+
+        limit_address_range_and_assert(&address, high + 1, high, false);
+        limit_address_range_and_assert(&address, u64::MAX, high, false);
+        limit_address_range_and_assert(&address, u64::MAX, 0xffffffffffff, false);
+    }
+
     #[test]
     fn test_parse_device() {
-        assert_eq!("012:00034", parse_device("12:34").unwrap());
-        assert_eq!("000:00000", parse_device("00:00").unwrap());
+        assert_eq!("12:34", parse_device("12:34").unwrap().to_string());
+        assert_eq!("00:00", parse_device("00:00").unwrap().to_string());
+        assert_eq!("fe:01", parse_device("fe:01").unwrap().to_string());
+        assert_eq!("103:100", parse_device("103:100").unwrap().to_string());
+
+        assert_eq!("012:00034", parse_device("12:34").unwrap().device());
+        assert_eq!("000:00000", parse_device("00:00").unwrap().device());
+        assert_eq!("0fe:00001", parse_device("fe:01").unwrap().device());
+        assert_eq!("103:00100", parse_device("103:100").unwrap().device());
     }
 
     #[test]

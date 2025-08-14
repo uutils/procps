@@ -4,7 +4,7 @@
 // file that was distributed with this source code.
 
 // Pid utils
-use clap::{arg, crate_version, Command};
+use clap::{arg, crate_version, value_parser, Command};
 #[cfg(unix)]
 use nix::{
     sys::signal::{self, Signal},
@@ -48,7 +48,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     } else {
         let sig = (settings.signal as i32)
             .try_into()
-            .map_err(|e| std::io::Error::from_raw_os_error(e as i32))?;
+            .map_err(|e| Error::from_raw_os_error(e as i32))?;
         Some(sig)
     };
 
@@ -56,11 +56,13 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let pids = process_matcher::find_matching_pids(&settings)?;
 
     // Send signal
-    // TODO: Implement -q
     #[cfg(unix)]
-    let echo = matches.get_flag("echo");
-    #[cfg(unix)]
-    kill(&pids, sig, echo);
+    {
+        let echo = matches.get_flag("echo");
+        let queue = matches.get_one::<u32>("queue").cloned();
+
+        kill(&pids, sig, queue, echo);
+    }
 
     if matches.get_flag("count") {
         println!("{}", pids.len());
@@ -71,25 +73,50 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
 #[cfg(unix)]
 fn handle_obsolete(args: &mut [String]) {
-    // Sanity check
-    if args.len() > 2 {
-        // Old signal can only be in the first argument position
-        let slice = args[1].as_str();
-        if let Some(signal) = slice.strip_prefix('-') {
+    for arg in &mut args[1..] {
+        if let Some(signal) = arg.strip_prefix('-') {
             // Check if it is a valid signal
             let opt_signal = signal_by_name_or_value(signal);
             if opt_signal.is_some() {
                 // Replace with long option that clap can parse
-                args[1] = format!("--signal={signal}");
+                *arg = format!("--signal={signal}");
             }
         }
     }
 }
 
+// Not contains in libc
+#[cfg(target_os = "linux")]
+extern "C" {
+    fn sigqueue(
+        pid: uucore::libc::pid_t,
+        sig: uucore::libc::c_int,
+        val: uucore::libc::sigval,
+    ) -> uucore::libc::c_int;
+}
+
 #[cfg(unix)]
-fn kill(pids: &Vec<ProcessInformation>, sig: Option<Signal>, echo: bool) {
+#[allow(unused_variables)]
+fn kill(pids: &Vec<ProcessInformation>, sig: Option<Signal>, queue: Option<u32>, echo: bool) {
     for pid in pids {
-        if let Err(e) = signal::kill(Pid::from_raw(pid.pid as i32), sig) {
+        #[cfg(target_os = "linux")]
+        let result = if let Some(queue) = queue {
+            let v = unsafe {
+                sigqueue(
+                    pid.pid as i32,
+                    sig.map_or(0, |s| s as uucore::libc::c_int),
+                    uucore::libc::sigval {
+                        sival_ptr: queue as usize as *mut uucore::libc::c_void,
+                    },
+                )
+            };
+            nix::errno::Errno::result(v).map(drop)
+        } else {
+            signal::kill(Pid::from_raw(pid.pid as i32), sig)
+        };
+        #[cfg(not(target_os = "linux"))]
+        let result = signal::kill(Pid::from_raw(pid.pid as i32), sig);
+        if let Err(e) = result {
             show!(Error::from_raw_os_error(e as i32)
                 .map_err_context(|| format!("killing pid {} failed", pid.pid)));
         } else if echo {
@@ -111,7 +138,8 @@ pub fn uu_app() -> Command {
         .args_override_self(true)
         .args([
             // arg!(-<sig>                    "signal to send (either number or name)"),
-            // arg!(-q --queue <value>        "integer value to be sent with the signal"),
+            arg!(-q --queue <value>        "integer value to be sent with the signal")
+                .value_parser(value_parser!(u32)),
             arg!(-e --echo                 "display what is killed"),
         ])
         .args(process_matcher::clap_args(
