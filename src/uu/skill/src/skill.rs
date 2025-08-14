@@ -3,7 +3,7 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use clap::{arg, crate_version, value_parser, Arg, Command};
+use clap::{crate_version, Arg, Command};
 #[cfg(unix)]
 use nix::{sys::signal, sys::signal::Signal, unistd::Pid};
 use uu_snice::{
@@ -29,6 +29,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     }
 
     // Case1: Send signal
+    let take_action = !settings.no_action;
     if let Some(targets) = settings.expressions {
         let pids = collect_pids(&targets);
 
@@ -43,7 +44,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         };
 
         #[cfg(unix)]
-        let results = perform_action(&pids, &signal);
+        let results = perform_action(&pids, &signal, take_action, settings.interactive);
         #[cfg(not(unix))]
         let results: Vec<Option<ActionResult>> = Vec::new();
 
@@ -51,9 +52,14 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             return Err(USimpleError::new(1, "no process selection criteria"));
         }
 
-        if settings.verbose {
-            let output = construct_verbose_result(&pids, &results).trim().to_owned();
+        let error_only = settings.warnings || !settings.verbose;
+        if settings.verbose || settings.warnings {
+            let output = construct_verbose_result(&pids, &results, error_only, take_action)
+                .trim()
+                .to_owned();
             println!("{output}");
+        } else if !take_action {
+            pids.iter().for_each(|pid| println!("{pid}"));
         }
     }
 
@@ -61,15 +67,23 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 }
 
 #[cfg(unix)]
-fn perform_action(pids: &[u32], signal: &Signal) -> Vec<Option<ActionResult>> {
+fn perform_action(
+    pids: &[u32],
+    signal: &Signal,
+    take_action: bool,
+    ask: bool,
+) -> Vec<Option<ActionResult>> {
+    let sig = if take_action { Some(*signal) } else { None };
     pids.iter()
         .map(|pid| {
-            {
-                Some(match signal::kill(Pid::from_raw(*pid as i32), *signal) {
+            if !ask || uu_snice::ask_user(*pid) {
+                Some(match signal::kill(Pid::from_raw(*pid as i32), sig) {
                     Ok(_) => ActionResult::Success,
-
                     Err(_) => ActionResult::PermissionDenied,
                 })
+            } else {
+                // won't be used, but we need to return (not None)
+                Some(ActionResult::Success)
             }
         })
         .collect()
@@ -84,23 +98,5 @@ pub fn uu_app() -> Command {
         .infer_long_args(true)
         .arg_required_else_help(true)
         .arg(Arg::new("signal"))
-        .args([
-            // arg!(-f --fast          "fast mode (not implemented)"),
-            // arg!(-i --interactive   "interactive"),
-            arg!(-l --list                  "list all signal names"),
-            arg!(-L --table                 "list all signal names in a nice table"),
-            // arg!(-n --"no-action"   "do not actually kill processes; just print what would happen"),
-            arg!(-v --verbose               "explain what is being done"),
-            // arg!(-w --warnings      "enable warnings (not implemented)"),
-            // Expressions
-            arg!(-c --command   <command>   ...   "expression is a command name"),
-            arg!(-p --pid       <pid>       ...   "expression is a process id number")
-                .value_parser(value_parser!(u32)),
-            arg!(-t --tty       <tty>       ...   "expression is a terminal"),
-            arg!(-u --user      <username>  ...   "expression is a username"),
-            // arg!(--ns <PID>                "match the processes that belong to the same namespace as <pid>"),
-            // arg!(--nslist <ns>             "list which namespaces will be considered for the --ns option.")
-            //     .value_delimiter(',')
-            //     .value_parser(["ipc", "mnt", "net", "pid", "user", "uts"]),
-        ])
+        .args(uu_snice::clap_args())
 }

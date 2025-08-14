@@ -3,6 +3,7 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use crate::ask_user;
 use crate::priority::Priority;
 use std::{
     fmt::{self, Display, Formatter},
@@ -92,7 +93,7 @@ impl SelectedTarget {
 }
 
 #[allow(unused)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ActionResult {
     PermissionDenied,
     Success,
@@ -171,7 +172,15 @@ pub(crate) fn perform_action(
     pids: &[u32],
     prio: &Priority,
     take_action: bool,
+    ask: bool,
 ) -> Vec<Option<ActionResult>> {
-    let f = |pid: &u32| set_priority(*pid, prio, take_action);
+    let f = |pid: &u32| {
+        if !ask || ask_user(*pid) {
+            set_priority(*pid, prio, take_action)
+        } else {
+            // won't be used, but we need to return (not None)
+            Some(ActionResult::Success)
+        }
+    };
     pids.iter().map(f).collect()
 }

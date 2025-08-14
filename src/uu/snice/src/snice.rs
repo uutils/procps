@@ -3,14 +3,15 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use std::{collections::HashSet, path::PathBuf, str::FromStr};
-
 use crate::priority::Priority;
 pub use action::ActionResult;
 use action::{perform_action, process_snapshot, users, SelectedTarget};
 use clap::{crate_version, Arg, Command};
 use prettytable::{format::consts::FORMAT_CLEAN, row, Table};
+pub use process_matcher::clap_args;
 use process_matcher::*;
+use std::io::Write;
+use std::{collections::HashSet, path::PathBuf, str::FromStr};
 use sysinfo::Pid;
 use uu_pgrep::process::ProcessInformation;
 #[cfg(target_family = "unix")]
@@ -92,7 +93,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     }
 
     // Case1: Perform priority
-    let take_action = !matches.get_flag("no-action");
+    let take_action = !settings.no_action;
     if let Some(targets) = settings.expressions {
         let priority_str = matches.get_one::<String>("priority").cloned();
 
@@ -104,14 +105,17 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         };
 
         let pids = collect_pids(&targets);
-        let results = perform_action(&pids, &priority, take_action);
+        let results = perform_action(&pids, &priority, take_action, settings.interactive);
 
         if results.iter().all(|it| it.is_none()) || results.is_empty() {
             return Err(USimpleError::new(1, "no process selection criteria"));
         }
 
-        if settings.verbose {
-            let output = construct_verbose_result(&pids, &results).trim().to_owned();
+        let error_only = settings.warnings || !settings.verbose;
+        if settings.verbose || settings.warnings {
+            let output = construct_verbose_result(&pids, &results, error_only, take_action)
+                .trim()
+                .to_owned();
             println!("{output}");
         } else if !take_action {
             pids.iter().for_each(|pid| println!("{pid}"));
@@ -121,15 +125,66 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     Ok(())
 }
 
+pub fn ask_user(pid: u32) -> bool {
+    let process = process_snapshot().process(Pid::from_u32(pid)).unwrap();
+
+    let tty = ProcessInformation::try_new(PathBuf::from_str(&format!("/proc/{pid}")).unwrap())
+        .map(|v| v.tty().to_string())
+        .unwrap_or(String::from("?"));
+
+    let user = process
+        .user_id()
+        .and_then(|uid| users().iter().find(|it| it.id() == uid))
+        .map(|it| it.name())
+        .unwrap_or("?")
+        .to_owned();
+
+    let cmd = process
+        .exe()
+        .and_then(|it| it.iter().next_back())
+        .unwrap_or("?".as_ref());
+    let cmd = cmd.to_str().unwrap();
+
+    // no newline at the end
+    print!("{tty:<8} {user:<8} {pid:<5} {cmd:<18} ? ");
+    std::io::stdout().flush().unwrap();
+    let mut input = String::new();
+    if std::io::stdin().read_line(&mut input).is_err() {
+        return false;
+    }
+    let input = input.trim();
+    if input.eq_ignore_ascii_case("y") || input.eq_ignore_ascii_case("yes") {
+        return true;
+    }
+
+    false
+}
+
 #[allow(unused)]
-pub fn construct_verbose_result(pids: &[u32], action_results: &[Option<ActionResult>]) -> String {
+pub fn construct_verbose_result(
+    pids: &[u32],
+    action_results: &[Option<ActionResult>],
+    error_only: bool,
+    take_action: bool,
+) -> String {
     let mut table = action_results
         .iter()
         .enumerate()
         .map(|(index, it)| (pids[index], it))
         .filter(|(_, it)| it.is_some())
+        .filter(|v| {
+            !error_only
+                || !take_action
+                || v.1
+                    .clone()
+                    .is_some_and(|v| v == ActionResult::PermissionDenied)
+        })
         .map(|(pid, action)| (pid, action.clone().unwrap()))
         .map(|(pid, action)| {
+            if !take_action && action == ActionResult::Success {
+                return (pid, None);
+            }
+
             let process = process_snapshot().process(Pid::from_u32(pid)).unwrap();
 
             let tty =
@@ -148,10 +203,20 @@ pub fn construct_verbose_result(pids: &[u32], action_results: &[Option<ActionRes
                 .unwrap_or("?".as_ref());
             let cmd = cmd.to_str().unwrap();
 
-            (tty, user, pid, cmd, action)
+            (pid, Some((tty, user, cmd, action)))
         })
-        .filter(|(tty, _, _, _, _)| tty.is_ok())
-        .map(|(tty, user, pid, cmd, action)| row![tty.unwrap().tty(), user, pid, cmd, action])
+        .filter(|(_, v)| match v {
+            None => true,
+            Some((tty, _, _, _)) => tty.is_ok(),
+        })
+        .map(|(pid, v)| match v {
+            None => {
+                row![pid]
+            }
+            Some((tty, user, cmd, action)) => {
+                row![tty.unwrap().tty(), user, pid, cmd, action]
+            }
+        })
         .collect::<Table>();
 
     table.set_format(*FORMAT_CLEAN);
