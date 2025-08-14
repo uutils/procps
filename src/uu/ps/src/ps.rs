@@ -11,7 +11,11 @@ mod sorting;
 
 use clap::crate_version;
 use clap::{Arg, ArgAction, ArgMatches, Command};
-use mapping::{collect_code_mapping, default_codes, default_mapping};
+use mapping::{
+    collect_code_mapping, default_codes, default_mapping, default_with_psr_codes,
+    extra_full_format_codes, full_format_codes, job_format_codes, signal_format_codes,
+    user_format_codes, vm_format_codes,
+};
 use parser::{parser, OptionalKeyValue};
 use prettytable::{format::consts::FORMAT_CLEAN, Row, Table};
 use std::{cell::RefCell, rc::Rc};
@@ -47,7 +51,21 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     };
 
     // Collect codes with order
-    let codes = if arg_formats.is_empty() {
+    let codes = if matches.get_flag("f") {
+        full_format_codes()
+    } else if matches.get_flag("F") {
+        extra_full_format_codes()
+    } else if matches.get_flag("j") {
+        job_format_codes()
+    } else if matches.get_flag("P") {
+        default_with_psr_codes()
+    } else if matches.get_flag("s") {
+        signal_format_codes()
+    } else if matches.get_flag("u") {
+        user_format_codes()
+    } else if matches.get_flag("v") {
+        vm_format_codes()
+    } else if arg_formats.is_empty() {
         default_codes()
     } else {
         arg_formats.iter().map(|it| it.key().to_owned()).collect()
@@ -164,6 +182,49 @@ pub fn uu_app() -> Command {
             //     .help("processes without controlling ttys")
             //     .allow_hyphen_values(true),
         ])
+        .arg(
+            Arg::new("f")
+                .short('f')
+                .action(ArgAction::SetTrue)
+                .help("full format listing"),
+        )
+        .arg(
+            Arg::new("F")
+                .short('F')
+                .action(ArgAction::SetTrue)
+                .help("extra full format listing"),
+        )
+        .arg(
+            Arg::new("j")
+                .short('j')
+                .action(ArgAction::SetTrue)
+                .help("job format"),
+        )
+        .arg(
+            Arg::new("P")
+                .short('P')
+                .action(ArgAction::SetTrue)
+                .help("add psr column"),
+        )
+        .arg(
+            Arg::new("s")
+                .short('s')
+                .action(ArgAction::SetTrue)
+                .help("signal format"),
+        )
+        // TODO: this can also be used with argument to filter by uid
+        .arg(
+            Arg::new("u")
+                .short('u')
+                .action(ArgAction::SetTrue)
+                .help("user format"),
+        )
+        .arg(
+            Arg::new("v")
+                .short('v')
+                .action(ArgAction::SetTrue)
+                .help("virtual memory format"),
+        )
         .arg(
             Arg::new("format")
                 .short('o')
