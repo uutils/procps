@@ -59,6 +59,29 @@ fn test_job_format() {
 
 #[test]
 #[cfg(target_os = "linux")]
+fn test_long_format() {
+    check_header(
+        "-l",
+        &[
+            "F", "S", "UID", "PID", "PPID", "C", "PRI", "NI", "ADDR", "SZ", "WCHAN", "TTY", "TIME",
+            "CMD",
+        ],
+    );
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_long_format_with_y() {
+    check_header(
+        "-ly",
+        &[
+            "S", "UID", "PID", "PPID", "C", "PRI", "NI", "RSS", "SZ", "WCHAN", "TTY", "TIME", "CMD",
+        ],
+    );
+}
+
+#[test]
+#[cfg(target_os = "linux")]
 fn test_psr_format() {
     check_header("-P", &["PID", "PSR", "TTY", "TIME", "CMD"]);
 }
@@ -93,6 +116,17 @@ fn test_virtual_memory_format() {
         "-v",
         &[
             "PID", "TTY", "STAT", "TIME", "MAJFL", "TRS", "DRS", "RSS", "%MEM", "COMMAND",
+        ],
+    );
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_register_format() {
+    check_header(
+        "-X",
+        &[
+            "PID", "STACKP", "ESP", "EIP", "TMOUT", "ALARM", "STAT", "TTY", "TIME", "COMMAND",
         ],
     );
 }

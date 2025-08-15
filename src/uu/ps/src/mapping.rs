@@ -51,6 +51,25 @@ pub(crate) fn job_format_codes() -> Vec<String> {
         .to_vec()
 }
 
+/// Returns the long format codes (for -l flag).
+pub(crate) fn long_format_codes() -> Vec<String> {
+    [
+        "f", "s", "uid", "pid", "ppid", "c", "pri", "ni", "addr", "sz", "wchan", "tname", "time",
+        "ucmd",
+    ]
+    .map(Into::into)
+    .to_vec()
+}
+
+/// Returns the modified long format codes (for -ly flags).
+pub(crate) fn long_y_format_codes() -> Vec<String> {
+    [
+        "s", "uid", "pid", "ppid", "c", "pri", "ni", "rss", "sz", "wchan", "tname", "time", "ucmd",
+    ]
+    .map(Into::into)
+    .to_vec()
+}
+
 /// Returns the default codes with PSR column (for -P flag).
 pub(crate) fn default_with_psr_codes() -> Vec<String> {
     ["pid", "psr", "tname", "time", "ucmd"]
@@ -85,6 +104,15 @@ pub(crate) fn vm_format_codes() -> Vec<String> {
     .to_vec()
 }
 
+/// Returns the register format codes (for -X flag).
+pub(crate) fn register_format_codes() -> Vec<String> {
+    [
+        "pid", "stackp", "esp", "eip", "tmout", "alarm", "stat", "tname", "time", "command",
+    ]
+    .map(Into::into)
+    .to_vec()
+}
+
 /// Collect mapping from argument
 pub(crate) fn default_mapping() -> HashMap<String, String> {
     let mut mapping = HashMap::new();
@@ -100,8 +128,10 @@ pub(crate) fn default_mapping() -> HashMap<String, String> {
     append("_right2", "R2R2R2R2");
     append("_unlimited", "U");
     append("_unlimited2", "U2");
+    append("addr", "ADDR"); // undocumented
     append("ag_id", "AGID");
     append("ag_nice", "AGNI");
+    append("alarm", "ALARM"); // undocumented
     append("args", "COMMAND");
     append("atime", "TIME");
     append("blocked", "BLOCKED");
@@ -259,6 +289,7 @@ pub(crate) fn default_mapping() -> HashMap<String, String> {
     append("time", "TIME");
     append("timens", "TIMENS");
     append("times", "TIME");
+    append("tmout", "TMOUT"); // undocumented
     append("tname", "TTY");
     append("tpgid", "TPGID");
     append("trs", "TRS");
