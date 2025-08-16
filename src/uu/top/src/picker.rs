@@ -27,6 +27,7 @@ pub(crate) fn pickers(fields: &[String]) -> Vec<Box<dyn Fn(u32) -> String>> {
             "USER" => helper(user),
             "PR" => helper(pr),
             "NI" => helper(ni),
+            "VIRT" => helper(virt),
             "RES" => helper(res),
             "SHR" => helper(shr),
             "S" => helper(s),
@@ -42,6 +43,16 @@ pub(crate) fn pickers(fields: &[String]) -> Vec<Box<dyn Fn(u32) -> String>> {
 #[inline]
 fn helper(f: impl Fn(u32) -> String + 'static) -> Box<dyn Fn(u32) -> String> {
     Box::new(f)
+}
+
+#[cfg(target_os = "linux")]
+fn format_memory(memory_b: u64) -> String {
+    let mem_mb = memory_b as f64 / bytesize::MIB as f64;
+    if mem_mb >= 10000.0 {
+        format!("{:.1}g", memory_b as f64 / bytesize::GIB as f64)
+    } else {
+        format!("{mem_mb:.1}m")
+    }
 }
 
 fn todo(_pid: u32) -> String {
@@ -133,10 +144,51 @@ fn ni(_pid: u32) -> String {
     "0".into()
 }
 
+#[cfg(target_os = "linux")]
+fn virt(pid: u32) -> String {
+    let binding = sysinfo().read().unwrap();
+    let Some(proc) = binding.process(Pid::from_u32(pid)) else {
+        return "0.0".into();
+    };
+    format_memory(proc.virtual_memory())
+}
+
+#[cfg(not(target_os = "linux"))]
+fn virt(_pid: u32) -> String {
+    "TODO".into()
+}
+
+#[cfg(target_os = "linux")]
+fn res(pid: u32) -> String {
+    let binding = sysinfo().read().unwrap();
+    let Some(proc) = binding.process(Pid::from_u32(pid)) else {
+        return "0.0".into();
+    };
+    format_memory(proc.memory())
+}
+
+#[cfg(not(target_os = "linux"))]
 fn res(_pid: u32) -> String {
     "TODO".into()
 }
 
+#[cfg(target_os = "linux")]
+fn shr(pid: u32) -> String {
+    let file_path = format!("/proc/{pid}/statm");
+    let Ok(file) = File::open(file_path) else {
+        return "0.0".into();
+    };
+    let content = read_to_string(file).unwrap();
+    let values = content.split_whitespace();
+    if let Some(shared) = values.collect::<Vec<_>>().get(2) {
+        let page_size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) };
+        format_memory(shared.parse::<u64>().unwrap() * page_size as u64)
+    } else {
+        "0.0".into()
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
 fn shr(_pid: u32) -> String {
     "TODO".into()
 }
