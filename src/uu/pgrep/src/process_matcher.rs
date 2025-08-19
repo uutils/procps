@@ -23,7 +23,7 @@ use uucore::{
 
 use uucore::error::{UResult, USimpleError};
 
-use crate::process::{walk_process, walk_threads, ProcessInformation, Teletype};
+use crate::process::{walk_process, walk_threads, Namespace, ProcessInformation, Teletype};
 
 pub struct Settings {
     pub regex: Regex,
@@ -47,6 +47,7 @@ pub struct Settings {
     pub pgroup: Option<HashSet<u64>>,
     pub session: Option<HashSet<u64>>,
     pub cgroup: Option<HashSet<String>>,
+    pub namespaces: Option<Namespace>,
     pub env: Option<HashSet<String>>,
     pub threads: bool,
 
@@ -112,6 +113,17 @@ pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
         cgroup: matches
             .get_many::<String>("cgroup")
             .map(|groups| groups.cloned().collect()),
+        namespaces: matches
+            .get_one::<usize>("ns")
+            .map(|pid| {
+                get_namespaces(
+                    *pid,
+                    matches
+                        .get_many::<String>("nslist")
+                        .map(|v| v.into_iter().map(|s| s.as_str()).collect()),
+                )
+            })
+            .transpose()?,
         env: matches
             .get_many::<String>("env")
             .map(|env_vars| env_vars.cloned().collect()),
@@ -133,6 +145,7 @@ pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
         && settings.pgroup.is_none()
         && settings.session.is_none()
         && settings.cgroup.is_none()
+        && settings.namespaces.is_none()
         && settings.env.is_none()
         && !settings.require_handler
         && settings.pidfile.is_none()
@@ -216,6 +229,22 @@ fn get_ancestors(process_infos: &mut [ProcessInformation], mut pid: usize) -> Ha
     ret
 }
 
+#[cfg(target_os = "linux")]
+fn get_namespaces(pid: usize, list: Option<Vec<&str>>) -> UResult<Namespace> {
+    let mut ns = Namespace::from_pid(pid)
+        .map_err(|_| USimpleError::new(1, "Error reading reference namespace information"))?;
+    if let Some(list) = list {
+        ns.filter(&list);
+    }
+
+    Ok(ns)
+}
+
+#[cfg(not(target_os = "linux"))]
+fn get_namespaces(_pid: usize, _list: Option<Vec<&str>>) -> UResult<Namespace> {
+    Ok(Namespace::new())
+}
+
 /// Collect pids with filter construct from command line arguments
 fn collect_matched_pids(settings: &Settings) -> UResult<Vec<ProcessInformation>> {
     // Filtration general parameters
@@ -283,6 +312,10 @@ fn collect_matched_pids(settings: &Settings) -> UResult<Vec<ProcessInformation>>
                 &settings.cgroup,
                 pid.cgroup_v2_path().unwrap_or("/".to_string()),
             );
+            let namespace_matched = settings
+                .namespaces
+                .as_ref()
+                .is_none_or(|ns| ns.matches(&pid.namespaces().unwrap_or_default()));
 
             let env_matched = match &settings.env {
                 Some(env_filters) => {
@@ -331,6 +364,7 @@ fn collect_matched_pids(settings: &Settings) -> UResult<Vec<ProcessInformation>>
                 && pgroup_matched
                 && session_matched
                 && cgroup_matched
+                && namespace_matched
                 && env_matched
                 && ids_matched
                 && handler_matched
@@ -552,10 +586,11 @@ pub fn clap_args(pattern_help: &'static str, enable_v_flag: bool) -> Vec<Arg> {
         arg!(-A --"ignore-ancestors"   "exclude our ancestors from results"),
         arg!(--cgroup <grp>            "match by cgroup v2 names").value_delimiter(','),
         arg!(--env <"name[=val],...">      "match on environment variable").value_delimiter(','),
-        // arg!(--ns <PID>                "match the processes that belong to the same namespace as <pid>"),
-        // arg!(--nslist <ns>             "list which namespaces will be considered for the --ns option.")
-        //     .value_delimiter(',')
-        //     .value_parser(["ipc", "mnt", "net", "pid", "user", "uts"]),
+        arg!(--ns <PID>                "match the processes that belong to the same namespace as <pid>")
+            .value_parser(clap::value_parser!(usize)),
+        arg!(--nslist <ns>             "list which namespaces will be considered for the --ns option.")
+            .value_delimiter(',')
+            .value_parser(["ipc", "mnt", "net", "pid", "user", "uts"]),
         Arg::new("pattern")
             .help(pattern_help)
             .action(ArgAction::Append)
