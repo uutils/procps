@@ -17,6 +17,8 @@ clap = { workspace = true }
 terminal_size = { workspace = true }
 uucore = { workspace = true, features = ["custom-tz-fmt"] }
 
+uu_slabtop = {path = "../slabtop"}
+
 [lib]
 path = "src/vmstat.rs"
 

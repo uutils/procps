@@ -31,7 +31,7 @@ pub(crate) fn collect_pickers(
             "uid" | "euid" => pickers.push(helper(euid)),
             "ruid" => pickers.push(helper(ruid)),
             "suid" => pickers.push(helper(suid)),
-            "user" | "euser" => pickers.push(helper(euser)),
+            "uid_hack" | "user" | "euser" => pickers.push(helper(euser)),
             "ruser" => pickers.push(helper(ruser)),
             "suser" => pickers.push(helper(suser)),
             "pgid" => pickers.push(helper(pgid)),

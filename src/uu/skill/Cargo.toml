@@ -1,0 +1,26 @@
+[package]
+name = "uu_skill"
+description = "skill - (uutils) send a signal or report process status"
+repository = "https://github.com/uutils/procps/tree/main/src/uu/skill"
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+uucore = { workspace = true, features = ["signals"] }
+clap = { workspace = true }
+nix = { workspace = true }
+
+uu_snice = { path = "../snice" }
+
+
+[lib]
+path = "src/skill.rs"
+
+[[bin]]
+name = "skill"
+path = "src/main.rs"

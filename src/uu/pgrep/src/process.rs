@@ -218,6 +218,106 @@ impl TryFrom<&str> for CgroupMembership {
     }
 }
 
+// See https://www.man7.org/linux/man-pages/man7/namespaces.7.html
+#[derive(Default)]
+pub struct Namespace {
+    pub ipc: Option<String>,
+    pub mnt: Option<String>,
+    pub net: Option<String>,
+    pub pid: Option<String>,
+    pub user: Option<String>,
+    pub uts: Option<String>,
+}
+
+impl Namespace {
+    pub fn new() -> Self {
+        Namespace {
+            ipc: None,
+            mnt: None,
+            net: None,
+            pid: None,
+            user: None,
+            uts: None,
+        }
+    }
+
+    pub fn from_pid(pid: usize) -> Result<Self, io::Error> {
+        let mut ns = Namespace::new();
+        let path = PathBuf::from(format!("/proc/{pid}/ns"));
+        for entry in fs::read_dir(path)? {
+            let entry = entry?;
+            if let Some(name) = entry.file_name().to_str() {
+                if let Ok(value) = read_link(entry.path()) {
+                    match name {
+                        "ipc" => ns.ipc = Some(value.to_str().unwrap_or_default().to_string()),
+                        "mnt" => ns.mnt = Some(value.to_str().unwrap_or_default().to_string()),
+                        "net" => ns.net = Some(value.to_str().unwrap_or_default().to_string()),
+                        "pid" => ns.pid = Some(value.to_str().unwrap_or_default().to_string()),
+                        "user" => ns.user = Some(value.to_str().unwrap_or_default().to_string()),
+                        "uts" => ns.uts = Some(value.to_str().unwrap_or_default().to_string()),
+                        _ => {}
+                    }
+                }
+            }
+        }
+        Ok(ns)
+    }
+
+    pub fn filter(&mut self, filters: &[&str]) {
+        if !filters.contains(&"ipc") {
+            self.ipc = None;
+        }
+        if !filters.contains(&"mnt") {
+            self.mnt = None;
+        }
+        if !filters.contains(&"net") {
+            self.net = None;
+        }
+        if !filters.contains(&"pid") {
+            self.pid = None;
+        }
+        if !filters.contains(&"user") {
+            self.user = None;
+        }
+        if !filters.contains(&"uts") {
+            self.uts = None;
+        }
+    }
+
+    pub fn matches(&self, ns: &Namespace) -> bool {
+        ns.ipc.is_some()
+            && self
+                .ipc
+                .as_ref()
+                .is_some_and(|v| v == ns.ipc.as_ref().unwrap())
+            || ns.mnt.is_some()
+                && self
+                    .mnt
+                    .as_ref()
+                    .is_some_and(|v| v == ns.mnt.as_ref().unwrap())
+            || ns.net.is_some()
+                && self
+                    .net
+                    .as_ref()
+                    .is_some_and(|v| v == ns.net.as_ref().unwrap())
+            || ns.pid.is_some()
+                && self
+                    .pid
+                    .as_ref()
+                    .is_some_and(|v| v == ns.pid.as_ref().unwrap())
+            || ns.user.is_some()
+                && self
+                    .user
+                    .as_ref()
+                    .is_some_and(|v| v == ns.user.as_ref().unwrap())
+            || ns.uts.is_some()
+                && self
+                    .uts
+                    .as_ref()
+                    .is_some_and(|v| v == ns.uts.as_ref().unwrap())
+    }
+}
+
 /// Process ID and its information
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ProcessInformation {
@@ -552,6 +652,10 @@ impl ProcessInformation {
 
         Ok(env_vars)
     }
+
+    pub fn namespaces(&self) -> Result<Namespace, io::Error> {
+        Namespace::from_pid(self.pid)
+    }
 }
 impl TryFrom<DirEntry> for ProcessInformation {
     type Error = io::Error;
@@ -752,6 +856,20 @@ mod tests {
                 assert_eq!(pid_entry.cgroup_v2_path().unwrap(), "/init.scope");
             }
         }
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn test_namespaces() {
+        let pid_entry = ProcessInformation::current_process_info().unwrap();
+        let namespaces = pid_entry.namespaces().unwrap();
+
+        assert!(namespaces.ipc.is_some());
+        assert!(namespaces.mnt.is_some());
+        assert!(namespaces.net.is_some());
+        assert!(namespaces.pid.is_some());
+        assert!(namespaces.user.is_some());
+        assert!(namespaces.uts.is_some());
     }
 
     #[test]

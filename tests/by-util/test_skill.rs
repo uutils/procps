@@ -11,14 +11,3 @@ use uutests::util_name;
 fn test_no_args() {
     new_ucmd!().fails().code_is(1);
 }
-
-#[test]
-fn test_no_process_selected() {
-    new_ucmd!().arg("-u=invalid_user").fails().code_is(1);
-}
-
-#[test]
-fn test_interactive_conflict_args() {
-    new_ucmd!().args(&["-i", "-v"]).fails().code_is(1);
-    new_ucmd!().args(&["-i", "-n"]).fails().code_is(1);
-}

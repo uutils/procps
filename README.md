@@ -20,6 +20,7 @@ Ongoing:
 * `pmap`: Displays the memory map of a process.
 * `ps`: Displays information about active processes.
 * `pwdx`: Shows the current working directory of a process.
+* `skill`: Sends a signal to processes based on criteria like user, terminal, etc.
 * `slabtop`: Displays detailed kernel slab cache information in real time.
 * `snice`: Changes the scheduling priority of a running process.
 * `sysctl`: Read or write kernel parameters at run-time.
@@ -31,7 +32,6 @@ Ongoing:
 
 TODO:
 * `hugetop`: Report hugepage usage of processes and the system as a whole.
-* `skill`: Sends a signal to processes based on criteria like user, terminal, etc.
 
 Elsewhere:
 

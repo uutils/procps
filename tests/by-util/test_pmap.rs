@@ -264,8 +264,8 @@ fn test_device_permission_denied() {
 fn test_quiet() {
     let pid = process::id();
 
-    for arg in ["-q", "--quiet"] {
-        _test_multiple_formats(pid, arg, true, false);
+    for args in [&["-q"], &["--quiet"]] {
+        _test_multiple_formats(pid, args, true, false);
     }
 }
 
@@ -274,8 +274,8 @@ fn test_quiet() {
 fn test_showpath() {
     let pid = process::id();
 
-    for arg in ["-p", "--show-path"] {
-        _test_multiple_formats(pid, arg, false, true);
+    for args in [&["-p"], &["--show-path"]] {
+        _test_multiple_formats(pid, args, false, true);
     }
 }
 
@@ -284,16 +284,26 @@ fn test_showpath() {
 fn test_quiet_showpath() {
     let pid = process::id();
 
-    for arg in ["-qp", "-pq"] {
-        _test_multiple_formats(pid, arg, true, true);
+    for args in [&["-qp"], &["-pq"]] {
+        _test_multiple_formats(pid, args, true, true);
+    }
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_range() {
+    let pid = process::id();
+
+    for args in [&["-A", ","], &["--range", ","]] {
+        _test_multiple_formats(pid, args, false, false);
     }
 }
 
 #[cfg(target_os = "linux")]
-fn _test_multiple_formats(pid: u32, arg: &str, quiet: bool, show_path: bool) {
+fn _test_multiple_formats(pid: u32, args: &[&str], quiet: bool, show_path: bool) {
     // default format
     let result = new_ucmd!()
-        .arg(arg)
+        .args(args)
         .arg(pid.to_string())
         .succeeds()
         .stdout_move_str();
@@ -302,7 +312,7 @@ fn _test_multiple_formats(pid: u32, arg: &str, quiet: bool, show_path: bool) {
 
     // extended format
     let result = new_ucmd!()
-        .arg(arg)
+        .args(args)
         .arg("--extended")
         .arg(pid.to_string())
         .succeeds()
@@ -312,7 +322,7 @@ fn _test_multiple_formats(pid: u32, arg: &str, quiet: bool, show_path: bool) {
 
     // more-extended format
     let result = new_ucmd!()
-        .arg(arg)
+        .args(args)
         .arg("-X")
         .arg(pid.to_string())
         .succeeds()
@@ -322,7 +332,7 @@ fn _test_multiple_formats(pid: u32, arg: &str, quiet: bool, show_path: bool) {
 
     // most-extended format
     let result = new_ucmd!()
-        .arg(arg)
+        .args(args)
         .arg("--XX")
         .arg(pid.to_string())
         .succeeds()
@@ -332,13 +342,68 @@ fn _test_multiple_formats(pid: u32, arg: &str, quiet: bool, show_path: bool) {
 
     // device format
     let result = new_ucmd!()
-        .arg(arg)
+        .args(args)
         .arg("--device")
         .arg(pid.to_string())
         .succeeds()
         .stdout_move_str();
 
     assert_device_format(pid, &result, quiet, show_path);
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_range_arg() {
+    let pid_s = process::id().to_string();
+
+    for opt in ["-A", "--range"] {
+        // option without an argument
+        new_ucmd!().arg(&pid_s).arg(opt).fails().code_is(1);
+
+        // valid arguments
+        for arg in [
+            ",",
+            "c00fee",
+            "c00fee,",
+            ",c00fee",
+            "c00,fee",
+            "0",
+            "0,",
+            ",0",
+            "0,0",
+            "ffffffffffffffff",
+            "ffffffffffffffff,",
+            ",ffffffffffffffff",
+            "ffffffffffffffff,ffffffffffffffff",
+        ] {
+            new_ucmd!().arg(&pid_s).arg(opt).arg(arg).succeeds();
+        }
+
+        // invalid arguments
+        for arg in [
+            // white spaces
+            ", ",
+            " ,",
+            " , ",
+            "bad ",
+            " bad",
+            // multiple commas
+            ",,",
+            ",bad,",
+            // underscore separator
+            "bad_beef",
+            // non-numeric value
+            "someinvalidtext",
+            "someinvalidtext,",
+            ",someinvalidtext",
+            "someinvalidtext,someinvalidtext",
+            // too large value (> u64)
+            "f0000000000000000",
+            "f0000000000000000,f0000000000000000",
+        ] {
+            new_ucmd!().arg(&pid_s).arg(opt).arg(arg).fails().code_is(1);
+        }
+    }
 }
 
 #[test]
@@ -450,13 +515,13 @@ fn assert_extended_format(pid: u32, s: &str, quiet: bool, show_path: bool) {
 // Ensure `s` has the following more extended format (-X):
 //
 // 1234:   /some/path
-//          Address Perm           Offset    Device      Inode Size  Rss  Pss Pss_Dirty Referenced Anonymous LazyFree ShmemPmdMapped FilePmdMapped Shared_Hugetlb Private_Hugetlb Swap SwapPss Locked THPeligible Mapping
-// 000073eb5f4c7000 r-xp 0000000000036000 008:00008    2274176 1284 1148 1148         0       1148         0        0              0             0              0               0    0       0      0           0 ld-linux-x86-64.so.2
-// 00007ffd588fc000 r--p 0000000000000000 000:00000    2274176   20   20   20        20         20        20        0              0             0              0               0    0       0      0           0 [stack]
-// ffffffffff600000 rw-p 0000000000000000 000:00000    2274176   36   36   36        36         36        36        0              0             0              0               0    0       0      0           0 (one intentional trailing space)
+//          Address Perm   Offset Device   Inode Size  Rss  Pss Pss_Dirty Referenced Anonymous LazyFree ShmemPmdMapped FilePmdMapped Shared_Hugetlb Private_Hugetlb Swap SwapPss Locked THPeligible Mapping
+//     73eb5f4c7000 r-xp 00036000  08:08 2274176 1284 1148 1148         0       1148         0        0              0             0              0               0    0       0      0           0 ld-linux-x86-64.so.2
+//     7ffd588fc000 r--p 00000000  00:00 2274176   20   20   20        20         20        20        0              0             0              0               0    0       0      0           0 [stack]
+// ffffffffff600000 rw-p 00000000  00:00 2274176   36   36   36        36         36        36        0              0             0              0               0    0       0      0           0 (one intentional trailing space)
 // ...
-//                                                             ==== ==== ==== ========= ========== ========= ======== ============== ============= ============== =============== ==== ======= ====== =========== (one intentional trailing space)
-//                                                             4164 3448 2826       552       3448       552        0              0             0              0               0    0       0      0           0 KB (one intentional trailing space)
+//                                               ==== ==== ==== ========= ========== ========= ======== ============== ============= ============== =============== ==== ======= ====== =========== (one intentional trailing space)
+//                                               4164 3448 2826       552       3448       552        0              0             0              0               0    0       0      0           0 KB (one intentional trailing space)
 #[cfg(target_os = "linux")]
 fn assert_more_extended_format(pid: u32, s: &str, quiet: bool, show_path: bool) {
     let lines: Vec<_> = s.lines().collect();
@@ -466,11 +531,11 @@ fn assert_more_extended_format(pid: u32, s: &str, quiet: bool, show_path: bool) 
     assert!(re.is_match(lines[0]));
 
     if !quiet {
-        let re = Regex::new(r"^         Address Perm           Offset    Device      Inode +Size +Rss +Pss +Pss_Dirty +Referenced +Anonymous( +KSM)? +LazyFree +ShmemPmdMapped +FilePmdMapped +Shared_Hugetlb +Private_Hugetlb +Swap +SwapPss +Locked +THPeligible( +ProtectionKey)? +Mapping$").unwrap();
+        let re = Regex::new(r"^         Address Perm   Offset +Device +Inode +Size +Rss +Pss +Pss_Dirty +Referenced +Anonymous( +KSM)? +LazyFree +ShmemPmdMapped +FilePmdMapped +Shared_Hugetlb +Private_Hugetlb +Swap +SwapPss +Locked +THPeligible( +ProtectionKey)? +Mapping$").unwrap();
         assert!(re.is_match(lines[1]), "failing line: '{}'", lines[1]);
     }
 
-    let base_pattern = r"^[0-9a-f]{16} (-|r)(-|w)(-|x)(p|s) [0-9a-f]{16} [0-9a-f]{3}:[0-9a-f]{5} +\d+ +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)?";
+    let base_pattern = r"^[ 0-9a-f]{16} (-|r)(-|w)(-|x)(p|s) [0-9a-f]{8} +[0-9a-f]+:[0-9a-f]+ +\d+ +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)?";
     let mapping_pattern = if show_path {
         r" (|\[[a-zA-Z_ ]+\]|/[/a-zA-Z0-9._-]+)$"
     } else {
@@ -487,14 +552,14 @@ fn assert_more_extended_format(pid: u32, s: &str, quiet: bool, show_path: bool) 
             assert!(re.is_match(line), "failing line: '{line}'");
         }
 
-        let re = Regex::new(r"^                                                            +=+ =+ =+ =+ =+ =+( =+)? =+ =+ =+ =+ =+ =+ =+ =+ =+( =+)? $").unwrap();
+        let re = Regex::new(r"^                                         +=+ =+ =+ =+ =+ =+( =+)? =+ =+ =+ =+ =+ =+ =+ =+ =+( =+)? $").unwrap();
         assert!(
             re.is_match(lines[line_count - 2]),
             "failing line: '{}'",
             lines[line_count - 2]
         );
 
-        let re = Regex::new(r"^                                                            +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? KB $").unwrap();
+        let re = Regex::new(r"^                                         +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? KB $").unwrap();
         assert!(
             re.is_match(lines[line_count - 1]),
             "failing line: '{}'",
@@ -506,13 +571,13 @@ fn assert_more_extended_format(pid: u32, s: &str, quiet: bool, show_path: bool) 
 // Ensure `s` has the following most extended format (--XX):
 //
 // 1234:   /some/path
-//          Address Perm           Offset    Device      Inode Size KernelPageSize MMUPageSize  Rss  Pss Pss_Dirty Shared_Clean Shared_Dirty Private_Clean Private_Dirty Referenced Anonymous LazyFree AnonHugePages ShmemPmdMapped FilePmdMapped Shared_Hugetlb Private_Hugetlb Swap SwapPss Locked THPeligible              VmFlags Mapping
-// 000073eb5f4c7000 r-xp 0000000000036000 008:00008    2274176 1284              4           4 1148 1148         0            0            0          1148             0       1148         0        0             0              0             0              0               0    0       0      0           0       rd ex mr mw me ld-linux-x86-64.so.2
-// 00007ffd588fc000 r--p 0000000000000000 000:00000    2274176   20              4           4   20   20        20            0            0             0            20         20        20        0             0              0             0              0               0    0       0      0           0       rd mr mw me ac [stack]
-// ffffffffff600000 rw-p 0000000000000000 000:00000    2274176   36              4           4   36   36        36            0            0             0            36         36        36        0             0              0             0              0               0    0       0      0           0    rd wr mr mw me ac (one intentional trailing space)
+//          Address Perm   Offset Device   Inode Size KernelPageSize MMUPageSize  Rss  Pss Pss_Dirty Shared_Clean Shared_Dirty Private_Clean Private_Dirty Referenced Anonymous LazyFree AnonHugePages ShmemPmdMapped FilePmdMapped Shared_Hugetlb Private_Hugetlb Swap SwapPss Locked THPeligible              VmFlags Mapping
+//     73eb5f4c7000 r-xp 00036000  08:08 2274176 1284              4           4 1148 1148         0            0            0          1148             0       1148         0        0             0              0             0              0               0    0       0      0           0       rd ex mr mw me ld-linux-x86-64.so.2
+//     7ffd588fc000 r--p 00000000  00:00 2274176   20              4           4   20   20        20            0            0             0            20         20        20        0             0              0             0              0               0    0       0      0           0       rd mr mw me ac [stack]
+// ffffffffff600000 rw-p 00000000  00:00 2274176   36              4           4   36   36        36            0            0             0            36         36        36        0             0              0             0              0               0    0       0      0           0    rd wr mr mw me ac (one intentional trailing space)
 // ...
-//                                                             ==== ============== =========== ==== ==== ========= ============ ============ ============= ============= ========== ========= ======== ============= ============== ============= ============== =============== ==== ======= ====== =========== (one intentional trailing space)
-//                                                             4164             92          92 3448 2880       552         1132            0          1764           552       3448       552        0             0              0             0              0               0    0       0      0           0 KB (one intentional trailing space)
+//                                               ==== ============== =========== ==== ==== ========= ============ ============ ============= ============= ========== ========= ======== ============= ============== ============= ============== =============== ==== ======= ====== =========== (one intentional trailing space)
+//                                               4164             92          92 3448 2880       552         1132            0          1764           552       3448       552        0             0              0             0              0               0    0       0      0           0 KB (one intentional trailing space)
 #[cfg(target_os = "linux")]
 fn assert_most_extended_format(pid: u32, s: &str, quiet: bool, show_path: bool) {
     let lines: Vec<_> = s.lines().collect();
@@ -522,11 +587,11 @@ fn assert_most_extended_format(pid: u32, s: &str, quiet: bool, show_path: bool) 
     assert!(re.is_match(lines[0]));
 
     if !quiet {
-        let re = Regex::new(r"^         Address Perm           Offset    Device      Inode +Size +KernelPageSize +MMUPageSize +Rss +Pss +Pss_Dirty +Shared_Clean +Shared_Dirty +Private_Clean +Private_Dirty +Referenced +Anonymous( +KSM)? +LazyFree +AnonHugePages +ShmemPmdMapped +FilePmdMapped +Shared_Hugetlb +Private_Hugetlb +Swap +SwapPss +Locked +THPeligible( +ProtectionKey)? +VmFlags +Mapping$").unwrap();
+        let re = Regex::new(r"^         Address Perm   Offset +Device +Inode +Size +KernelPageSize +MMUPageSize +Rss +Pss +Pss_Dirty +Shared_Clean +Shared_Dirty +Private_Clean +Private_Dirty +Referenced +Anonymous( +KSM)? +LazyFree +AnonHugePages +ShmemPmdMapped +FilePmdMapped +Shared_Hugetlb +Private_Hugetlb +Swap +SwapPss +Locked +THPeligible( +ProtectionKey)? +VmFlags +Mapping$").unwrap();
         assert!(re.is_match(lines[1]), "failing line: '{}'", lines[1]);
     }
 
-    let base_pattern = r"^[0-9a-f]{16} (-|r)(-|w)(-|x)(p|s) [0-9a-f]{16} [0-9a-f]{3}:[0-9a-f]{5} +\d+ +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +([a-z][a-z] )*";
+    let base_pattern = r"^[ 0-9a-f]{16} (-|r)(-|w)(-|x)(p|s) [0-9a-f]{8} +[0-9a-f]+:[0-9a-f]+ +\d+ +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +([a-z][a-z] )*";
     let mapping_pattern = if show_path {
         r"(|\[[a-zA-Z_ ]+\]|/[/a-zA-Z0-9._-]+)$"
     } else {
@@ -543,14 +608,14 @@ fn assert_most_extended_format(pid: u32, s: &str, quiet: bool, show_path: bool) 
             assert!(re.is_match(line), "failing line: '{line}'");
         }
 
-        let re = Regex::new(r"^                                                            +=+ =+ =+ =+ =+ =+ =+ =+ =+ =+ =+ =+( =+)? =+ =+ =+ =+ =+ =+ =+ =+ =+ =+( =+)? $").unwrap();
+        let re = Regex::new(r"^                                         +=+ =+ =+ =+ =+ =+ =+ =+ =+ =+ =+ =+( =+)? =+ =+ =+ =+ =+ =+ =+ =+ =+ =+( =+)? $").unwrap();
         assert!(
             re.is_match(lines[line_count - 2]),
             "failing line: '{}'",
             lines[line_count - 2]
         );
 
-        let re = Regex::new(r"^                                                            +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? KB $").unwrap();
+        let re = Regex::new(r"^                                         +[1-9][0-9]* +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+ +\d+( +\d+)? KB $").unwrap();
         assert!(
             re.is_match(lines[line_count - 1]),
             "failing line: '{}'",
