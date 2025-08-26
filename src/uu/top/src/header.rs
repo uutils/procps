@@ -4,34 +4,36 @@
 // file that was distributed with this source code.
 
 use crate::picker::sysinfo;
+use crate::platform::*;
+use crate::{CpuGraphMode, CpuValueMode, Settings};
 use bytesize::ByteSize;
+use uu_vmstat::CpuLoad;
 use uu_w::get_formatted_uptime_procps;
 use uucore::uptime::{get_formatted_loadavg, get_formatted_nusers, get_formatted_time};
 
-pub(crate) fn header(scale_summary_mem: Option<&String>) -> String {
-    format!(
-        "top - {time} {uptime}, {user}, {load_average}\n\
-        {task}\n\
-        {cpu}\n\
-        {memory}",
+pub(crate) fn header(settings: &Settings) -> String {
+    let uptime_line = format!(
+        "top - {time} {uptime}, {user}, {load_average}\n",
         time = get_formatted_time(),
         uptime = uptime(),
         user = user(),
         load_average = load_average(),
-        task = task(),
-        cpu = cpu(),
-        memory = memory(scale_summary_mem),
-    )
-}
+    );
 
-#[cfg(target_os = "linux")]
-extern "C" {
-    pub fn sd_booted() -> libc::c_int;
-    pub fn sd_get_sessions(sessions: *mut *mut *mut libc::c_char) -> libc::c_int;
-    pub fn sd_session_get_class(
-        session: *const libc::c_char,
-        class: *mut *mut libc::c_char,
-    ) -> libc::c_int;
+    let task_and_cpu = if settings.cpu_graph_mode == CpuGraphMode::Hide {
+        String::new()
+    } else {
+        format!(
+            "{task}\n\
+            {cpu}\n",
+            task = task(),
+            cpu = cpu(settings),
+        )
+    };
+
+    let memory_line = memory(settings.scale_summary_mem.as_ref());
+
+    format!("{uptime_line}{task_and_cpu}{memory_line}")
 }
 
 fn format_memory(memory_b: u64, unit: u64) -> f64 {
@@ -41,53 +43,6 @@ fn format_memory(memory_b: u64, unit: u64) -> f64 {
 #[inline]
 fn uptime() -> String {
     get_formatted_uptime_procps().unwrap_or_default()
-}
-
-#[cfg(target_os = "linux")]
-pub fn get_nusers_systemd() -> uucore::error::UResult<usize> {
-    use std::ffi::CStr;
-    use std::ptr;
-    use uucore::error::USimpleError;
-    use uucore::libc::*;
-
-    // SAFETY: sd_booted to check if system is booted with systemd.
-    unsafe {
-        // systemd
-        if sd_booted() > 0 {
-            let mut sessions_list: *mut *mut c_char = ptr::null_mut();
-            let mut num_user = 0;
-            let sessions = sd_get_sessions(&mut sessions_list);
-
-            if sessions > 0 {
-                for i in 0..sessions {
-                    let mut class: *mut c_char = ptr::null_mut();
-
-                    if sd_session_get_class(
-                        *sessions_list.add(i as usize) as *const c_char,
-                        &mut class,
-                    ) < 0
-                    {
-                        continue;
-                    }
-                    if CStr::from_ptr(class).to_str().unwrap().starts_with("user") {
-                        num_user += 1;
-                    }
-                    free(class as *mut c_void);
-                }
-            }
-
-            for i in 0..sessions {
-                free(*sessions_list.add(i as usize) as *mut c_void);
-            }
-            free(sessions_list as *mut c_void);
-
-            return Ok(num_user);
-        }
-    }
-    Err(USimpleError::new(
-        1,
-        "could not retrieve number of logged users",
-    ))
 }
 
 // see: https://gitlab.com/procps-ng/procps/-/blob/4740a0efa79cade867cfc7b32955fe0f75bf5173/library/uptime.c#L63-L115
@@ -133,91 +88,84 @@ fn task() -> String {
     )
 }
 
-#[cfg(target_os = "linux")]
-fn cpu() -> String {
-    let cpu_load = uu_vmstat::CpuLoad::current();
+fn sum_cpu_loads(cpu_loads: &[uu_vmstat::CpuLoadRaw]) -> uu_vmstat::CpuLoadRaw {
+    let mut total = uu_vmstat::CpuLoadRaw {
+        user: 0,
+        nice: 0,
+        system: 0,
+        idle: 0,
+        io_wait: 0,
+        hardware_interrupt: 0,
+        software_interrupt: 0,
+        steal_time: 0,
+        guest: 0,
+        guest_nice: 0,
+    };
 
-    format!(
-        "%Cpu(s):  {:.1} us, {:.1} sy, {:.1} ni, {:.1} id, {:.1} wa, {:.1} hi, {:.1} si, {:.1} st",
-        cpu_load.user,
-        cpu_load.system,
-        cpu_load.nice,
-        cpu_load.idle,
-        cpu_load.io_wait,
-        cpu_load.hardware_interrupt,
-        cpu_load.software_interrupt,
-        cpu_load.steal_time,
-    )
-}
-
-#[cfg(target_os = "windows")]
-fn cpu() -> String {
-    use libc::malloc;
-    use windows_sys::Wdk::System::SystemInformation::NtQuerySystemInformation;
-
-    #[repr(C)]
-    #[derive(Debug)]
-    struct SystemProcessorPerformanceInformation {
-        idle_time: i64,       // LARGE_INTEGER
-        kernel_time: i64,     // LARGE_INTEGER
-        user_time: i64,       // LARGE_INTEGER
-        dpc_time: i64,        // LARGE_INTEGER
-        interrupt_time: i64,  // LARGE_INTEGER
-        interrupt_count: u32, // ULONG
+    for load in cpu_loads {
+        total.user += load.user;
+        total.nice += load.nice;
+        total.system += load.system;
+        total.idle += load.idle;
+        total.io_wait += load.io_wait;
+        total.hardware_interrupt += load.hardware_interrupt;
+        total.software_interrupt += load.software_interrupt;
+        total.steal_time += load.steal_time;
+        total.guest += load.guest;
+        total.guest_nice += load.guest_nice;
     }
 
-    let n_cpu = sysinfo().read().unwrap().cpus().len();
-    let mut cpu_load = SystemProcessorPerformanceInformation {
-        idle_time: 0,
-        kernel_time: 0,
-        user_time: 0,
-        dpc_time: 0,
-        interrupt_time: 0,
-        interrupt_count: 0,
-    };
-    // SAFETY: malloc is safe to use here. We free the memory after we are done with it. If action fails, all "time" will be 0.
-    unsafe {
-        let len = n_cpu * size_of::<SystemProcessorPerformanceInformation>();
-        let data = malloc(len);
-        let status = NtQuerySystemInformation(
-            windows_sys::Wdk::System::SystemInformation::SystemProcessorPerformanceInformation,
-            data,
-            (n_cpu * size_of::<SystemProcessorPerformanceInformation>()) as u32,
-            std::ptr::null_mut(),
-        );
-        if status == 0 {
-            for i in 0..n_cpu {
-                let cpu = data.add(i * size_of::<SystemProcessorPerformanceInformation>())
-                    as *const SystemProcessorPerformanceInformation;
-                let cpu = cpu.as_ref().unwrap();
-                cpu_load.idle_time += cpu.idle_time;
-                cpu_load.kernel_time += cpu.kernel_time;
-                cpu_load.user_time += cpu.user_time;
-                cpu_load.dpc_time += cpu.dpc_time;
-                cpu_load.interrupt_time += cpu.interrupt_time;
-                cpu_load.interrupt_count += cpu.interrupt_count;
-            }
+    total
+}
+
+fn cpu(settings: &Settings) -> String {
+    if settings.cpu_graph_mode == CpuGraphMode::Hide {
+        return String::new();
+    }
+
+    let cpu_loads = get_cpu_loads();
+
+    match settings.cpu_value_mode {
+        CpuValueMode::PerCore => {
+            let lines = cpu_loads
+                .iter()
+                .enumerate()
+                .map(|(nth, cpu_load_raw)| {
+                    let cpu_load = CpuLoad::from_raw(cpu_load_raw);
+                    cpu_line(format!("Cpu{nth}").as_str(), &cpu_load, settings)
+                })
+                .collect::<Vec<String>>();
+            lines.join("\n")
+        }
+        CpuValueMode::Sum => {
+            let total = sum_cpu_loads(&cpu_loads);
+            let cpu_load = CpuLoad::from_raw(&total);
+            cpu_line("Cpu", &cpu_load, settings)
         }
     }
-    let total = cpu_load.idle_time
-        + cpu_load.kernel_time
-        + cpu_load.user_time
-        + cpu_load.dpc_time
-        + cpu_load.interrupt_time;
-    format!(
-        "%Cpu(s):  {:.1} us,  {:.1} sy,  {:.1} id,  {:.1} hi,  {:.1} si",
-        cpu_load.user_time as f64 / total as f64 * 100.0,
-        cpu_load.kernel_time as f64 / total as f64 * 100.0,
-        cpu_load.idle_time as f64 / total as f64 * 100.0,
-        cpu_load.interrupt_time as f64 / total as f64 * 100.0,
-        cpu_load.dpc_time as f64 / total as f64 * 100.0,
-    )
 }
 
-//TODO: Implement for macos
-#[cfg(target_os = "macos")]
-fn cpu() -> String {
-    "TODO".into()
+fn cpu_line(tag: &str, cpu_load: &CpuLoad, settings: &Settings) -> String {
+    if settings.cpu_graph_mode == CpuGraphMode::Hide {
+        return String::new();
+    }
+
+    if settings.cpu_graph_mode == CpuGraphMode::Sum {
+        return format!(
+            "%{tag:<6}:  {:.1} us, {:.1} sy, {:.1} ni, {:.1} id, {:.1} wa, {:.1} hi, {:.1} si, {:.1} st",
+            cpu_load.user,
+            cpu_load.system,
+            cpu_load.nice,
+            cpu_load.idle,
+            cpu_load.io_wait,
+            cpu_load.hardware_interrupt,
+            cpu_load.software_interrupt,
+            cpu_load.steal_time,
+        );
+    }
+
+    // TODO: render colored bar chart or block chart
+    format!("%{tag:<6}: {:>5.1}/{:<5.1}", cpu_load.user, cpu_load.system)
 }
 
 fn memory(scale_summary_mem: Option<&String>) -> String {
