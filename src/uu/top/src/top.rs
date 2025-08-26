@@ -49,6 +49,16 @@ enum CpuValueMode {
     Sum,
 }
 
+#[allow(unused)]
+#[derive(Debug, Default, PartialEq)]
+enum MemoryGraphMode {
+    #[default]
+    Block,
+    Bar,
+    Sum,
+    Hide,
+}
+
 #[derive(Debug)]
 pub(crate) struct Settings {
     // batch:bool
@@ -56,6 +66,7 @@ pub(crate) struct Settings {
     width: Option<usize>,
     cpu_graph_mode: CpuGraphMode,
     cpu_value_mode: CpuValueMode,
+    memory_graph_mode: MemoryGraphMode,
     scale_summary_mem: Option<String>,
 }
 
@@ -68,6 +79,7 @@ impl Settings {
             filter: None,
             cpu_graph_mode: CpuGraphMode::default(),
             cpu_value_mode: CpuValueMode::default(),
+            memory_graph_mode: MemoryGraphMode::default(),
             scale_summary_mem: matches.get_one::<String>("scale-summary-mem").cloned(),
         }
     }

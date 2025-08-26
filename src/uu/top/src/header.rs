@@ -5,7 +5,7 @@
 
 use crate::picker::sysinfo;
 use crate::platform::*;
-use crate::{CpuGraphMode, CpuValueMode, Settings};
+use crate::{CpuGraphMode, CpuValueMode, MemoryGraphMode, Settings};
 use bytesize::ByteSize;
 use uu_vmstat::CpuLoad;
 use uu_w::get_formatted_uptime_procps;
@@ -31,7 +31,11 @@ pub(crate) fn header(settings: &Settings) -> String {
         )
     };
 
-    let memory_line = memory(settings.scale_summary_mem.as_ref());
+    let memory_line = if settings.memory_graph_mode == MemoryGraphMode::Hide {
+        String::new()
+    } else {
+        memory(settings)
+    };
 
     format!("{uptime_line}{task_and_cpu}{memory_line}")
 }
@@ -168,9 +172,9 @@ fn cpu_line(tag: &str, cpu_load: &CpuLoad, settings: &Settings) -> String {
     format!("%{tag:<6}: {:>5.1}/{:<5.1}", cpu_load.user, cpu_load.system)
 }
 
-fn memory(scale_summary_mem: Option<&String>) -> String {
+fn memory(settings: &Settings) -> String {
     let binding = sysinfo().read().unwrap();
-    let (unit, unit_name) = match scale_summary_mem {
+    let (unit, unit_name) = match settings.scale_summary_mem.as_ref() {
         Some(scale) => match scale.as_str() {
             "k" => (bytesize::KIB, "KiB"),
             "m" => (bytesize::MIB, "MiB"),
@@ -183,17 +187,29 @@ fn memory(scale_summary_mem: Option<&String>) -> String {
         None => (bytesize::MIB, "MiB"),
     };
 
+    if settings.memory_graph_mode == MemoryGraphMode::Sum {
+        return format!(
+            "{unit_name} Mem : {:8.1} total, {:8.1} free, {:8.1} used, {:8.1} buff/cache\n\
+            {unit_name} Swap: {:8.1} total, {:8.1} free, {:8.1} used, {:8.1} avail Mem",
+            format_memory(binding.total_memory(), unit),
+            format_memory(binding.free_memory(), unit),
+            format_memory(binding.used_memory(), unit),
+            format_memory(binding.available_memory() - binding.free_memory(), unit),
+            format_memory(binding.total_swap(), unit),
+            format_memory(binding.free_swap(), unit),
+            format_memory(binding.used_swap(), unit),
+            format_memory(binding.available_memory(), unit),
+            unit_name = unit_name
+        );
+    }
+
+    // TODO: render colored bar chart or block chart
     format!(
-        "{unit_name} Mem : {:8.1} total, {:8.1} free, {:8.1} used, {:8.1} buff/cache\n\
-        {unit_name} Swap: {:8.1} total, {:8.1} free, {:8.1} used, {:8.1} avail Mem",
-        format_memory(binding.total_memory(), unit),
-        format_memory(binding.free_memory(), unit),
+        "GiB Mem : {:>5.1}/{:<5.1}\n\
+        GiB Swap : {:>5.1}/{:<5.1}",
         format_memory(binding.used_memory(), unit),
-        format_memory(binding.available_memory() - binding.free_memory(), unit),
-        format_memory(binding.total_swap(), unit),
-        format_memory(binding.free_swap(), unit),
+        format_memory(binding.total_memory(), unit),
         format_memory(binding.used_swap(), unit),
-        format_memory(binding.available_memory(), unit),
-        unit_name = unit_name
+        format_memory(binding.total_swap(), unit)
     )
 }
