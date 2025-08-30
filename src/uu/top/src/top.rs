@@ -21,6 +21,7 @@ const USAGE: &str = help_usage!("top.md");
 mod field;
 mod header;
 mod picker;
+mod platform;
 
 #[allow(unused)]
 #[derive(Debug)]
@@ -30,11 +31,43 @@ enum Filter {
     EUser(String),
 }
 
+#[allow(unused)]
+#[derive(Debug, Default, PartialEq)]
+enum CpuGraphMode {
+    #[default]
+    Block,
+    Bar,
+    Sum,
+    Hide,
+}
+
+#[allow(unused)]
+#[derive(Debug, Default, PartialEq)]
+enum CpuValueMode {
+    #[default]
+    PerCore,
+    Sum,
+}
+
+#[allow(unused)]
+#[derive(Debug, Default, PartialEq)]
+enum MemoryGraphMode {
+    #[default]
+    Block,
+    Bar,
+    Sum,
+    Hide,
+}
+
 #[derive(Debug)]
-struct Settings {
+pub(crate) struct Settings {
     // batch:bool
     filter: Option<Filter>,
     width: Option<usize>,
+    cpu_graph_mode: CpuGraphMode,
+    cpu_value_mode: CpuValueMode,
+    memory_graph_mode: MemoryGraphMode,
+    scale_summary_mem: Option<String>,
 }
 
 impl Settings {
@@ -44,6 +77,10 @@ impl Settings {
         Self {
             width,
             filter: None,
+            cpu_graph_mode: CpuGraphMode::default(),
+            cpu_value_mode: CpuValueMode::default(),
+            memory_graph_mode: MemoryGraphMode::default(),
+            scale_summary_mem: matches.get_one::<String>("scale-summary-mem").cloned(),
         }
     }
 }
@@ -99,7 +136,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         table
     };
 
-    println!("{}", header(matches.get_one::<String>("scale-summary-mem")));
+    println!("{}", header(&settings));
     println!("\n");
 
     let cutter = {

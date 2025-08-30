@@ -3,10 +3,10 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-#[cfg(target_os = "linux")]
 use std::collections::HashMap;
 #[cfg(target_os = "linux")]
 use std::fmt::{Debug, Display, Formatter};
+use std::{num::ParseIntError, str::FromStr};
 
 #[cfg(target_os = "linux")]
 pub fn parse_proc_file(path: &str) -> HashMap<String, String> {
@@ -73,7 +73,7 @@ impl ProcData {
 
     pub fn get_one<T>(table: &HashMap<String, String>, name: &str) -> T
     where
-        T: Default + std::str::FromStr,
+        T: Default + FromStr,
     {
         table
             .get(name)
@@ -82,7 +82,6 @@ impl ProcData {
     }
 }
 
-#[cfg(target_os = "linux")]
 pub struct CpuLoadRaw {
     pub user: u64,
     pub nice: u64,
@@ -96,7 +95,6 @@ pub struct CpuLoadRaw {
     pub guest_nice: u64,
 }
 
-#[cfg(target_os = "linux")]
 pub struct CpuLoad {
     pub user: f64,
     pub nice: f64,
@@ -110,25 +108,28 @@ pub struct CpuLoad {
     pub guest_nice: f64,
 }
 
-#[cfg(target_os = "linux")]
 impl CpuLoadRaw {
     pub fn current() -> Self {
         let file = std::fs::File::open(std::path::Path::new("/proc/stat")).unwrap(); // do not use `parse_proc_file` here because only one line is used
         let content = std::io::read_to_string(file).unwrap();
         let load_str = content.lines().next().unwrap().strip_prefix("cpu").unwrap();
-        Self::from_str(load_str)
+        Self::from_str(load_str).unwrap()
     }
 
     pub fn from_proc_map(proc_map: &HashMap<String, String>) -> Self {
         let load_str = proc_map.get("cpu").unwrap();
-        Self::from_str(load_str)
+        Self::from_str(load_str).unwrap()
     }
+}
 
-    fn from_str(s: &str) -> Self {
+impl FromStr for CpuLoadRaw {
+    type Err = ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         let load = s.split(' ').filter(|s| !s.is_empty()).collect::<Vec<_>>();
-        let user = load[0].parse::<u64>().unwrap();
-        let nice = load[1].parse::<u64>().unwrap();
-        let system = load[2].parse::<u64>().unwrap();
+        let user = load[0].parse::<u64>()?;
+        let nice = load[1].parse::<u64>()?;
+        let system = load[2].parse::<u64>()?;
         let idle = load[3].parse::<u64>().unwrap_or_default(); // since 2.5.41
         let io_wait = load[4].parse::<u64>().unwrap_or_default(); // since 2.5.41
         let hardware_interrupt = load[5].parse::<u64>().unwrap_or_default(); // since 2.6.0
@@ -137,7 +138,7 @@ impl CpuLoadRaw {
         let guest = load[8].parse::<u64>().unwrap_or_default(); // since 2.6.24
         let guest_nice = load[9].parse::<u64>().unwrap_or_default(); // since 2.6.33
 
-        Self {
+        Ok(Self {
             user,
             system,
             nice,
@@ -148,21 +149,20 @@ impl CpuLoadRaw {
             steal_time,
             guest,
             guest_nice,
-        }
+        })
     }
 }
 
-#[cfg(target_os = "linux")]
 impl CpuLoad {
     pub fn current() -> Self {
-        Self::from_raw(CpuLoadRaw::current())
+        Self::from_raw(&CpuLoadRaw::current())
     }
 
     pub fn from_proc_map(proc_map: &HashMap<String, String>) -> Self {
-        Self::from_raw(CpuLoadRaw::from_proc_map(proc_map))
+        Self::from_raw(&CpuLoadRaw::from_proc_map(proc_map))
     }
 
-    pub fn from_raw(raw_data: CpuLoadRaw) -> Self {
+    pub fn from_raw(raw_data: &CpuLoadRaw) -> Self {
         let total = (raw_data.user
             + raw_data.nice
             + raw_data.system
@@ -185,6 +185,15 @@ impl CpuLoad {
             guest: raw_data.guest as f64 / total * 100.0,
             guest_nice: raw_data.guest_nice as f64 / total * 100.0,
         }
+    }
+}
+
+impl FromStr for CpuLoad {
+    type Err = <CpuLoadRaw as FromStr>::Err;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let raw = CpuLoadRaw::from_str(s)?;
+        Ok(Self::from_raw(&raw))
     }
 }
 
@@ -278,7 +287,7 @@ pub struct DiskStat {
 }
 
 #[cfg(target_os = "linux")]
-impl std::str::FromStr for DiskStat {
+impl FromStr for DiskStat {
     type Err = DiskStatParseError;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
