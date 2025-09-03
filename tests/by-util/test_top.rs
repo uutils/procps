@@ -17,6 +17,8 @@ fn test_conflict_arg() {
     new_ucmd!().arg("-p=0").arg("-U=0").fails().code_is(1);
 }
 
+// // The tests below are disabled because they are not for the TUI mode, which is the default
+// // TODO: make them work in TUI mode
 // #[test]
 // fn test_flag_user() {
 //     let check = |output: &str| {

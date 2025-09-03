@@ -105,26 +105,26 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         Settings { filter, ..settings }
     };
 
-    let settings = Arc::new(RwLock::new(settings));
+    let settings = Arc::new(settings);
     let tui_stat = Arc::new(RwLock::new(TuiStat::new()));
     let should_update = Arc::new(AtomicBool::new(true));
     let data = Arc::new(RwLock::new((
         Header::new(&tui_stat.read().unwrap()),
-        ProcList::new(&settings.read().unwrap()),
+        ProcList::new(&settings),
     )));
 
     // update
     {
         let should_update = should_update.clone();
         let tui_stat = tui_stat.clone();
-        let settings = settings.clone();
         let data = data.clone();
+        let settings = settings.clone();
         thread::spawn(move || loop {
             let delay = { tui_stat.read().unwrap().delay };
             sleep(delay);
             {
                 let header = Header::new(&tui_stat.read().unwrap());
-                let proc_list = ProcList::new(&settings.read().unwrap());
+                let proc_list = ProcList::new(&settings);
                 *data.write().unwrap() = (header, proc_list);
                 should_update.store(true, Ordering::Relaxed);
             }
@@ -134,7 +134,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let mut terminal = ratatui::init();
     terminal.draw(|frame| {
         Tui::new(
-            &settings.read().unwrap(),
+            &settings,
             &data.read().unwrap(),
             &mut tui_stat.write().unwrap(),
         )
@@ -209,7 +209,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         if should_update.load(Ordering::Relaxed) {
             terminal.draw(|frame| {
                 Tui::new(
-                    &settings.read().unwrap(),
+                    &settings,
                     &data.read().unwrap(),
                     &mut tui_stat.write().unwrap(),
                 )
