@@ -5,48 +5,108 @@
 
 use crate::picker::sysinfo;
 use crate::platform::*;
-use crate::{CpuGraphMode, CpuValueMode, MemoryGraphMode, Settings};
+use crate::tui::stat::{CpuValueMode, TuiStat};
 use bytesize::ByteSize;
 use uu_vmstat::CpuLoad;
 use uu_w::get_formatted_uptime_procps;
 use uucore::uptime::{get_formatted_loadavg, get_formatted_nusers, get_formatted_time};
 
-pub(crate) fn header(settings: &Settings) -> String {
-    let uptime_line = format!(
-        "top - {time} {uptime}, {user}, {load_average}\n",
-        time = get_formatted_time(),
-        uptime = uptime(),
-        user = user(),
-        load_average = load_average(),
-    );
-
-    let task_and_cpu = if settings.cpu_graph_mode == CpuGraphMode::Hide {
-        String::new()
-    } else {
-        format!(
-            "{task}\n\
-            {cpu}\n",
-            task = task(),
-            cpu = cpu(settings),
-        )
-    };
-
-    let memory_line = if settings.memory_graph_mode == MemoryGraphMode::Hide {
-        String::new()
-    } else {
-        memory(settings)
-    };
-
-    format!("{uptime_line}{task_and_cpu}{memory_line}")
+pub(crate) struct Header {
+    pub uptime: Uptime,
+    pub task: Task,
+    pub cpu: Vec<(String, CpuLoad)>,
+    pub memory: Memory,
 }
 
-fn format_memory(memory_b: u64, unit: u64) -> f64 {
+impl Header {
+    pub fn new(stat: &TuiStat) -> Header {
+        Header {
+            uptime: Uptime::new(),
+            task: Task::new(),
+            cpu: cpu(stat),
+            memory: Memory::new(),
+        }
+    }
+
+    pub fn update_cpu(&mut self, stat: &TuiStat) {
+        self.cpu = cpu(stat);
+    }
+}
+
+pub(crate) struct Uptime {
+    pub time: String,
+    pub uptime: String,
+    pub user: String,
+    pub load_average: String,
+}
+
+impl Uptime {
+    pub fn new() -> Uptime {
+        Uptime {
+            time: get_formatted_time(),
+            uptime: get_formatted_uptime_procps().unwrap_or_default(),
+            user: user(),
+            load_average: get_formatted_loadavg().unwrap_or_default(),
+        }
+    }
+}
+
+pub(crate) struct Task {
+    pub total: usize,
+    pub running: usize,
+    pub sleeping: usize,
+    pub stopped: usize,
+    pub zombie: usize,
+}
+impl Task {
+    pub fn new() -> Task {
+        let binding = sysinfo().read().unwrap();
+
+        let process = binding.processes();
+        let mut running_process = 0;
+        let mut sleeping_process = 0;
+        let mut stopped_process = 0;
+        let mut zombie_process = 0;
+
+        for (_, process) in process.iter() {
+            match process.status() {
+                sysinfo::ProcessStatus::Run => running_process += 1,
+                sysinfo::ProcessStatus::Sleep => sleeping_process += 1,
+                sysinfo::ProcessStatus::Stop => stopped_process += 1,
+                sysinfo::ProcessStatus::Zombie => zombie_process += 1,
+                _ => {}
+            };
+        }
+
+        Task {
+            total: process.len(),
+            running: running_process,
+            sleeping: sleeping_process,
+            stopped: stopped_process,
+            zombie: zombie_process,
+        }
+    }
+}
+
+pub(crate) struct Memory {
+    pub total: u64,
+    pub free: u64,
+    pub used: u64,
+    pub buff_cache: u64,
+    pub available: u64,
+    pub total_swap: u64,
+    pub free_swap: u64,
+    pub used_swap: u64,
+}
+
+impl Memory {
+    pub fn new() -> Memory {
+        get_memory()
+    }
+}
+
+pub(crate) fn format_memory(memory_b: u64, unit: u64) -> f64 {
     ByteSize::b(memory_b).0 as f64 / unit as f64
-}
-
-#[inline]
-fn uptime() -> String {
-    get_formatted_uptime_procps().unwrap_or_default()
 }
 
 // see: https://gitlab.com/procps-ng/procps/-/blob/4740a0efa79cade867cfc7b32955fe0f75bf5173/library/uptime.c#L63-L115
@@ -57,39 +117,6 @@ fn user() -> String {
     }
 
     get_formatted_nusers()
-}
-
-fn load_average() -> String {
-    get_formatted_loadavg().unwrap_or_default()
-}
-
-fn task() -> String {
-    let binding = sysinfo().read().unwrap();
-
-    let process = binding.processes();
-    let mut running_process = 0;
-    let mut sleeping_process = 0;
-    let mut stopped_process = 0;
-    let mut zombie_process = 0;
-
-    for (_, process) in process.iter() {
-        match process.status() {
-            sysinfo::ProcessStatus::Run => running_process += 1,
-            sysinfo::ProcessStatus::Sleep => sleeping_process += 1,
-            sysinfo::ProcessStatus::Stop => stopped_process += 1,
-            sysinfo::ProcessStatus::Zombie => zombie_process += 1,
-            _ => {}
-        };
-    }
-
-    format!(
-        "Tasks: {} total, {} running, {} sleeping, {} stopped, {} zombie",
-        process.len(),
-        running_process,
-        sleeping_process,
-        stopped_process,
-        zombie_process,
-    )
 }
 
 fn sum_cpu_loads(cpu_loads: &[uu_vmstat::CpuLoadRaw]) -> uu_vmstat::CpuLoadRaw {
@@ -122,94 +149,22 @@ fn sum_cpu_loads(cpu_loads: &[uu_vmstat::CpuLoadRaw]) -> uu_vmstat::CpuLoadRaw {
     total
 }
 
-fn cpu(settings: &Settings) -> String {
-    if settings.cpu_graph_mode == CpuGraphMode::Hide {
-        return String::new();
-    }
-
+fn cpu(stat: &TuiStat) -> Vec<(String, CpuLoad)> {
     let cpu_loads = get_cpu_loads();
 
-    match settings.cpu_value_mode {
-        CpuValueMode::PerCore => {
-            let lines = cpu_loads
-                .iter()
-                .enumerate()
-                .map(|(nth, cpu_load_raw)| {
-                    let cpu_load = CpuLoad::from_raw(cpu_load_raw);
-                    cpu_line(format!("Cpu{nth}").as_str(), &cpu_load, settings)
-                })
-                .collect::<Vec<String>>();
-            lines.join("\n")
-        }
+    match stat.cpu_value_mode {
+        CpuValueMode::PerCore => cpu_loads
+            .iter()
+            .enumerate()
+            .map(|(nth, cpu_load_raw)| {
+                let cpu_load = CpuLoad::from_raw(cpu_load_raw);
+                (format!("Cpu{nth}"), cpu_load)
+            })
+            .collect::<Vec<(String, CpuLoad)>>(),
         CpuValueMode::Sum => {
             let total = sum_cpu_loads(&cpu_loads);
             let cpu_load = CpuLoad::from_raw(&total);
-            cpu_line("Cpu", &cpu_load, settings)
+            vec![(String::from("Cpu(s)"), cpu_load)]
         }
     }
-}
-
-fn cpu_line(tag: &str, cpu_load: &CpuLoad, settings: &Settings) -> String {
-    if settings.cpu_graph_mode == CpuGraphMode::Hide {
-        return String::new();
-    }
-
-    if settings.cpu_graph_mode == CpuGraphMode::Sum {
-        return format!(
-            "%{tag:<6}:  {:.1} us, {:.1} sy, {:.1} ni, {:.1} id, {:.1} wa, {:.1} hi, {:.1} si, {:.1} st",
-            cpu_load.user,
-            cpu_load.system,
-            cpu_load.nice,
-            cpu_load.idle,
-            cpu_load.io_wait,
-            cpu_load.hardware_interrupt,
-            cpu_load.software_interrupt,
-            cpu_load.steal_time,
-        );
-    }
-
-    // TODO: render colored bar chart or block chart
-    format!("%{tag:<6}: {:>5.1}/{:<5.1}", cpu_load.user, cpu_load.system)
-}
-
-fn memory(settings: &Settings) -> String {
-    let binding = sysinfo().read().unwrap();
-    let (unit, unit_name) = match settings.scale_summary_mem.as_ref() {
-        Some(scale) => match scale.as_str() {
-            "k" => (bytesize::KIB, "KiB"),
-            "m" => (bytesize::MIB, "MiB"),
-            "g" => (bytesize::GIB, "GiB"),
-            "t" => (bytesize::TIB, "TiB"),
-            "p" => (bytesize::PIB, "PiB"),
-            "e" => (1_152_921_504_606_846_976, "EiB"),
-            _ => (bytesize::MIB, "MiB"),
-        },
-        None => (bytesize::MIB, "MiB"),
-    };
-
-    if settings.memory_graph_mode == MemoryGraphMode::Sum {
-        return format!(
-            "{unit_name} Mem : {:8.1} total, {:8.1} free, {:8.1} used, {:8.1} buff/cache\n\
-            {unit_name} Swap: {:8.1} total, {:8.1} free, {:8.1} used, {:8.1} avail Mem",
-            format_memory(binding.total_memory(), unit),
-            format_memory(binding.free_memory(), unit),
-            format_memory(binding.used_memory(), unit),
-            format_memory(binding.available_memory() - binding.free_memory(), unit),
-            format_memory(binding.total_swap(), unit),
-            format_memory(binding.free_swap(), unit),
-            format_memory(binding.used_swap(), unit),
-            format_memory(binding.available_memory(), unit),
-            unit_name = unit_name
-        );
-    }
-
-    // TODO: render colored bar chart or block chart
-    format!(
-        "GiB Mem : {:>5.1}/{:<5.1}\n\
-        GiB Swap : {:>5.1}/{:<5.1}",
-        format_memory(binding.used_memory(), unit),
-        format_memory(binding.total_memory(), unit),
-        format_memory(binding.used_swap(), unit),
-        format_memory(binding.total_swap(), unit)
-    )
 }

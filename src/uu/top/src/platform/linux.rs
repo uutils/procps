@@ -3,6 +3,7 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use crate::header::Memory;
 use std::str::FromStr;
 
 extern "C" {
@@ -75,4 +76,19 @@ pub fn get_cpu_loads() -> Vec<uu_vmstat::CpuLoadRaw> {
     }
 
     cpu_loads
+}
+
+pub fn get_memory() -> Memory {
+    let mem_info = uu_vmstat::Meminfo::current();
+
+    Memory {
+        total: mem_info.mem_total.0,
+        free: mem_info.mem_free.0,
+        used: mem_info.mem_total.0 - mem_info.mem_free.0 - mem_info.buffers.0 - mem_info.cached.0,
+        buff_cache: mem_info.buffers.0 + mem_info.cached.0,
+        available: mem_info.mem_available.0,
+        total_swap: mem_info.swap_total.0,
+        free_swap: mem_info.swap_free.0,
+        used_swap: mem_info.swap_total.0 - mem_info.swap_free.0,
+    }
 }

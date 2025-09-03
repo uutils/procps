@@ -3,12 +3,18 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use crate::header::Header;
+use crate::tui::stat::TuiStat;
+use crate::tui::Tui;
 use clap::{arg, crate_version, value_parser, ArgAction, ArgGroup, ArgMatches, Command};
-use header::header;
 use picker::pickers;
 use picker::sysinfo;
-use prettytable::{format::consts::FORMAT_CLEAN, Row, Table};
-use std::{thread::sleep, time::Duration};
+use ratatui::crossterm::event;
+use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use ratatui::prelude::Widget;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, RwLock};
+use std::{thread, thread::sleep, time::Duration};
 use sysinfo::{Pid, Users};
 use uucore::{
     error::{UResult, USimpleError},
@@ -22,66 +28,43 @@ mod field;
 mod header;
 mod picker;
 mod platform;
+mod tui;
 
 #[allow(unused)]
 #[derive(Debug)]
-enum Filter {
+pub enum Filter {
     Pid(Vec<u32>),
     User(String),
     EUser(String),
-}
-
-#[allow(unused)]
-#[derive(Debug, Default, PartialEq)]
-enum CpuGraphMode {
-    #[default]
-    Block,
-    Bar,
-    Sum,
-    Hide,
-}
-
-#[allow(unused)]
-#[derive(Debug, Default, PartialEq)]
-enum CpuValueMode {
-    #[default]
-    PerCore,
-    Sum,
-}
-
-#[allow(unused)]
-#[derive(Debug, Default, PartialEq)]
-enum MemoryGraphMode {
-    #[default]
-    Block,
-    Bar,
-    Sum,
-    Hide,
 }
 
 #[derive(Debug)]
 pub(crate) struct Settings {
     // batch:bool
     filter: Option<Filter>,
-    width: Option<usize>,
-    cpu_graph_mode: CpuGraphMode,
-    cpu_value_mode: CpuValueMode,
-    memory_graph_mode: MemoryGraphMode,
     scale_summary_mem: Option<String>,
 }
 
 impl Settings {
     fn new(matches: &ArgMatches) -> Self {
-        let width = matches.get_one::<usize>("width").cloned();
-
         Self {
-            width,
             filter: None,
-            cpu_graph_mode: CpuGraphMode::default(),
-            cpu_value_mode: CpuValueMode::default(),
-            memory_graph_mode: MemoryGraphMode::default(),
             scale_summary_mem: matches.get_one::<String>("scale-summary-mem").cloned(),
         }
+    }
+}
+
+pub(crate) struct ProcList {
+    pub fields: Vec<String>,
+    pub collected: Vec<Vec<String>>,
+}
+
+impl ProcList {
+    pub fn new(settings: &Settings) -> Self {
+        let fields = selected_fields();
+        let collected = collect(settings, &fields);
+
+        Self { fields, collected }
     }
 }
 
@@ -122,41 +105,123 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         Settings { filter, ..settings }
     };
 
-    let fields = selected_fields();
-    let collected = collect(&settings, &fields);
+    let settings = Arc::new(RwLock::new(settings));
+    let tui_stat = Arc::new(RwLock::new(TuiStat::new()));
+    let should_update = Arc::new(AtomicBool::new(true));
+    let data = Arc::new(RwLock::new((
+        Header::new(&tui_stat.read().unwrap()),
+        ProcList::new(&settings.read().unwrap()),
+    )));
 
-    let table = {
-        let mut table = Table::new();
+    // update
+    {
+        let should_update = should_update.clone();
+        let tui_stat = tui_stat.clone();
+        let settings = settings.clone();
+        let data = data.clone();
+        thread::spawn(move || loop {
+            let delay = { tui_stat.read().unwrap().delay };
+            sleep(delay);
+            {
+                let header = Header::new(&tui_stat.read().unwrap());
+                let proc_list = ProcList::new(&settings.read().unwrap());
+                *data.write().unwrap() = (header, proc_list);
+                should_update.store(true, Ordering::Relaxed);
+            }
+        });
+    }
 
-        table.set_format(*FORMAT_CLEAN);
+    let mut terminal = ratatui::init();
+    terminal.draw(|frame| {
+        Tui::new(
+            &settings.read().unwrap(),
+            &data.read().unwrap(),
+            &mut tui_stat.write().unwrap(),
+        )
+        .render(frame.area(), frame.buffer_mut());
+    })?;
+    loop {
+        if let Ok(true) = event::poll(Duration::from_millis(20)) {
+            // If event available, break this loop
+            if let Ok(e) = event::read() {
+                match e {
+                    event::Event::Key(KeyEvent {
+                        code: KeyCode::Char('c'),
+                        modifiers: KeyModifiers::CONTROL,
+                        ..
+                    })
+                    | event::Event::Key(KeyEvent {
+                        code: KeyCode::Char('q'),
+                        ..
+                    }) => {
+                        uucore::error::set_exit_code(0);
+                        break;
+                    }
+                    event::Event::Key(KeyEvent {
+                        code: KeyCode::Char('t'),
+                        ..
+                    }) => {
+                        let mut stat = tui_stat.write().unwrap();
+                        stat.cpu_graph_mode = stat.cpu_graph_mode.next();
+                        should_update.store(true, Ordering::Relaxed);
+                    }
+                    event::Event::Key(KeyEvent {
+                        code: KeyCode::Char('1'),
+                        ..
+                    }) => {
+                        let mut stat = tui_stat.write().unwrap();
+                        stat.cpu_value_mode = stat.cpu_value_mode.next();
 
-        table.add_row(Row::from_iter(fields));
-        table.extend(collected.iter().map(Row::from_iter));
-
-        table
-    };
-
-    println!("{}", header(&settings));
-    println!("\n");
-
-    let cutter = {
-        #[inline]
-        fn f(f: impl Fn(&str) -> String + 'static) -> Box<dyn Fn(&str) -> String> {
-            Box::new(f)
+                        should_update.store(true, Ordering::Relaxed);
+                        data.write().unwrap().0.update_cpu(&stat);
+                    }
+                    event::Event::Key(KeyEvent {
+                        code: KeyCode::Char('m'),
+                        ..
+                    }) => {
+                        let mut stat = tui_stat.write().unwrap();
+                        stat.memory_graph_mode = stat.memory_graph_mode.next();
+                        should_update.store(true, Ordering::Relaxed);
+                    }
+                    event::Event::Key(KeyEvent {
+                        code: KeyCode::Up, ..
+                    }) => {
+                        let mut stat = tui_stat.write().unwrap();
+                        if stat.list_offset > 0 {
+                            stat.list_offset -= 1;
+                            should_update.store(true, Ordering::Relaxed);
+                        }
+                    }
+                    event::Event::Key(KeyEvent {
+                        code: KeyCode::Down,
+                        ..
+                    }) => {
+                        let mut stat = tui_stat.write().unwrap();
+                        stat.list_offset += 1;
+                        should_update.store(true, Ordering::Relaxed);
+                    }
+                    event::Event::Resize(_, _) => should_update.store(true, Ordering::Relaxed),
+                    _ => {}
+                }
+            }
         }
 
-        if let Some(width) = settings.width {
-            f(move |line: &str| apply_width(line, width))
-        } else {
-            f(|line: &str| line.to_string())
+        if should_update.load(Ordering::Relaxed) {
+            terminal.draw(|frame| {
+                Tui::new(
+                    &settings.read().unwrap(),
+                    &data.read().unwrap(),
+                    &mut tui_stat.write().unwrap(),
+                )
+                .render(frame.area(), frame.buffer_mut());
+            })?;
         }
-    };
+        should_update.store(false, Ordering::Relaxed);
 
-    table
-        .to_string()
-        .lines()
-        .map(cutter)
-        .for_each(|it| println!("{it}"));
+        sleep(Duration::from_millis(20));
+    }
+
+    ratatui::restore();
 
     Ok(())
 }
@@ -179,21 +244,6 @@ where
         .find(|it| it.name() == user_name)
         .map(|it| it.id().to_string())
         .ok_or(USimpleError::new(1, "Invalid user"))
-}
-
-fn apply_width<T>(input: T, width: usize) -> String
-where
-    T: Into<String>,
-{
-    let input: String = input.into();
-
-    if input.len() > width {
-        input.chars().take(width).collect()
-    } else {
-        let mut result = String::from(&input);
-        result.extend(std::iter::repeat_n(' ', width - input.len()));
-        result
-    }
 }
 
 // TODO: Implement fields selecting
@@ -310,7 +360,7 @@ pub fn uu_app() -> Command {
             // arg!(-s  --"secure-mode"                        "run with secure mode restrictions"),
             arg!(-U  --"filter-any-user"    <USER>          "show only processes owned by USER"),
             arg!(-u  --"filter-only-euser"  <EUSER>         "show only processes owned by USER"),
-            arg!(-w  --width                <COLUMNS>       "change print width [,use COLUMNS]"),
+            // arg!(-w  --width                <COLUMNS>       "change print width [,use COLUMNS]"),
             // arg!(-1  --single-cpu-toggle         "reverse last remembered '1' state"),
         ])
         .group(ArgGroup::new("filter").args(["pid", "filter-any-user", "filter-only-euser"]))
