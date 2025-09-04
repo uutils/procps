@@ -34,50 +34,114 @@ impl<'a> Tui<'a> {
     }
 
     fn calc_header_height(&self) -> u16 {
-        let mut height = 1;
+        let mut height = 0;
 
-        if self.stat.cpu_graph_mode != CpuGraphMode::Hide {
+        if self.stat.show_load_avg {
             height += 1;
-            height += self.header.cpu.len() as u16;
+        }
+
+        let mut columns = 0;
+        if self.stat.cpu_graph_mode != CpuGraphMode::Hide {
+            height += 1; // task line
+            if self.stat.cpu_graph_mode == CpuGraphMode::Sum {
+                height += self.header.cpu.len() as u16;
+            } else {
+                columns += self.header.cpu.len() as u16;
+            }
         }
         if self.stat.memory_graph_mode != MemoryGraphMode::Hide {
-            height += 2;
+            if self.stat.memory_graph_mode == MemoryGraphMode::Sum {
+                height += 2;
+            } else {
+                columns += 2;
+            }
+        }
+        height += columns / self.stat.cpu_column;
+        if columns % self.stat.cpu_column != 0 {
+            height += 1;
         }
 
         height
     }
 
     fn render_header(&self, area: Rect, buf: &mut Buffer) {
-        let mut constraints = vec![Constraint::Length(1)];
+        let mut constraints = vec![];
 
         let cpu = &self.header.cpu;
 
+        if self.stat.show_load_avg {
+            constraints.push(Constraint::Length(1)); // load avg line
+        }
+
+        let mut columns = 0;
         if self.stat.cpu_graph_mode != CpuGraphMode::Hide {
-            constraints.extend(vec![Constraint::Length(1); cpu.len() + 1]);
+            constraints.push(Constraint::Length(1)); // task line
+
+            if self.stat.cpu_graph_mode == CpuGraphMode::Sum {
+                constraints.extend(vec![Constraint::Length(1); cpu.len()]);
+            } else {
+                columns += self.header.cpu.len() as u16;
+            }
         }
         if self.stat.memory_graph_mode != MemoryGraphMode::Hide {
-            constraints.extend(vec![Constraint::Length(1); 2]);
+            if self.stat.memory_graph_mode == MemoryGraphMode::Sum {
+                constraints.extend(vec![Constraint::Length(1); 2]);
+            } else {
+                columns += 2;
+            }
+        }
+        constraints.extend(vec![
+            Constraint::Length(1);
+            (columns / self.stat.cpu_column) as usize
+        ]);
+        if columns % self.stat.cpu_column != 0 {
+            constraints.push(Constraint::Length(1));
         }
         let header_layout = Layout::new(Direction::Vertical, constraints).split(area);
         let mut i = 0;
 
-        let render_bars = |bars_to_render: Vec<(String, f64, f64, f64, f64, char, bool)>,
-                           buf: &mut Buffer,
-                           i: usize| {
+        let mut i_columns = 0;
+        let mut cpu_column = None;
+        let mut render_bars = |bars_to_render: Vec<(String, f64, f64, f64, f64, char, bool)>,
+                               buf: &mut Buffer,
+                               i: usize| {
             let mut i = i;
             for (tag, l, r, red, yellow, content, print_percentage) in bars_to_render {
+                if cpu_column.is_none() || i_columns >= self.stat.cpu_column as usize {
+                    let mut constraints = vec![Constraint::Min(25)];
+                    for _ in 0..self.stat.cpu_column {
+                        constraints.extend(vec![Constraint::Length(3), Constraint::Min(25)]);
+                    }
+                    let line =
+                        Layout::new(Direction::Horizontal, constraints).split(header_layout[i]);
+                    i += 1;
+                    i_columns = 0;
+                    cpu_column = Some(line);
+                }
+
+                let column_offset = i_columns * 2;
+                let area = cpu_column.as_ref().unwrap()[column_offset];
+                if i_columns > 0 {
+                    Line::from(vec![
+                        Span::raw(" "),
+                        Span::styled(" ", Style::default().bg(Color::Yellow)),
+                        Span::raw(" "),
+                    ])
+                    .render(cpu_column.as_ref().unwrap()[column_offset - 1], buf);
+                }
                 let line_layout = Layout::new(
                     Direction::Horizontal,
                     [
                         Constraint::Length(10),
-                        Constraint::Length(16),
+                        Constraint::Length(if self.stat.cpu_column < 3 { 16 } else { 0 }),
                         Constraint::Length(1),
                         Constraint::Min(0),
                         Constraint::Length(1),
                     ],
                 )
-                .split(header_layout[i]);
-                i += 1;
+                .split(area);
+                i_columns += 1;
+
                 Span::styled(format!("%{tag:<6}:",), Style::default().red())
                     .render(line_layout[0], buf);
                 let percentage = if print_percentage {
@@ -120,15 +184,17 @@ impl<'a> Tui<'a> {
             i
         };
 
-        let uptime = format!(
-            "top - {time} {uptime}, {user}, {load_average}",
-            time = self.header.uptime.time,
-            uptime = self.header.uptime.uptime,
-            user = self.header.uptime.user,
-            load_average = self.header.uptime.load_average,
-        );
-        Paragraph::new(uptime).render(header_layout[0], buf);
-        i += 1;
+        if self.stat.show_load_avg {
+            let load_avg = format!(
+                "top - {time} {uptime}, {user}, {load_average}",
+                time = self.header.uptime.time,
+                uptime = self.header.uptime.uptime,
+                user = self.header.uptime.user,
+                load_average = self.header.uptime.load_average,
+            );
+            Paragraph::new(load_avg).render(header_layout[i], buf);
+            i += 1;
+        }
 
         if self.stat.cpu_graph_mode != CpuGraphMode::Hide {
             let task = &self.header.task;
@@ -145,7 +211,7 @@ impl<'a> Tui<'a> {
                 Span::raw(task.zombie.to_string()),
                 Span::styled(" zombie", Style::default().red()),
             ];
-            Line::from(task_line).render(header_layout[1], buf);
+            Line::from(task_line).render(header_layout[i], buf);
             i += 1;
 
             let mut cpu_bars = Vec::new();
