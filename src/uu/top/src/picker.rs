@@ -250,23 +250,20 @@ fn command(pid: u32) -> String {
         let result: String = trimmed.into();
 
         if cfg!(target_os = "linux") && result.is_empty() {
-            {
-                match PathBuf::from_str(&format!("/proc/{pid}/status")) {
-                    Ok(path) => {
-                        let file = File::open(path).unwrap();
-                        let content = read_to_string(file).unwrap();
-                        let line = content
-                            .lines()
-                            .collect::<Vec<_>>()
-                            .first()
-                            .unwrap()
-                            .split(':')
-                            .collect::<Vec<_>>();
+            let path = PathBuf::from_str(&format!("/proc/{pid}/status")).unwrap();
+            if let Ok(file) = File::open(path) {
+                let content = read_to_string(file).unwrap();
+                let line = content
+                    .lines()
+                    .collect::<Vec<_>>()
+                    .first()
+                    .unwrap()
+                    .split(':')
+                    .collect::<Vec<_>>();
 
-                        line[1].trim().to_owned()
-                    }
-                    Err(_) => String::new(),
-                }
+                line[1].trim().to_owned()
+            } else {
+                String::new()
             }
         } else {
             result

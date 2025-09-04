@@ -13,9 +13,10 @@ version.workspace = true
 [dependencies]
 uucore = { workspace = true, features = ["utmpx", "uptime"] }
 clap = { workspace = true }
+crossterm = { workspace = true }
 libc = { workspace = true }
 nix = { workspace = true }
-prettytable-rs = { workspace = true }
+ratatui = { workspace = true, features = ["crossterm"] }
 sysinfo = { workspace = true }
 chrono = { workspace = true }
 bytesize = { workspace = true }
