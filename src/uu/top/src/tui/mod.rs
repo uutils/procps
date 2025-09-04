@@ -293,15 +293,27 @@ impl<'a> Tui<'a> {
                     bar_content,
                     false,
                 ));
-                mem_bars.push((
-                    format!("{unit_name} Swap"),
-                    mem.used_swap as f64 / mem.total_swap as f64 * 100.0,
-                    format_memory(mem.total_swap, unit),
-                    0.0,
-                    mem.used_swap as f64 / mem.total_swap as f64,
-                    bar_content,
-                    false,
-                ));
+                if mem.total_swap > 0 {
+                    mem_bars.push((
+                        format!("{unit_name} Swap"),
+                        mem.used_swap as f64 / mem.total_swap as f64 * 100.0,
+                        format_memory(mem.total_swap, unit),
+                        0.0,
+                        mem.used_swap as f64 / mem.total_swap as f64,
+                        bar_content,
+                        false,
+                    ));
+                } else {
+                    mem_bars.push((
+                        format!("{unit_name} Swap"),
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        bar_content,
+                        false,
+                    ));
+                }
                 render_bars(mem_bars, &mut *buf, i);
             }
         }
