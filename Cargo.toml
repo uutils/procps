@@ -76,7 +76,7 @@ thiserror = "2.0.4"
 uucore = "0.1.0"
 uutests = "0.1.0"
 walkdir = "2.5.0"
-windows = { version = "0.61.1" }
+windows = { version = "0.62.0" }
 windows-sys = { version = "0.60.2", default-features = false }
 xattr = "1.3.1"
 
