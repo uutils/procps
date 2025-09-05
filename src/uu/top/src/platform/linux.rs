@@ -4,6 +4,7 @@
 // file that was distributed with this source code.
 
 use crate::header::Memory;
+use std::collections::HashMap;
 use std::str::FromStr;
 
 extern "C" {
@@ -91,4 +92,39 @@ pub fn get_memory() -> Memory {
         free_swap: mem_info.swap_free.0,
         used_swap: mem_info.swap_total.0 - mem_info.swap_free.0,
     }
+}
+
+pub fn get_numa_nodes() -> HashMap<usize, Vec<usize>> {
+    let mut map = HashMap::new();
+    if let Ok(entries) = std::fs::read_dir("/sys/devices/system/node/") {
+        for entry in entries.flatten() {
+            let file_name = entry.file_name();
+            let file_name = file_name.to_string_lossy();
+            if file_name.starts_with("node") {
+                let node_id = file_name.trim_start_matches("node").parse::<usize>();
+                let node_id = match node_id {
+                    Ok(id) => id,
+                    Err(_) => continue,
+                };
+
+                let mut nodes = Vec::new();
+
+                if let Ok(node_entries) = std::fs::read_dir(entry.path()) {
+                    for node_entry in node_entries.flatten() {
+                        let cpu_file_name = node_entry.file_name();
+                        let cpu_file_name = cpu_file_name.to_string_lossy();
+                        if cpu_file_name.starts_with("cpu") {
+                            let cpu_id = cpu_file_name.trim_start_matches("cpu").parse::<usize>();
+                            if let Ok(cpu_id) = cpu_id {
+                                nodes.push(cpu_id);
+                            }
+                        }
+                    }
+                    nodes.sort();
+                    map.insert(node_id, nodes);
+                }
+            }
+        }
+    }
+    map
 }

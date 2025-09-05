@@ -3,7 +3,9 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+mod input;
 pub mod stat;
+pub use input::*;
 
 use crate::header::{format_memory, Header};
 use crate::tui::stat::{CpuGraphMode, MemoryGraphMode, TuiStat};
@@ -320,7 +322,17 @@ impl<'a> Tui<'a> {
     }
 
     fn render_input(&self, area: Rect, buf: &mut Buffer) {
-        let input = Paragraph::new("");
+        if let Some(v) = self.stat.input_error.as_ref() {
+            Paragraph::new(v.as_str())
+                .style(Style::default().fg(Color::Red))
+                .render(area, buf);
+            return;
+        }
+        let input = Line::from(vec![
+            Span::styled(&self.stat.input_label, Style::default().red()),
+            Span::raw(" "),
+            Span::raw(&self.stat.input_value),
+        ]);
         input.render(area, buf);
     }
 

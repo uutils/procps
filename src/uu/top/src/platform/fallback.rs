@@ -7,6 +7,7 @@
 
 use crate::header::Memory;
 use crate::picker::sysinfo;
+use std::collections::HashMap;
 
 pub fn get_cpu_loads() -> Vec<uu_vmstat::CpuLoadRaw> {
     vec![]
@@ -25,4 +26,7 @@ pub fn get_memory() -> Memory {
         free_swap: binding.free_swap(),
         used_swap: binding.used_swap(),
     }
+}
+pub fn get_numa_nodes() -> HashMap<usize, Vec<usize>> {
+    HashMap::new()
 }

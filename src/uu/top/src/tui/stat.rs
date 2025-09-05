@@ -3,9 +3,15 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use crate::tui::input::InputMode;
 use std::time::Duration;
 
 pub(crate) struct TuiStat {
+    pub input_mode: InputMode,
+    pub input_label: String,
+    pub input_value: String,
+    pub input_error: Option<String>,
+
     pub show_load_avg: bool,
     pub cpu_graph_mode: CpuGraphMode,
     pub cpu_value_mode: CpuValueMode,
@@ -18,6 +24,11 @@ pub(crate) struct TuiStat {
 impl TuiStat {
     pub fn new() -> Self {
         Self {
+            input_mode: InputMode::Command,
+            input_label: String::new(),
+            input_value: String::new(),
+            input_error: None,
+
             show_load_avg: true,
             cpu_graph_mode: CpuGraphMode::default(),
             cpu_value_mode: CpuValueMode::default(),
@@ -26,6 +37,13 @@ impl TuiStat {
             list_offset: 0,
             delay: Duration::from_millis(1500), // 1.5s
         }
+    }
+
+    pub fn reset_input(&mut self) {
+        self.input_mode = InputMode::Command;
+        self.input_label.clear();
+        self.input_value.clear();
+        self.input_error = None;
     }
 }
 
@@ -53,6 +71,8 @@ impl CpuGraphMode {
 pub enum CpuValueMode {
     #[default]
     PerCore,
+    Numa,
+    NumaNode(usize),
     Sum,
 }
 
@@ -61,6 +81,8 @@ impl CpuValueMode {
         match self {
             CpuValueMode::PerCore => CpuValueMode::Sum,
             CpuValueMode::Sum => CpuValueMode::PerCore,
+            CpuValueMode::Numa => CpuValueMode::Sum,
+            CpuValueMode::NumaNode(_) => CpuValueMode::PerCore,
         }
     }
 }

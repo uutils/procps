@@ -5,12 +5,11 @@
 
 use crate::header::Header;
 use crate::tui::stat::TuiStat;
-use crate::tui::Tui;
+use crate::tui::{handle_input, Tui};
 use clap::{arg, crate_version, value_parser, ArgAction, ArgGroup, ArgMatches, Command};
 use picker::pickers;
 use picker::sysinfo;
 use ratatui::crossterm::event;
-use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::prelude::Widget;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
@@ -125,6 +124,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             {
                 let header = Header::new(&tui_stat.read().unwrap());
                 let proc_list = ProcList::new(&settings);
+                tui_stat.write().unwrap().input_error = None;
                 *data.write().unwrap() = (header, proc_list);
                 should_update.store(true, Ordering::Relaxed);
             }
@@ -142,82 +142,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     })?;
     loop {
         if let Ok(true) = event::poll(Duration::from_millis(20)) {
-            // If event available, break this loop
             if let Ok(e) = event::read() {
-                match e {
-                    event::Event::Key(KeyEvent {
-                        code: KeyCode::Char('c'),
-                        modifiers: KeyModifiers::CONTROL,
-                        ..
-                    })
-                    | event::Event::Key(KeyEvent {
-                        code: KeyCode::Char('q'),
-                        ..
-                    }) => {
-                        uucore::error::set_exit_code(0);
-                        break;
-                    }
-                    event::Event::Key(KeyEvent {
-                        code: KeyCode::Char('l'),
-                        ..
-                    }) => {
-                        let mut stat = tui_stat.write().unwrap();
-                        stat.show_load_avg = !stat.show_load_avg;
-                        should_update.store(true, Ordering::Relaxed);
-                    }
-                    event::Event::Key(KeyEvent {
-                        code: KeyCode::Char('t'),
-                        ..
-                    }) => {
-                        let mut stat = tui_stat.write().unwrap();
-                        stat.cpu_graph_mode = stat.cpu_graph_mode.next();
-                        should_update.store(true, Ordering::Relaxed);
-                    }
-                    event::Event::Key(KeyEvent {
-                        code: KeyCode::Char('1'),
-                        ..
-                    }) => {
-                        let mut stat = tui_stat.write().unwrap();
-                        stat.cpu_value_mode = stat.cpu_value_mode.next();
-
-                        should_update.store(true, Ordering::Relaxed);
-                        data.write().unwrap().0.update_cpu(&stat);
-                    }
-                    event::Event::Key(KeyEvent {
-                        code: KeyCode::Char('4'),
-                        ..
-                    }) => {
-                        let mut stat = tui_stat.write().unwrap();
-                        stat.cpu_column = stat.cpu_column % 8 + 1;
-                        should_update.store(true, Ordering::Relaxed);
-                    }
-                    event::Event::Key(KeyEvent {
-                        code: KeyCode::Char('m'),
-                        ..
-                    }) => {
-                        let mut stat = tui_stat.write().unwrap();
-                        stat.memory_graph_mode = stat.memory_graph_mode.next();
-                        should_update.store(true, Ordering::Relaxed);
-                    }
-                    event::Event::Key(KeyEvent {
-                        code: KeyCode::Up, ..
-                    }) => {
-                        let mut stat = tui_stat.write().unwrap();
-                        if stat.list_offset > 0 {
-                            stat.list_offset -= 1;
-                            should_update.store(true, Ordering::Relaxed);
-                        }
-                    }
-                    event::Event::Key(KeyEvent {
-                        code: KeyCode::Down,
-                        ..
-                    }) => {
-                        let mut stat = tui_stat.write().unwrap();
-                        stat.list_offset += 1;
-                        should_update.store(true, Ordering::Relaxed);
-                    }
-                    event::Event::Resize(_, _) => should_update.store(true, Ordering::Relaxed),
-                    _ => {}
+                if handle_input(e, &tui_stat, &data, &should_update)? {
+                    break;
                 }
             }
         }
@@ -233,8 +160,6 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             })?;
         }
         should_update.store(false, Ordering::Relaxed);
-
-        sleep(Duration::from_millis(20));
     }
 
     ratatui::restore();
