@@ -7,8 +7,8 @@
 use uutests::util::run_ucmd_as_root;
 
 use uutests::new_ucmd;
-use uutests::util::TestScenario;
-use uutests::util_name;
+#[cfg(target_os = "linux")]
+use uutests::{util::TestScenario, util_name};
 
 #[test]
 fn test_invalid_arg() {

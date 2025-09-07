@@ -7,8 +7,6 @@ use pretty_assertions::assert_eq;
 use regex::Regex;
 
 use uutests::new_ucmd;
-use uutests::util::TestScenario;
-use uutests::util_name;
 
 // TODO: make tests combineable (e.g. test --total --human)
 

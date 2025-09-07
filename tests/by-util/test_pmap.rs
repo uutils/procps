@@ -8,8 +8,8 @@ use regex::Regex;
 #[cfg(target_os = "linux")]
 use std::process;
 use uutests::new_ucmd;
-use uutests::util::TestScenario;
-use uutests::util_name;
+#[cfg(target_os = "linux")]
+use uutests::{util::TestScenario, util_name};
 
 const NON_EXISTING_PID: &str = "999999";
 #[cfg(target_os = "linux")]

@@ -4,8 +4,6 @@
 // file that was distributed with this source code.
 
 use uutests::new_ucmd;
-use uutests::util::TestScenario;
-use uutests::util_name;
 
 // runddl32.exe has no console window, no side effects,
 // and no arguments are required.

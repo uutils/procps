@@ -6,8 +6,6 @@
 #[cfg(target_os = "linux")]
 use std::time::Duration;
 use uutests::new_ucmd;
-use uutests::util::TestScenario;
-use uutests::util_name;
 
 #[test]
 fn test_simple() {
