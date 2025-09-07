@@ -4,8 +4,6 @@
 // file that was distributed with this source code.
 
 use uutests::new_ucmd;
-use uutests::util::TestScenario;
-use uutests::util_name;
 
 #[test]
 fn test_invalid_arg() {
@@ -16,8 +14,6 @@ fn test_invalid_arg() {
 mod linux {
 
     use uutests::new_ucmd;
-    use uutests::util::TestScenario;
-    use uutests::util_name;
 
     #[test]
     fn test_get_simple() {
@@ -75,8 +71,6 @@ mod linux {
 mod non_linux {
 
     use uutests::new_ucmd;
-    use uutests::util::TestScenario;
-    use uutests::util_name;
 
     #[test]
     fn test_fails_on_unsupported_platforms() {

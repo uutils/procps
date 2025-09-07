@@ -5,10 +5,6 @@
 
 #[cfg(unix)]
 use uutests::new_ucmd;
-#[cfg(unix)]
-use uutests::util::TestScenario;
-#[cfg(unix)]
-use uutests::util_name;
 
 #[cfg(unix)]
 #[test]

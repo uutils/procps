@@ -4,8 +4,6 @@
 // file that was distributed with this source code.
 
 use uutests::new_ucmd;
-use uutests::util::TestScenario;
-use uutests::util_name;
 
 #[test]
 #[cfg(target_os = "linux")]
