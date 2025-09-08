@@ -158,6 +158,14 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                         break;
                     }
                     event::Event::Key(KeyEvent {
+                        code: KeyCode::Char('l'),
+                        ..
+                    }) => {
+                        let mut stat = tui_stat.write().unwrap();
+                        stat.show_load_avg = !stat.show_load_avg;
+                        should_update.store(true, Ordering::Relaxed);
+                    }
+                    event::Event::Key(KeyEvent {
                         code: KeyCode::Char('t'),
                         ..
                     }) => {
@@ -174,6 +182,14 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
                         should_update.store(true, Ordering::Relaxed);
                         data.write().unwrap().0.update_cpu(&stat);
+                    }
+                    event::Event::Key(KeyEvent {
+                        code: KeyCode::Char('4'),
+                        ..
+                    }) => {
+                        let mut stat = tui_stat.write().unwrap();
+                        stat.cpu_column = stat.cpu_column % 8 + 1;
+                        should_update.store(true, Ordering::Relaxed);
                     }
                     event::Event::Key(KeyEvent {
                         code: KeyCode::Char('m'),
