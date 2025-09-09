@@ -18,6 +18,7 @@ pub(crate) struct TuiStat {
     pub memory_graph_mode: MemoryGraphMode,
     pub cpu_column: u16,
     pub list_offset: usize,
+    pub colorful: bool,
     pub delay: Duration,
 }
 
@@ -35,6 +36,7 @@ impl TuiStat {
             memory_graph_mode: MemoryGraphMode::default(),
             cpu_column: 2,
             list_offset: 0,
+            colorful: true,
             delay: Duration::from_millis(1500), // 1.5s
         }
     }

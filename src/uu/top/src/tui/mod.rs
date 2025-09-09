@@ -3,11 +3,14 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+mod color;
 mod input;
 pub mod stat;
+
 pub use input::*;
 
 use crate::header::{format_memory, Header};
+use crate::tui::color::TuiColor;
 use crate::tui::stat::{CpuGraphMode, MemoryGraphMode, TuiStat};
 use crate::ProcList;
 use ratatui::prelude::*;
@@ -64,6 +67,7 @@ impl<'a> Tui<'a> {
 
     fn render_header(&self, area: Rect, buf: &mut Buffer) {
         let constraints = vec![Constraint::Length(1); self.calc_header_height() as usize];
+        let colorful = self.stat.colorful;
 
         let cpu = &self.header.cpu;
 
@@ -100,7 +104,7 @@ impl<'a> Tui<'a> {
                 if i_columns > 0 {
                     Line::from(vec![
                         Span::raw(" "),
-                        Span::styled(" ", Style::default().bg(Color::Yellow)),
+                        Span::styled(" ", Style::default().bg_secondary(colorful)),
                         Span::raw(" "),
                     ])
                     .render(cpu_column.as_ref().unwrap()[column_offset - 1], buf);
@@ -118,7 +122,7 @@ impl<'a> Tui<'a> {
                 .split(area);
                 i_columns += 1;
 
-                Span::styled(format!("%{tag:<6}:",), Style::default().red())
+                Span::styled(format!("%{tag:<6}:",), Style::default().primary(colorful))
                     .render(line_layout[0], buf);
                 let percentage = if print_percentage {
                     format!("{:>5.0}", ((red + yellow) * 100.0).round())
@@ -127,7 +131,10 @@ impl<'a> Tui<'a> {
                 };
                 Line::from(vec![
                     Span::raw(format!("{l:>5.1}")),
-                    Span::styled(format!("/{r:<5.1}{percentage}"), Style::default().red()),
+                    Span::styled(
+                        format!("/{r:<5.1}{percentage}"),
+                        Style::default().primary(colorful),
+                    ),
                 ])
                 .render(line_layout[1], buf);
                 Paragraph::new("[").render(line_layout[2], buf);
@@ -139,17 +146,17 @@ impl<'a> Tui<'a> {
                 let red_span = Span::styled(
                     content.to_string().repeat(red_width as usize),
                     if content == ' ' {
-                        Style::default().bg(Color::Red)
+                        Style::default().bg_primary(colorful)
                     } else {
-                        Style::default().red()
+                        Style::default().primary(colorful)
                     },
                 );
                 let yellow_span = Span::styled(
                     content.to_string().repeat(yellow_width as usize),
                     if content == ' ' {
-                        Style::default().bg(Color::Yellow)
+                        Style::default().bg_secondary(colorful)
                     } else {
-                        Style::default().yellow()
+                        Style::default().secondary(colorful)
                     },
                 );
 
@@ -175,17 +182,17 @@ impl<'a> Tui<'a> {
         if self.stat.cpu_graph_mode != CpuGraphMode::Hide {
             let task = &self.header.task;
             let task_line = vec![
-                Span::styled("Tasks: ", Style::default().red()),
+                Span::styled("Tasks: ", Style::default().primary(colorful)),
                 Span::raw(task.total.to_string()),
-                Span::styled(" total, ", Style::default().red()),
+                Span::styled(" total, ", Style::default().primary(colorful)),
                 Span::raw(task.running.to_string()),
-                Span::styled(" running, ", Style::default().red()),
+                Span::styled(" running, ", Style::default().primary(colorful)),
                 Span::raw(task.sleeping.to_string()),
-                Span::styled(" sleeping, ", Style::default().red()),
+                Span::styled(" sleeping, ", Style::default().primary(colorful)),
                 Span::raw(task.stopped.to_string()),
-                Span::styled(" stopped, ", Style::default().red()),
+                Span::styled(" stopped, ", Style::default().primary(colorful)),
                 Span::raw(task.zombie.to_string()),
-                Span::styled(" zombie", Style::default().red()),
+                Span::styled(" zombie", Style::default().primary(colorful)),
             ];
             Line::from(task_line).render(header_layout[i], buf);
             i += 1;
@@ -254,28 +261,34 @@ impl<'a> Tui<'a> {
 
             if self.stat.memory_graph_mode == MemoryGraphMode::Sum {
                 Line::from(vec![
-                    Span::styled(format!("{unit_name} Mem : "), Style::default().red()),
+                    Span::styled(
+                        format!("{unit_name} Mem : "),
+                        Style::default().primary(colorful),
+                    ),
                     Span::raw(format!("{:8.1}", format_memory(mem.total, unit))),
-                    Span::styled(" total, ", Style::default().red()),
+                    Span::styled(" total, ", Style::default().primary(colorful)),
                     Span::raw(format!("{:8.1}", format_memory(mem.free, unit))),
-                    Span::styled(" free, ", Style::default().red()),
+                    Span::styled(" free, ", Style::default().primary(colorful)),
                     Span::raw(format!("{:8.1}", format_memory(mem.used, unit))),
-                    Span::styled(" used, ", Style::default().red()),
+                    Span::styled(" used, ", Style::default().primary(colorful)),
                     Span::raw(format!("{:8.1}", format_memory(mem.buff_cache, unit))),
-                    Span::styled(" buff/cache", Style::default().red()),
+                    Span::styled(" buff/cache", Style::default().primary(colorful)),
                 ])
                 .render(header_layout[i], buf);
                 i += 1;
                 Line::from(vec![
-                    Span::styled(format!("{unit_name} Swap: "), Style::default().red()),
+                    Span::styled(
+                        format!("{unit_name} Swap: "),
+                        Style::default().primary(colorful),
+                    ),
                     Span::raw(format!("{:8.1}", format_memory(mem.total_swap, unit))),
-                    Span::styled(" total, ", Style::default().red()),
+                    Span::styled(" total, ", Style::default().primary(colorful)),
                     Span::raw(format!("{:8.1}", format_memory(mem.free_swap, unit))),
-                    Span::styled(" free, ", Style::default().red()),
+                    Span::styled(" free, ", Style::default().primary(colorful)),
                     Span::raw(format!("{:8.1}", format_memory(mem.used_swap, unit))),
-                    Span::styled(" used, ", Style::default().red()),
+                    Span::styled(" used, ", Style::default().primary(colorful)),
                     Span::raw(format!("{:8.1}", format_memory(mem.available, unit))),
-                    Span::styled(" avail Mem", Style::default().red()),
+                    Span::styled(" avail Mem", Style::default().primary(colorful)),
                 ])
                 .render(header_layout[i], buf);
             } else {
@@ -322,14 +335,20 @@ impl<'a> Tui<'a> {
     }
 
     fn render_input(&self, area: Rect, buf: &mut Buffer) {
+        let colorful = self.stat.colorful;
         if let Some(v) = self.stat.input_error.as_ref() {
+            let layout = Layout::new(
+                Direction::Horizontal,
+                [Constraint::Length(v.len() as u16), Constraint::Fill(1)],
+            )
+            .split(area);
             Paragraph::new(v.as_str())
-                .style(Style::default().fg(Color::Red))
-                .render(area, buf);
+                .style(Style::default().error(colorful))
+                .render(layout[0], buf);
             return;
         }
         let input = Line::from(vec![
-            Span::styled(&self.stat.input_label, Style::default().red()),
+            Span::styled(&self.stat.input_label, Style::default().primary(colorful)),
             Span::raw(" "),
             Span::raw(&self.stat.input_value),
         ]);
@@ -337,6 +356,7 @@ impl<'a> Tui<'a> {
     }
 
     fn render_list(&mut self, area: Rect, buf: &mut Buffer) {
+        let colorful = self.stat.colorful;
         let build_constraint = |field: &str| match field {
             "PID" => Constraint::Length(7),
             "USER" => Constraint::Length(10),
@@ -362,9 +382,8 @@ impl<'a> Tui<'a> {
 
         self.stat.list_offset = min(self.stat.list_offset, self.proc_list.collected.len() - 1);
 
-        let header = Row::new(self.proc_list.fields.clone())
-            .style(Style::default().bg(Color::Yellow))
-            .height(1);
+        let header =
+            Row::new(self.proc_list.fields.clone()).style(Style::default().bg_secondary(colorful));
 
         let rows = self.proc_list.collected.iter().map(|item| {
             let cells = item.iter().map(|c| Cell::from(c.as_str()));

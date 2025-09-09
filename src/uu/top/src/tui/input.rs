@@ -113,6 +113,15 @@ pub fn handle_input(
                 should_update.store(true, Ordering::Relaxed);
             }
             Event::Key(KeyEvent {
+                code: KeyCode::Char('z'),
+                ..
+            }) => {
+                let mut stat = tui_stat.write().unwrap();
+                stat.colorful = !stat.colorful;
+
+                should_update.store(true, Ordering::Relaxed);
+            }
+            Event::Key(KeyEvent {
                 code: KeyCode::Up, ..
             }) => {
                 let mut stat = tui_stat.write().unwrap();
@@ -174,8 +183,8 @@ fn handle_input_value(
                 Ok(v) => v,
                 Err(_) => {
                     let mut stat = tui_stat.write().unwrap();
-                    stat.input_error = Some(" invalid numa node ".into());
                     stat.reset_input();
+                    stat.input_error = Some(" invalid numa node ".into());
                     should_update.store(true, Ordering::Relaxed);
                     return;
                 }
@@ -183,8 +192,8 @@ fn handle_input_value(
             let numa_nodes = get_numa_nodes();
             if !numa_nodes.contains_key(&input_value) {
                 let mut stat = tui_stat.write().unwrap();
-                stat.input_error = Some(" invalid numa node ".into());
                 stat.reset_input();
+                stat.input_error = Some(" invalid numa node ".into());
                 should_update.store(true, Ordering::Relaxed);
                 return;
             }
