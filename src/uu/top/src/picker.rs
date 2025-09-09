@@ -3,6 +3,8 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use crate::tui::stat::TuiStat;
+use crate::Settings;
 use std::{
     ffi::OsString,
     fs::File,
@@ -19,7 +21,10 @@ pub fn sysinfo() -> &'static RwLock<System> {
     SYSINFO.get_or_init(|| RwLock::new(System::new_all()))
 }
 
-pub(crate) fn pickers(fields: &[String]) -> Vec<Box<dyn Fn(u32) -> String>> {
+type Stat<'a> = (&'a Settings, &'a TuiStat);
+type Picker = Box<dyn Fn(u32, Stat) -> String>;
+
+pub(crate) fn pickers(fields: &[String]) -> Vec<Picker> {
     fields
         .iter()
         .map(|field| match field.as_str() {
@@ -41,7 +46,7 @@ pub(crate) fn pickers(fields: &[String]) -> Vec<Box<dyn Fn(u32) -> String>> {
 }
 
 #[inline]
-fn helper(f: impl Fn(u32) -> String + 'static) -> Box<dyn Fn(u32) -> String> {
+fn helper(f: impl Fn(u32, Stat) -> String + 'static) -> Picker {
     Box::new(f)
 }
 
@@ -55,11 +60,11 @@ fn format_memory(memory_b: u64) -> String {
     }
 }
 
-fn todo(_pid: u32) -> String {
+fn todo(_pid: u32, _stat: Stat) -> String {
     "TODO".into()
 }
 
-fn cpu(pid: u32) -> String {
+fn cpu(pid: u32, _stat: Stat) -> String {
     let binding = sysinfo().read().unwrap();
     let Some(proc) = binding.process(Pid::from_u32(pid)) else {
         return "0.0".into();
@@ -70,11 +75,11 @@ fn cpu(pid: u32) -> String {
     format!("{usage:.2}")
 }
 
-fn pid(pid: u32) -> String {
+fn pid(pid: u32, _stat: Stat) -> String {
     pid.to_string()
 }
 
-fn user(pid: u32) -> String {
+fn user(pid: u32, _stat: Stat) -> String {
     let binding = sysinfo().read().unwrap();
     let Some(proc) = binding.process(Pid::from_u32(pid)) else {
         return "0.0".into();
@@ -89,7 +94,7 @@ fn user(pid: u32) -> String {
 }
 
 #[cfg(target_os = "linux")]
-fn pr(pid: u32) -> String {
+fn pr(pid: u32, _stat: Stat) -> String {
     use uucore::libc::*;
     let policy = unsafe { sched_getscheduler(pid as i32) };
     if policy == -1 {
@@ -111,8 +116,8 @@ fn pr(pid: u32) -> String {
 }
 
 #[cfg(not(target_os = "linux"))]
-fn pr(pid: u32) -> String {
-    todo(pid)
+fn pr(pid: u32, stat: Stat) -> String {
+    todo(pid, stat)
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -134,18 +139,18 @@ fn get_nice(pid: u32) -> i32 {
 }
 
 #[cfg(not(target_os = "windows"))]
-fn ni(pid: u32) -> String {
+fn ni(pid: u32, _stat: Stat) -> String {
     format!("{}", get_nice(pid))
 }
 
 // TODO: Implement this function for Windows
 #[cfg(target_os = "windows")]
-fn ni(_pid: u32) -> String {
+fn ni(_pid: u32, _stat: Stat) -> String {
     "0".into()
 }
 
 #[cfg(target_os = "linux")]
-fn virt(pid: u32) -> String {
+fn virt(pid: u32, _stat: Stat) -> String {
     let binding = sysinfo().read().unwrap();
     let Some(proc) = binding.process(Pid::from_u32(pid)) else {
         return "0.0".into();
@@ -154,12 +159,12 @@ fn virt(pid: u32) -> String {
 }
 
 #[cfg(not(target_os = "linux"))]
-fn virt(_pid: u32) -> String {
-    "TODO".into()
+fn virt(pid: u32, stat: Stat) -> String {
+    todo(pid, stat)
 }
 
 #[cfg(target_os = "linux")]
-fn res(pid: u32) -> String {
+fn res(pid: u32, _stat: Stat) -> String {
     let binding = sysinfo().read().unwrap();
     let Some(proc) = binding.process(Pid::from_u32(pid)) else {
         return "0.0".into();
@@ -168,12 +173,12 @@ fn res(pid: u32) -> String {
 }
 
 #[cfg(not(target_os = "linux"))]
-fn res(_pid: u32) -> String {
-    "TODO".into()
+fn res(pid: u32, stat: Stat) -> String {
+    todo(pid, stat)
 }
 
 #[cfg(target_os = "linux")]
-fn shr(pid: u32) -> String {
+fn shr(pid: u32, _stat: Stat) -> String {
     let file_path = format!("/proc/{pid}/statm");
     let Ok(file) = File::open(file_path) else {
         return "0.0".into();
@@ -189,11 +194,11 @@ fn shr(pid: u32) -> String {
 }
 
 #[cfg(not(target_os = "linux"))]
-fn shr(_pid: u32) -> String {
-    "TODO".into()
+fn shr(pid: u32, stat: Stat) -> String {
+    todo(pid, stat)
 }
 
-fn s(pid: u32) -> String {
+fn s(pid: u32, _stat: Stat) -> String {
     let binding = sysinfo().read().unwrap();
     let Some(proc) = binding.process(Pid::from_u32(pid)) else {
         return "?".into();
@@ -208,7 +213,7 @@ fn s(pid: u32) -> String {
         .to_string()
 }
 
-fn time_plus(pid: u32) -> String {
+fn time_plus(pid: u32, _stat: Stat) -> String {
     let binding = sysinfo().read().unwrap();
     let Some(proc) = binding.process(Pid::from_u32(pid)) else {
         return "0:00.00".into();
@@ -226,7 +231,7 @@ fn time_plus(pid: u32) -> String {
     format!("{hour}:{min:0>2}.{sec:0>2}")
 }
 
-fn mem(pid: u32) -> String {
+fn mem(pid: u32, _stat: Stat) -> String {
     let binding = sysinfo().read().unwrap();
     let Some(proc) = binding.process(Pid::from_u32(pid)) else {
         return "0.0".into();
@@ -238,7 +243,8 @@ fn mem(pid: u32) -> String {
     )
 }
 
-fn command(pid: u32) -> String {
+fn command(pid: u32, stat: Stat) -> String {
+    let full_command_line = stat.1.full_command_line;
     let f = |cmd: &[OsString]| -> String {
         let binding = cmd
             .iter()
@@ -250,6 +256,7 @@ fn command(pid: u32) -> String {
         let result: String = trimmed.into();
 
         if cfg!(target_os = "linux") && result.is_empty() {
+            // actually executable name
             let path = PathBuf::from_str(&format!("/proc/{pid}/status")).unwrap();
             if let Ok(file) = File::open(path) {
                 let content = read_to_string(file).unwrap();
@@ -276,8 +283,17 @@ fn command(pid: u32) -> String {
     };
 
     proc.exe()
-        .and_then(|it| it.iter().next_back())
-        .map(|it| it.to_str().unwrap())
-        .unwrap_or(&f(proc.cmd()))
-        .into()
+        .and_then(|it| {
+            if full_command_line {
+                it.iter().next_back()
+            } else {
+                it.file_name()
+            }
+        })
+        .map(|it| it.to_str().unwrap().to_string())
+        .unwrap_or(if full_command_line {
+            f(proc.cmd())
+        } else {
+            proc.name().to_str().unwrap().to_string()
+        })
 }

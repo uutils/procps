@@ -59,9 +59,9 @@ pub(crate) struct ProcList {
 }
 
 impl ProcList {
-    pub fn new(settings: &Settings) -> Self {
+    pub fn new(settings: &Settings, tui_stat: &TuiStat) -> Self {
         let fields = selected_fields();
-        let collected = collect(settings, &fields);
+        let collected = collect(settings, &fields, tui_stat);
 
         Self { fields, collected }
     }
@@ -109,7 +109,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let should_update = Arc::new(AtomicBool::new(true));
     let data = Arc::new(RwLock::new((
         Header::new(&tui_stat.read().unwrap()),
-        ProcList::new(&settings),
+        ProcList::new(&settings, &tui_stat.read().unwrap()),
     )));
 
     // update
@@ -123,7 +123,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             sleep(delay);
             {
                 let header = Header::new(&tui_stat.read().unwrap());
-                let proc_list = ProcList::new(&settings);
+                let proc_list = ProcList::new(&settings, &tui_stat.read().unwrap());
                 tui_stat.write().unwrap().input_error = None;
                 *data.write().unwrap() = (header, proc_list);
                 should_update.store(true, Ordering::Relaxed);
@@ -143,7 +143,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     loop {
         if let Ok(true) = event::poll(Duration::from_millis(20)) {
             if let Ok(e) = event::read() {
-                if handle_input(e, &tui_stat, &data, &should_update)? {
+                if handle_input(e, &settings, &tui_stat, &data, &should_update) {
                     break;
                 }
             }
@@ -197,7 +197,7 @@ fn selected_fields() -> Vec<String> {
     .collect()
 }
 
-fn collect(settings: &Settings, fields: &[String]) -> Vec<Vec<String>> {
+fn collect(settings: &Settings, fields: &[String], tui_stat: &TuiStat) -> Vec<Vec<String>> {
     let pickers = pickers(fields);
 
     let pids = sysinfo()
@@ -215,7 +215,7 @@ fn collect(settings: &Settings, fields: &[String]) -> Vec<Vec<String>> {
         .map(|it| {
             pickers
                 .iter()
-                .map(move |picker| picker(it))
+                .map(move |picker| picker(it, (settings, tui_stat)))
                 .collect::<Vec<_>>()
         })
         .collect()

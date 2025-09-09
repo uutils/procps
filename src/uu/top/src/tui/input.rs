@@ -6,11 +6,10 @@
 use crate::header::Header;
 use crate::platform::get_numa_nodes;
 use crate::tui::stat::{CpuValueMode, TuiStat};
-use crate::ProcList;
+use crate::{ProcList, Settings};
 use ratatui::crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::RwLock;
-use uucore::error::UResult;
 
 #[derive(Eq, PartialEq, Copy, Clone)]
 pub(crate) enum InputMode {
@@ -24,10 +23,11 @@ pub(crate) enum InputEvent {
 
 pub fn handle_input(
     e: Event,
+    settings: &Settings,
     tui_stat: &RwLock<TuiStat>,
     data: &RwLock<(Header, ProcList)>,
     should_update: &AtomicBool,
-) -> UResult<bool> {
+) -> bool {
     let input_mode = { tui_stat.read().unwrap().input_mode };
     match input_mode {
         InputMode::Command => match e {
@@ -41,7 +41,21 @@ pub fn handle_input(
                 ..
             }) => {
                 uucore::error::set_exit_code(0);
-                return Ok(true);
+                return true;
+            }
+
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('c'),
+                ..
+            }) => {
+                {
+                    // drop the lock as soon as possible
+                    let mut stat = tui_stat.write().unwrap();
+                    stat.full_command_line = !stat.full_command_line;
+                }
+
+                data.write().unwrap().1 = ProcList::new(settings, &tui_stat.read().unwrap());
+                should_update.store(true, Ordering::Relaxed);
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Char('l'),
@@ -52,11 +66,27 @@ pub fn handle_input(
                 should_update.store(true, Ordering::Relaxed);
             }
             Event::Key(KeyEvent {
+                code: KeyCode::Char('m'),
+                ..
+            }) => {
+                let mut stat = tui_stat.write().unwrap();
+                stat.memory_graph_mode = stat.memory_graph_mode.next();
+                should_update.store(true, Ordering::Relaxed);
+            }
+            Event::Key(KeyEvent {
                 code: KeyCode::Char('t'),
                 ..
             }) => {
                 let mut stat = tui_stat.write().unwrap();
                 stat.cpu_graph_mode = stat.cpu_graph_mode.next();
+                should_update.store(true, Ordering::Relaxed);
+            }
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('z'),
+                ..
+            }) => {
+                let mut stat = tui_stat.write().unwrap();
+                stat.colorful = !stat.colorful;
                 should_update.store(true, Ordering::Relaxed);
             }
             Event::Key(KeyEvent {
@@ -74,11 +104,11 @@ pub fn handle_input(
                 ..
             }) => {
                 let mut stat = tui_stat.write().unwrap();
-                if stat.cpu_value_mode != CpuValueMode::Numa {
+                if stat.cpu_value_mode == CpuValueMode::Numa {
+                    stat.cpu_value_mode = stat.cpu_value_mode.next();
+                } else {
                     stat.cpu_value_mode = CpuValueMode::Numa;
                     stat.cpu_column = 1;
-                } else {
-                    stat.cpu_value_mode = stat.cpu_value_mode.next();
                 }
 
                 data.write().unwrap().0.update_cpu(&stat);
@@ -102,23 +132,6 @@ pub fn handle_input(
             }) => {
                 let mut stat = tui_stat.write().unwrap();
                 stat.cpu_column = stat.cpu_column % 8 + 1;
-                should_update.store(true, Ordering::Relaxed);
-            }
-            Event::Key(KeyEvent {
-                code: KeyCode::Char('m'),
-                ..
-            }) => {
-                let mut stat = tui_stat.write().unwrap();
-                stat.memory_graph_mode = stat.memory_graph_mode.next();
-                should_update.store(true, Ordering::Relaxed);
-            }
-            Event::Key(KeyEvent {
-                code: KeyCode::Char('z'),
-                ..
-            }) => {
-                let mut stat = tui_stat.write().unwrap();
-                stat.colorful = !stat.colorful;
-
                 should_update.store(true, Ordering::Relaxed);
             }
             Event::Key(KeyEvent {
@@ -167,7 +180,7 @@ pub fn handle_input(
             }
         }
     }
-    Ok(false)
+    false
 }
 
 fn handle_input_value(
@@ -179,24 +192,19 @@ fn handle_input_value(
     match input_event {
         InputEvent::NumaNode => {
             let input_value = { tui_stat.read().unwrap().input_value.parse::<usize>() };
-            let input_value = match input_value {
-                Ok(v) => v,
-                Err(_) => {
-                    let mut stat = tui_stat.write().unwrap();
-                    stat.reset_input();
-                    stat.input_error = Some(" invalid numa node ".into());
-                    should_update.store(true, Ordering::Relaxed);
-                    return;
-                }
-            };
             let numa_nodes = get_numa_nodes();
-            if !numa_nodes.contains_key(&input_value) {
+            if input_value.is_err()
+                || input_value
+                    .as_ref()
+                    .is_ok_and(|v| !numa_nodes.contains_key(v))
+            {
                 let mut stat = tui_stat.write().unwrap();
                 stat.reset_input();
                 stat.input_error = Some(" invalid numa node ".into());
                 should_update.store(true, Ordering::Relaxed);
                 return;
             }
+            let input_value = input_value.unwrap();
             let mut stat = tui_stat.write().unwrap();
             stat.cpu_value_mode = CpuValueMode::NumaNode(input_value);
             stat.cpu_column = 1;
