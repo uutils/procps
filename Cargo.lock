@@ -1100,6 +1100,7 @@ dependencies = [
  "clap_complete",
  "clap_mangen",
  "ctor",
+ "jiff",
  "libc",
  "phf",
  "phf_codegen",
@@ -1867,8 +1868,8 @@ name = "uu_vmstat"
 version = "0.0.1"
 dependencies = [
  "bytesize",
- "chrono",
  "clap",
+ "jiff",
  "terminal_size",
  "uu_slabtop",
  "uucore",

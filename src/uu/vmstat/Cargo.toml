@@ -12,8 +12,8 @@ version.workspace = true
 
 [dependencies]
 bytesize = { workspace = true }
-chrono = { workspace = true, default-features = false, features = ["clock"] }
 clap = { workspace = true }
+jiff = { workspace = true }
 terminal_size = { workspace = true }
 uucore = { workspace = true }
 
