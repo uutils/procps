@@ -165,16 +165,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "chrono-tz"
-version = "0.10.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6139a8597ed92cf816dfb33f5dd6cf0bb93a6adc938f11039f371bc5bcd26c3"
-dependencies = [
- "chrono",
- "phf 0.12.1",
-]
-
-[[package]]
 name = "clap"
 version = "4.5.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -458,18 +448,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "dns-lookup"
-version = "2.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf5597a4b7fe5275fc9dcf88ce26326bc8e4cb87d0130f33752d4c5f717793cf"
-dependencies = [
- "cfg-if",
- "libc",
- "socket2",
- "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -1007,20 +985,11 @@ checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
 name = "phf"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "913273894cec178f401a31ec4b656318d95473527be05c0752cc41cdc32be8b7"
-dependencies = [
- "phf_shared 0.12.1",
-]
-
-[[package]]
-name = "phf"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1562dc717473dbaa4c1f85a36410e03c047b2e7df7f45ee938fbef64ae7fadf"
 dependencies = [
- "phf_shared 0.13.1",
+ "phf_shared",
  "serde",
 ]
 
@@ -1031,7 +1000,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49aa7f9d80421bca176ca8dbfebe668cc7a2684708594ec9f3c0db0805d5d6e1"
 dependencies = [
  "phf_generator",
- "phf_shared 0.13.1",
+ "phf_shared",
 ]
 
 [[package]]
@@ -1041,16 +1010,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "135ace3a761e564ec88c03a77317a7c6b80bb7f7135ef2544dbe054243b89737"
 dependencies = [
  "fastrand",
- "phf_shared 0.13.1",
-]
-
-[[package]]
-name = "phf_shared"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06005508882fb681fd97892ecff4b7fd0fee13ef1aa569f8695dae7ab9099981"
-dependencies = [
- "siphasher",
+ "phf_shared",
 ]
 
 [[package]]
@@ -1141,7 +1101,7 @@ dependencies = [
  "clap_mangen",
  "ctor",
  "libc",
- "phf 0.13.1",
+ "phf",
  "phf_codegen",
  "pretty_assertions",
  "rand",
@@ -1167,7 +1127,7 @@ dependencies = [
  "uu_vmstat",
  "uu_w",
  "uu_watch",
- "uucore 0.1.0",
+ "uucore",
  "uutests",
  "xattr",
 ]
@@ -1754,7 +1714,7 @@ dependencies = [
  "bytesize",
  "clap",
  "sysinfo",
- "uucore 0.1.0",
+ "uucore",
  "windows 0.62.0",
 ]
 
@@ -1764,7 +1724,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "regex",
- "uucore 0.1.0",
+ "uucore",
  "walkdir",
 ]
 
@@ -1774,7 +1734,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "uu_pgrep",
- "uucore 0.1.0",
+ "uucore",
 ]
 
 [[package]]
@@ -1785,7 +1745,7 @@ dependencies = [
  "nix",
  "regex",
  "uu_pgrep",
- "uucore 0.1.0",
+ "uucore",
 ]
 
 [[package]]
@@ -1796,7 +1756,7 @@ dependencies = [
  "nix",
  "regex",
  "uu_pgrep",
- "uucore 0.1.0",
+ "uucore",
  "walkdir",
 ]
 
@@ -1806,7 +1766,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "dirs",
- "uucore 0.1.0",
+ "uucore",
 ]
 
 [[package]]
@@ -1819,7 +1779,7 @@ dependencies = [
  "nix",
  "prettytable-rs",
  "uu_pgrep",
- "uucore 0.1.0",
+ "uucore",
 ]
 
 [[package]]
@@ -1828,7 +1788,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "sysinfo",
- "uucore 0.1.0",
+ "uucore",
 ]
 
 [[package]]
@@ -1838,7 +1798,7 @@ dependencies = [
  "clap",
  "nix",
  "uu_snice",
- "uucore 0.1.0",
+ "uucore",
 ]
 
 [[package]]
@@ -1846,7 +1806,7 @@ name = "uu_slabtop"
 version = "0.0.1"
 dependencies = [
  "clap",
- "uucore 0.1.0",
+ "uucore",
 ]
 
 [[package]]
@@ -1860,7 +1820,7 @@ dependencies = [
  "sysinfo",
  "thiserror 2.0.16",
  "uu_pgrep",
- "uucore 0.1.0",
+ "uucore",
 ]
 
 [[package]]
@@ -1869,7 +1829,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "sysinfo",
- "uucore 0.1.0",
+ "uucore",
  "walkdir",
 ]
 
@@ -1880,7 +1840,7 @@ dependencies = [
  "clap",
  "crossterm 0.29.0",
  "ratatui",
- "uucore 0.1.0",
+ "uucore",
 ]
 
 [[package]]
@@ -1898,7 +1858,7 @@ dependencies = [
  "sysinfo",
  "uu_vmstat",
  "uu_w",
- "uucore 0.1.0",
+ "uucore",
  "windows-sys 0.61.0",
 ]
 
@@ -1911,7 +1871,7 @@ dependencies = [
  "clap",
  "terminal_size",
  "uu_slabtop",
- "uucore 0.1.0",
+ "uucore",
 ]
 
 [[package]]
@@ -1921,7 +1881,7 @@ dependencies = [
  "chrono",
  "clap",
  "libc",
- "uucore 0.1.0",
+ "uucore",
 ]
 
 [[package]]
@@ -1929,33 +1889,7 @@ name = "uu_watch"
 version = "0.0.1"
 dependencies = [
  "clap",
- "uucore 0.1.0",
-]
-
-[[package]]
-name = "uucore"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9032bf981784f22fcc5ddc7e74b7cf3bae3d5f44a48d2054138ed38068b9f4e0"
-dependencies = [
- "chrono",
- "chrono-tz",
- "clap",
- "dns-lookup 2.1.1",
- "fluent",
- "fluent-bundle",
- "iana-time-zone",
- "libc",
- "nix",
- "number_prefix",
- "os_display",
- "thiserror 2.0.16",
- "time",
- "unic-langid",
- "utmp-classic",
- "uucore_procs 0.1.0",
- "wild",
- "windows-sys 0.59.0",
+ "uucore",
 ]
 
 [[package]]
@@ -1965,8 +1899,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7203e48e80ac344450cba5323d8b4a71967ec1e81ae4022775ada90d2b0e08ac"
 dependencies = [
  "bstr",
+ "chrono",
  "clap",
- "dns-lookup 3.0.0",
+ "dns-lookup",
  "fluent",
  "fluent-bundle",
  "fluent-syntax",
@@ -1978,19 +1913,10 @@ dependencies = [
  "thiserror 2.0.16",
  "time",
  "unic-langid",
- "uucore_procs 0.2.2",
+ "utmp-classic",
+ "uucore_procs",
  "wild",
-]
-
-[[package]]
-name = "uucore_procs"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c933945fdac5b7779eae1fc746146e61f5b0298deb6ede002ce0b6e93e1b3bfc"
-dependencies = [
- "proc-macro2",
- "quote",
- "uuhelp_parser 0.1.0",
+ "windows-sys 0.61.0",
 ]
 
 [[package]]
@@ -2001,14 +1927,8 @@ checksum = "449e64ce116ed0cc8c5897bd8706d36aed1ec027b647494df4eae6996d8d59de"
 dependencies = [
  "proc-macro2",
  "quote",
- "uuhelp_parser 0.2.2",
+ "uuhelp_parser",
 ]
-
-[[package]]
-name = "uuhelp_parser"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "beda381dd5c7927f8682f50b055b0903bb694ba5a4b27fad1b4934bc4fbf7b8d"
 
 [[package]]
 name = "uuhelp_parser"
@@ -2030,7 +1950,7 @@ dependencies = [
  "regex",
  "rlimit",
  "tempfile",
- "uucore 0.2.2",
+ "uucore",
  "xattr",
 ]
 

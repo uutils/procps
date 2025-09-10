@@ -15,7 +15,7 @@ bytesize = { workspace = true }
 chrono = { workspace = true, default-features = false, features = ["clock"] }
 clap = { workspace = true }
 terminal_size = { workspace = true }
-uucore = { workspace = true, features = ["custom-tz-fmt"] }
+uucore = { workspace = true }
 
 uu_slabtop = {path = "../slabtop"}
 
