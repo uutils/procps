@@ -7,7 +7,7 @@ use crate::picker::sysinfo;
 use crate::platform::*;
 use crate::tui::stat::{CpuValueMode, TuiStat};
 use bytesize::ByteSize;
-use uu_vmstat::CpuLoad;
+use uu_vmstat::{CpuLoad, CpuLoadRaw};
 use uu_w::get_formatted_uptime_procps;
 use uucore::uptime::{get_formatted_loadavg, get_formatted_nusers, get_formatted_time};
 
@@ -119,8 +119,8 @@ fn user() -> String {
     get_formatted_nusers()
 }
 
-fn sum_cpu_loads(cpu_loads: &[uu_vmstat::CpuLoadRaw]) -> uu_vmstat::CpuLoadRaw {
-    let mut total = uu_vmstat::CpuLoadRaw {
+fn sum_cpu_loads(cpu_loads: Vec<&CpuLoadRaw>) -> CpuLoadRaw {
+    let mut total = CpuLoadRaw {
         user: 0,
         nice: 0,
         system: 0,
@@ -162,9 +162,38 @@ fn cpu(stat: &TuiStat) -> Vec<(String, CpuLoad)> {
             })
             .collect::<Vec<(String, CpuLoad)>>(),
         CpuValueMode::Sum => {
-            let total = sum_cpu_loads(&cpu_loads);
+            let total = sum_cpu_loads(cpu_loads.iter().collect());
             let cpu_load = CpuLoad::from_raw(&total);
             vec![(String::from("Cpu(s)"), cpu_load)]
+        }
+        CpuValueMode::Numa => {
+            let numa_nodes = get_numa_nodes();
+            let total = sum_cpu_loads(cpu_loads.iter().collect());
+            let cpu_load = CpuLoad::from_raw(&total);
+            let mut data = vec![(String::from("Cpu(s)"), cpu_load)];
+            for (id, cores) in numa_nodes {
+                let loads = cores.iter().map(|id| &cpu_loads[*id]).collect();
+                let total = sum_cpu_loads(loads);
+                let cpu_load = CpuLoad::from_raw(&total);
+                data.push((format!("Node{id}"), cpu_load));
+            }
+            data
+        }
+        CpuValueMode::NumaNode(id) => {
+            let numa_nodes = get_numa_nodes();
+            if let Some(cores) = numa_nodes.get(&id) {
+                let loads = cores.iter().map(|id| &cpu_loads[*id]).collect();
+                let total = sum_cpu_loads(loads);
+                let cpu_load = CpuLoad::from_raw(&total);
+                let mut data = vec![(format!("Node{id}"), cpu_load)];
+                data.extend(cores.iter().map(|core_id| {
+                    let cpu_load = CpuLoad::from_raw(&cpu_loads[*core_id]);
+                    (format!("Cpu{core_id}"), cpu_load)
+                }));
+                data
+            } else {
+                vec![]
+            }
         }
     }
 }
