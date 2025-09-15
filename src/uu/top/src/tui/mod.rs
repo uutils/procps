@@ -357,6 +357,14 @@ impl<'a> Tui<'a> {
 
     fn render_list(&mut self, area: Rect, buf: &mut Buffer) {
         let colorful = self.stat.colorful;
+        let highlight_sorted = self.stat.highlight_sorted;
+        let highlight_bold = self.stat.highlight_bold;
+        let highlight_column = self
+            .proc_list
+            .fields
+            .iter()
+            .position(|f| f == &self.stat.sorter)
+            .unwrap_or(0);
         let build_constraint = |field: &str| match field {
             "PID" => Constraint::Length(7),
             "USER" => Constraint::Length(10),
@@ -386,7 +394,20 @@ impl<'a> Tui<'a> {
             Row::new(self.proc_list.fields.clone()).style(Style::default().bg_secondary(colorful));
 
         let rows = self.proc_list.collected.iter().map(|item| {
-            let cells = item.iter().map(|c| Cell::from(c.as_str()));
+            let cells = item.iter().enumerate().map(|(n, c)| {
+                if highlight_sorted && n == highlight_column {
+                    Cell::from(Span::styled(
+                        c,
+                        if highlight_bold {
+                            Style::default().bg_primary(colorful)
+                        } else {
+                            Style::default().primary(colorful)
+                        },
+                    ))
+                } else {
+                    Cell::from(c.as_str())
+                }
+            });
             Row::new(cells).height(1)
         });
 
