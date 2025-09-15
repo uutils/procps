@@ -6,7 +6,7 @@
 use crate::header::Header;
 use crate::platform::get_numa_nodes;
 use crate::tui::stat::{CpuValueMode, TuiStat};
-use crate::{ProcList, Settings};
+use crate::{selected_fields, ProcList, Settings};
 use ratatui::crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::RwLock;
@@ -121,6 +121,40 @@ pub fn handle_input(
             char!('4') => {
                 let mut stat = tui_stat.write().unwrap();
                 stat.cpu_column = stat.cpu_column % 8 + 1;
+                should_update.store(true, Ordering::Relaxed);
+            }
+            char!('<') => {
+                {
+                    let mut stat = tui_stat.write().unwrap();
+                    let fields = selected_fields();
+                    if let Some(pos) = fields.iter().position(|f| f == &stat.sorter) {
+                        let new_pos = if pos == 0 { pos } else { pos - 1 };
+                        stat.sorter = fields[new_pos].clone();
+                    } else {
+                        stat.sorter = fields[0].clone();
+                    }
+                }
+
+                data.write().unwrap().1 = ProcList::new(settings, &tui_stat.read().unwrap());
+                should_update.store(true, Ordering::Relaxed);
+            }
+            char!('>') => {
+                {
+                    let mut stat = tui_stat.write().unwrap();
+                    let fields = selected_fields();
+                    if let Some(pos) = fields.iter().position(|f| f == &stat.sorter) {
+                        let new_pos = if pos + 1 >= fields.len() {
+                            pos
+                        } else {
+                            pos + 1
+                        };
+                        stat.sorter = fields[new_pos].clone();
+                    } else {
+                        stat.sorter = fields[0].clone();
+                    }
+                }
+
+                data.write().unwrap().1 = ProcList::new(settings, &tui_stat.read().unwrap());
                 should_update.store(true, Ordering::Relaxed);
             }
             Event::Key(KeyEvent {
