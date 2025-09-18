@@ -139,7 +139,7 @@ fn print_slabs(one_header: bool, term_height: u16) -> UResult<()> {
 
 #[cfg(target_os = "linux")]
 fn needs_header(one_header: bool, term_height: u16, line_count: u64) -> bool {
-    !one_header && term_height > 0 && ((line_count + 3) % term_height as u64 == 0)
+    !one_header && term_height > 0 && (line_count + 3).is_multiple_of(term_height as u64)
 }
 
 #[cfg(target_os = "linux")]
