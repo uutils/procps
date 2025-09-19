@@ -23,6 +23,7 @@ pub(crate) struct TuiStat {
     pub full_command_line: bool,
     pub delay: Duration,
     pub sorter: String,
+    pub sort_by_pid: bool,
     pub highlight_sorted: bool,
     pub highlight_bold: bool,
 }
@@ -52,6 +53,7 @@ impl TuiStat {
             full_command_line: true,
             delay: Duration::from_millis(1500), // 1.5s
             sorter: filter,
+            sort_by_pid: false,
             highlight_sorted: false,
             highlight_bold: false,
         }

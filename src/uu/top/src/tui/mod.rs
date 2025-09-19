@@ -359,11 +359,16 @@ impl<'a> Tui<'a> {
         let colorful = self.stat.colorful;
         let highlight_sorted = self.stat.highlight_sorted;
         let highlight_bold = self.stat.highlight_bold;
+        let sorter = if self.stat.sort_by_pid {
+            "PID"
+        } else {
+            &self.stat.sorter
+        };
         let highlight_column = self
             .proc_list
             .fields
             .iter()
-            .position(|f| f == &self.stat.sorter)
+            .position(|f| f == sorter)
             .unwrap_or(0);
         let build_constraint = |field: &str| match field {
             "PID" => Constraint::Length(7),

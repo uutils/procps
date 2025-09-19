@@ -200,10 +200,6 @@ fn selected_fields() -> Vec<String> {
 
 fn collect(settings: &Settings, fields: &[String], tui_stat: &TuiStat) -> Vec<Vec<String>> {
     let pickers = pickers(fields);
-    let sorter_nth = fields
-        .iter()
-        .position(|f| f == &tui_stat.sorter)
-        .unwrap_or(0);
 
     let pids = sysinfo()
         .read()
@@ -225,7 +221,18 @@ fn collect(settings: &Settings, fields: &[String], tui_stat: &TuiStat) -> Vec<Ve
                 .collect::<Vec<_>>()
         })
         .collect::<Vec<Vec<Box<dyn Column>>>>();
-    collected.sort_by(|a, b| a[sorter_nth].cmp_dyn(&*b[sorter_nth]));
+
+    let sorter = if tui_stat.sort_by_pid {
+        "PID"
+    } else {
+        &tui_stat.sorter
+    };
+    let sorter_nth = fields.iter().position(|f| f == sorter).unwrap_or(0);
+    if tui_stat.sort_by_pid {
+        collected.sort_by(|a, b| a[sorter_nth].cmp_dyn(&*b[sorter_nth])); // reverse
+    } else {
+        collected.sort_by(|a, b| b[sorter_nth].cmp_dyn(&*a[sorter_nth]));
+    }
     collected
         .into_iter()
         .map(|it| it.into_iter().map(|c| c.as_string()).collect())

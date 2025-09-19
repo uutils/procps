@@ -75,6 +75,15 @@ pub fn handle_input(
                 stat.memory_graph_mode = stat.memory_graph_mode.next();
                 should_update.store(true, Ordering::Relaxed);
             }
+            char!('R') => {
+                {
+                    let mut stat = tui_stat.write().unwrap();
+                    stat.sort_by_pid = !stat.sort_by_pid;
+                }
+
+                data.write().unwrap().1 = ProcList::new(settings, &tui_stat.read().unwrap());
+                should_update.store(true, Ordering::Relaxed);
+            }
             char!('t') => {
                 let mut stat = tui_stat.write().unwrap();
                 stat.cpu_graph_mode = stat.cpu_graph_mode.next();
