@@ -6,7 +6,7 @@
 use crate::header::Header;
 use crate::platform::get_numa_nodes;
 use crate::tui::stat::{CpuValueMode, TuiStat};
-use crate::{ProcList, Settings};
+use crate::{selected_fields, ProcList, Settings};
 use ratatui::crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::RwLock;
@@ -19,6 +19,15 @@ pub(crate) enum InputMode {
 #[derive(Eq, PartialEq, Copy, Clone)]
 pub(crate) enum InputEvent {
     NumaNode,
+}
+
+macro_rules! char {
+    ($e:expr) => {
+        Event::Key(KeyEvent {
+            code: KeyCode::Char($e),
+            ..
+        })
+    };
 }
 
 pub fn handle_input(
@@ -36,18 +45,17 @@ pub fn handle_input(
                 modifiers: KeyModifiers::CONTROL,
                 ..
             })
-            | Event::Key(KeyEvent {
-                code: KeyCode::Char('q'),
-                ..
-            }) => {
+            | char!('q') => {
                 uucore::error::set_exit_code(0);
                 return true;
             }
 
-            Event::Key(KeyEvent {
-                code: KeyCode::Char('c'),
-                ..
-            }) => {
+            char!('b') => {
+                let mut stat = tui_stat.write().unwrap();
+                stat.highlight_bold = !stat.highlight_bold;
+                should_update.store(true, Ordering::Relaxed);
+            }
+            char!('c') => {
                 {
                     // drop the lock as soon as possible
                     let mut stat = tui_stat.write().unwrap();
@@ -57,52 +65,48 @@ pub fn handle_input(
                 data.write().unwrap().1 = ProcList::new(settings, &tui_stat.read().unwrap());
                 should_update.store(true, Ordering::Relaxed);
             }
-            Event::Key(KeyEvent {
-                code: KeyCode::Char('l'),
-                ..
-            }) => {
+            char!('l') => {
                 let mut stat = tui_stat.write().unwrap();
                 stat.show_load_avg = !stat.show_load_avg;
                 should_update.store(true, Ordering::Relaxed);
             }
-            Event::Key(KeyEvent {
-                code: KeyCode::Char('m'),
-                ..
-            }) => {
+            char!('m') => {
                 let mut stat = tui_stat.write().unwrap();
                 stat.memory_graph_mode = stat.memory_graph_mode.next();
                 should_update.store(true, Ordering::Relaxed);
             }
-            Event::Key(KeyEvent {
-                code: KeyCode::Char('t'),
-                ..
-            }) => {
+            char!('R') => {
+                {
+                    let mut stat = tui_stat.write().unwrap();
+                    stat.sort_by_pid = !stat.sort_by_pid;
+                }
+
+                data.write().unwrap().1 = ProcList::new(settings, &tui_stat.read().unwrap());
+                should_update.store(true, Ordering::Relaxed);
+            }
+            char!('t') => {
                 let mut stat = tui_stat.write().unwrap();
                 stat.cpu_graph_mode = stat.cpu_graph_mode.next();
                 should_update.store(true, Ordering::Relaxed);
             }
-            Event::Key(KeyEvent {
-                code: KeyCode::Char('z'),
-                ..
-            }) => {
+            char!('x') => {
+                let mut stat = tui_stat.write().unwrap();
+                stat.highlight_sorted = !stat.highlight_sorted;
+                should_update.store(true, Ordering::Relaxed);
+            }
+            char!('z') => {
                 let mut stat = tui_stat.write().unwrap();
                 stat.colorful = !stat.colorful;
                 should_update.store(true, Ordering::Relaxed);
             }
-            Event::Key(KeyEvent {
-                code: KeyCode::Char('1'),
-                ..
-            }) => {
+            char!('1') => {
                 let mut stat = tui_stat.write().unwrap();
                 stat.cpu_value_mode = stat.cpu_value_mode.next();
 
                 should_update.store(true, Ordering::Relaxed);
                 data.write().unwrap().0.update_cpu(&stat);
             }
-            Event::Key(KeyEvent {
-                code: KeyCode::Char('2'),
-                ..
-            }) => {
+            char!('2') => {
                 let mut stat = tui_stat.write().unwrap();
                 if stat.cpu_value_mode == CpuValueMode::Numa {
                     stat.cpu_value_mode = stat.cpu_value_mode.next();
@@ -114,10 +118,7 @@ pub fn handle_input(
                 data.write().unwrap().0.update_cpu(&stat);
                 should_update.store(true, Ordering::Relaxed);
             }
-            Event::Key(KeyEvent {
-                code: KeyCode::Char('3'),
-                ..
-            }) => {
+            char!('3') => {
                 let mut stat = tui_stat.write().unwrap();
                 stat.input_label = "expand which numa node ".into();
                 stat.input_value.clear();
@@ -126,12 +127,43 @@ pub fn handle_input(
                 should_update.store(true, Ordering::Relaxed);
                 data.write().unwrap().0.update_cpu(&stat);
             }
-            Event::Key(KeyEvent {
-                code: KeyCode::Char('4'),
-                ..
-            }) => {
+            char!('4') => {
                 let mut stat = tui_stat.write().unwrap();
                 stat.cpu_column = stat.cpu_column % 8 + 1;
+                should_update.store(true, Ordering::Relaxed);
+            }
+            char!('<') => {
+                {
+                    let mut stat = tui_stat.write().unwrap();
+                    let fields = selected_fields();
+                    if let Some(pos) = fields.iter().position(|f| f == &stat.sorter) {
+                        let new_pos = if pos == 0 { pos } else { pos - 1 };
+                        stat.sorter = fields[new_pos].clone();
+                    } else {
+                        stat.sorter = fields[0].clone();
+                    }
+                }
+
+                data.write().unwrap().1 = ProcList::new(settings, &tui_stat.read().unwrap());
+                should_update.store(true, Ordering::Relaxed);
+            }
+            char!('>') => {
+                {
+                    let mut stat = tui_stat.write().unwrap();
+                    let fields = selected_fields();
+                    if let Some(pos) = fields.iter().position(|f| f == &stat.sorter) {
+                        let new_pos = if pos + 1 >= fields.len() {
+                            pos
+                        } else {
+                            pos + 1
+                        };
+                        stat.sorter = fields[new_pos].clone();
+                    } else {
+                        stat.sorter = fields[0].clone();
+                    }
+                }
+
+                data.write().unwrap().1 = ProcList::new(settings, &tui_stat.read().unwrap());
                 should_update.store(true, Ordering::Relaxed);
             }
             Event::Key(KeyEvent {

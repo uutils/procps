@@ -3,6 +3,7 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use crate::selected_fields;
 use crate::tui::input::InputMode;
 use std::time::Duration;
 
@@ -21,10 +22,21 @@ pub(crate) struct TuiStat {
     pub colorful: bool,
     pub full_command_line: bool,
     pub delay: Duration,
+    pub sorter: String,
+    pub sort_by_pid: bool,
+    pub highlight_sorted: bool,
+    pub highlight_bold: bool,
 }
 
 impl TuiStat {
     pub fn new() -> Self {
+        let fields = selected_fields();
+        let filter = if fields.contains(&"%CPU".to_string()) {
+            "%CPU".to_string()
+        } else {
+            fields[0].clone()
+        };
+
         Self {
             input_mode: InputMode::Command,
             input_label: String::new(),
@@ -40,6 +52,10 @@ impl TuiStat {
             colorful: true,
             full_command_line: true,
             delay: Duration::from_millis(1500), // 1.5s
+            sorter: filter,
+            sort_by_pid: false,
+            highlight_sorted: false,
+            highlight_bold: false,
         }
     }
 

@@ -4,6 +4,7 @@
 // file that was distributed with this source code.
 
 use crate::header::Header;
+use crate::picker::Column;
 use crate::tui::stat::TuiStat;
 use crate::tui::{handle_input, Tui};
 use clap::{arg, crate_version, value_parser, ArgAction, ArgGroup, ArgMatches, Command};
@@ -210,7 +211,8 @@ fn collect(settings: &Settings, fields: &[String], tui_stat: &TuiStat) -> Vec<Ve
 
     let filter = construct_filter(settings);
 
-    pids.into_iter()
+    let mut collected = pids
+        .into_iter()
         .filter(|pid| filter(*pid))
         .map(|it| {
             pickers
@@ -218,6 +220,22 @@ fn collect(settings: &Settings, fields: &[String], tui_stat: &TuiStat) -> Vec<Ve
                 .map(move |picker| picker(it, (settings, tui_stat)))
                 .collect::<Vec<_>>()
         })
+        .collect::<Vec<Vec<Box<dyn Column>>>>();
+
+    let sorter = if tui_stat.sort_by_pid {
+        "PID"
+    } else {
+        &tui_stat.sorter
+    };
+    let sorter_nth = fields.iter().position(|f| f == sorter).unwrap_or(0);
+    if tui_stat.sort_by_pid {
+        collected.sort_by(|a, b| a[sorter_nth].cmp_dyn(&*b[sorter_nth])); // reverse
+    } else {
+        collected.sort_by(|a, b| b[sorter_nth].cmp_dyn(&*a[sorter_nth]));
+    }
+    collected
+        .into_iter()
+        .map(|it| it.into_iter().map(|c| c.as_string()).collect())
         .collect()
 }
 
