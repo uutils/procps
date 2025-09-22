@@ -55,6 +55,11 @@ pub fn handle_input(
                 stat.highlight_bold = !stat.highlight_bold;
                 should_update.store(true, Ordering::Relaxed);
             }
+            char!('C') => {
+                let mut stat = tui_stat.write().unwrap();
+                stat.show_coordinates = !stat.show_coordinates;
+                should_update.store(true, Ordering::Relaxed);
+            }
             char!('c') => {
                 {
                     // drop the lock as soon as possible

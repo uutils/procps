@@ -27,6 +27,7 @@ pub(crate) struct TuiStat {
     pub sort_by_pid: bool,
     pub highlight_sorted: bool,
     pub highlight_bold: bool,
+    pub show_coordinates: bool,
 }
 
 impl TuiStat {
@@ -58,6 +59,7 @@ impl TuiStat {
             sort_by_pid: false,
             highlight_sorted: false,
             highlight_bold: false,
+            show_coordinates: false,
         }
     }
 
