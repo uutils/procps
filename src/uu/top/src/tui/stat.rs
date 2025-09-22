@@ -20,6 +20,7 @@ pub(crate) struct TuiStat {
     pub cpu_column: u16,
     pub list_offset: usize,
     pub horizontal_offset: usize,
+    pub max_list_display: usize,
     pub colorful: bool,
     pub full_command_line: bool,
     pub delay: Duration,
@@ -53,6 +54,7 @@ impl TuiStat {
             cpu_column: 2,
             list_offset: 0,
             horizontal_offset: 0,
+            max_list_display: 0, // unlimited
             colorful: true,
             full_command_line: true,
             delay: Duration::from_millis(1500), // 1.5s

@@ -497,6 +497,11 @@ impl Widget for Tui<'_> {
 
         self.render_header(layout[0], buf);
         self.render_input(layout[1], buf);
-        self.render_list(layout[2], buf);
+        let mut list_area = layout[2];
+        if self.stat.max_list_display > 0 {
+            let list_height = min(layout[2].height, self.stat.max_list_display as u16) + 1; // 1 for header
+            list_area.height = list_height;
+        }
+        self.render_list(list_area, buf);
     }
 }

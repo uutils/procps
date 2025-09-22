@@ -18,6 +18,7 @@ pub(crate) enum InputMode {
 }
 #[derive(Eq, PartialEq, Copy, Clone)]
 pub(crate) enum InputEvent {
+    MaxListDisplay,
     NumaNode,
 }
 
@@ -78,6 +79,17 @@ pub fn handle_input(
             char!('m') => {
                 let mut stat = tui_stat.write().unwrap();
                 stat.memory_graph_mode = stat.memory_graph_mode.next();
+                should_update.store(true, Ordering::Relaxed);
+            }
+            char!('n') => {
+                let mut stat = tui_stat.write().unwrap();
+                stat.input_label = format!(
+                    "Maximum tasks = {}, change to (0 is unlimited)",
+                    stat.max_list_display
+                );
+                stat.input_value.clear();
+                stat.input_mode = InputMode::Input(InputEvent::MaxListDisplay);
+
                 should_update.store(true, Ordering::Relaxed);
             }
             char!('R') => {
@@ -145,6 +157,17 @@ pub fn handle_input(
             char!('4') => {
                 let mut stat = tui_stat.write().unwrap();
                 stat.cpu_column = stat.cpu_column % 8 + 1;
+                should_update.store(true, Ordering::Relaxed);
+            }
+            char!('#') => {
+                let mut stat = tui_stat.write().unwrap();
+                stat.input_label = format!(
+                    "Maximum tasks = {}, change to (0 is unlimited)",
+                    stat.max_list_display
+                );
+                stat.input_value.clear();
+                stat.input_mode = InputMode::Input(InputEvent::MaxListDisplay);
+
                 should_update.store(true, Ordering::Relaxed);
             }
             char!('<') => {
@@ -255,6 +278,21 @@ fn handle_input_value(
     should_update: &AtomicBool,
 ) {
     match input_event {
+        InputEvent::MaxListDisplay => {
+            let input_value = { tui_stat.read().unwrap().input_value.parse::<usize>() };
+            if input_value.is_err() {
+                let mut stat = tui_stat.write().unwrap();
+                stat.reset_input();
+                stat.input_error = Some(" invalid number ".into());
+                should_update.store(true, Ordering::Relaxed);
+                return;
+            }
+            let input_value = input_value.unwrap();
+            let mut stat = tui_stat.write().unwrap();
+            stat.max_list_display = input_value;
+            stat.reset_input();
+            should_update.store(true, Ordering::Relaxed);
+        }
         InputEvent::NumaNode => {
             let input_value = { tui_stat.read().unwrap().input_value.parse::<usize>() };
             let numa_nodes = get_numa_nodes();
