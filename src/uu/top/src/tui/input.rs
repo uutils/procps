@@ -183,6 +183,24 @@ pub fn handle_input(
                 stat.list_offset += 1;
                 should_update.store(true, Ordering::Relaxed);
             }
+            Event::Key(KeyEvent {
+                code: KeyCode::Left,
+                ..
+            }) => {
+                let mut stat = tui_stat.write().unwrap();
+                if stat.horizontal_offset > 0 {
+                    stat.horizontal_offset -= 1;
+                    should_update.store(true, Ordering::Relaxed);
+                }
+            }
+            Event::Key(KeyEvent {
+                code: KeyCode::Right,
+                ..
+            }) => {
+                let mut stat = tui_stat.write().unwrap();
+                stat.horizontal_offset += 1;
+                should_update.store(true, Ordering::Relaxed);
+            }
             Event::Resize(_, _) => should_update.store(true, Ordering::Relaxed),
             _ => {}
         },

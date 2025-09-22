@@ -65,6 +65,26 @@ impl<'a> Tui<'a> {
         height
     }
 
+    fn calc_offset(&self) -> ((usize, usize), (usize, usize, usize)) {
+        let list_total = self.proc_list.collected.len();
+        let list_offset = self.stat.list_offset;
+
+        let horizontal_total = self.proc_list.fields.len();
+        let mut horizontal_offset = self.stat.horizontal_offset;
+        let column = if horizontal_offset >= horizontal_total {
+            horizontal_offset -= horizontal_total - 1;
+            horizontal_total - 1
+        } else {
+            let o = horizontal_offset;
+            horizontal_offset = 0;
+            o
+        };
+        (
+            (list_offset, list_total),
+            (column, horizontal_total, horizontal_offset * 8),
+        )
+    }
+
     fn render_header(&self, area: Rect, buf: &mut Buffer) {
         let constraints = vec![Constraint::Length(1); self.calc_header_height() as usize];
         let colorful = self.stat.colorful;
@@ -386,20 +406,30 @@ impl<'a> Tui<'a> {
             _ => Constraint::Length(0),
         };
 
+        let (list_offset, column_offset) = self.calc_offset();
+
         let constraints: Vec<Constraint> = self
             .proc_list
             .fields
             .iter()
             .map(|field| build_constraint(field))
+            .skip(column_offset.0)
             .collect();
 
-        self.stat.list_offset = min(self.stat.list_offset, self.proc_list.collected.len() - 1);
-
-        let header =
-            Row::new(self.proc_list.fields.clone()).style(Style::default().bg_secondary(colorful));
+        let header = Row::new(self.proc_list.fields.clone().split_off(column_offset.0))
+            .style(Style::default().bg_secondary(colorful));
 
         let rows = self.proc_list.collected.iter().map(|item| {
-            let cells = item.iter().enumerate().map(|(n, c)| {
+            let cells = item.iter().enumerate().skip(column_offset.0).map(|(n, c)| {
+                let c = if column_offset.2 > 0 {
+                    if c.len() < column_offset.2 {
+                        ""
+                    } else {
+                        &c[column_offset.2..]
+                    }
+                } else {
+                    c
+                };
                 if highlight_sorted && n == highlight_column {
                     Cell::from(Span::styled(
                         c,
@@ -410,13 +440,13 @@ impl<'a> Tui<'a> {
                         },
                     ))
                 } else {
-                    Cell::from(c.as_str())
+                    Cell::from(c)
                 }
             });
             Row::new(cells).height(1)
         });
 
-        let mut state = TableState::default().with_offset(self.stat.list_offset);
+        let mut state = TableState::default().with_offset(list_offset.0);
 
         let table = Table::new(rows, constraints).header(header);
         StatefulWidget::render(table, area, buf, &mut state);
@@ -425,6 +455,7 @@ impl<'a> Tui<'a> {
 
 impl Widget for Tui<'_> {
     fn render(mut self, area: Rect, buf: &mut Buffer) {
+        self.stat.list_offset = min(self.stat.list_offset, self.proc_list.collected.len() - 1);
         let layout = Layout::new(
             Direction::Vertical,
             [
