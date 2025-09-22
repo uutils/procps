@@ -24,13 +24,13 @@ pub fn sysinfo() -> &'static RwLock<System> {
 }
 
 pub trait Column {
-    fn as_string(&self) -> String;
+    fn as_string(&self, show_zeros: bool) -> String;
     fn cmp_dyn(&self, other: &dyn Column) -> Ordering;
     fn as_any(&self) -> &dyn Any;
 }
 
 impl Column for String {
-    fn as_string(&self) -> String {
+    fn as_string(&self, _show_zeros: bool) -> String {
         self.clone()
     }
 
@@ -47,7 +47,10 @@ impl Column for String {
 }
 
 impl Column for u32 {
-    fn as_string(&self) -> String {
+    fn as_string(&self, show_zeros: bool) -> String {
+        if !show_zeros && self == &0 {
+            return String::new();
+        }
         self.to_string()
     }
 
@@ -64,7 +67,10 @@ impl Column for u32 {
 }
 
 impl Column for Option<i32> {
-    fn as_string(&self) -> String {
+    fn as_string(&self, show_zeros: bool) -> String {
+        if !show_zeros && self == &Some(0) {
+            return String::new();
+        }
         self.map(|v| v.to_string()).unwrap_or_default()
     }
 
@@ -96,7 +102,10 @@ impl PercentValue {
 }
 
 impl Column for PercentValue {
-    fn as_string(&self) -> String {
+    fn as_string(&self, show_zeros: bool) -> String {
+        if !show_zeros && self.value == 0.0 {
+            return String::new();
+        }
         format!("{:.1}", self.value)
     }
 
@@ -123,7 +132,10 @@ impl MemValue {
 }
 
 impl Column for MemValue {
-    fn as_string(&self) -> String {
+    fn as_string(&self, show_zeros: bool) -> String {
+        if !show_zeros && self.value == 0 {
+            return String::new();
+        }
         let mem_mb = self.value as f64 / bytesize::MIB as f64;
         if mem_mb >= 10000.0 {
             format!("{:.1}g", self.value as f64 / bytesize::GIB as f64)
@@ -156,7 +168,10 @@ impl TimeMSValue {
 }
 
 impl Column for TimeMSValue {
-    fn as_string(&self) -> String {
+    fn as_string(&self, show_zeros: bool) -> String {
+        if !show_zeros && self.min == 0 && self.sec < 0.01 {
+            return String::new();
+        }
         format!("{}:{:0>5.2}", self.min, self.sec)
     }
 

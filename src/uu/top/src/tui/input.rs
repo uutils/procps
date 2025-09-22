@@ -104,6 +104,16 @@ pub fn handle_input(
                 stat.colorful = !stat.colorful;
                 should_update.store(true, Ordering::Relaxed);
             }
+            char!('0') => {
+                {
+                    // drop the lock as soon as possible
+                    let mut stat = tui_stat.write().unwrap();
+                    stat.show_zeros = !stat.show_zeros;
+                }
+
+                data.write().unwrap().1 = ProcList::new(settings, &tui_stat.read().unwrap());
+                should_update.store(true, Ordering::Relaxed);
+            }
             char!('1') => {
                 let mut stat = tui_stat.write().unwrap();
                 stat.cpu_value_mode = stat.cpu_value_mode.next();

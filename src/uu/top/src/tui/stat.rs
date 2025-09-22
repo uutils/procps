@@ -28,6 +28,7 @@ pub(crate) struct TuiStat {
     pub highlight_sorted: bool,
     pub highlight_bold: bool,
     pub show_coordinates: bool,
+    pub show_zeros: bool,
 }
 
 impl TuiStat {
@@ -60,6 +61,7 @@ impl TuiStat {
             highlight_sorted: false,
             highlight_bold: false,
             show_coordinates: false,
+            show_zeros: true,
         }
     }
 
