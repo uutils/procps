@@ -19,6 +19,8 @@ pub(crate) struct TuiStat {
     pub memory_graph_mode: MemoryGraphMode,
     pub cpu_column: u16,
     pub list_offset: usize,
+    pub horizontal_offset: usize,
+    pub max_list_display: usize,
     pub colorful: bool,
     pub full_command_line: bool,
     pub delay: Duration,
@@ -26,6 +28,8 @@ pub(crate) struct TuiStat {
     pub sort_by_pid: bool,
     pub highlight_sorted: bool,
     pub highlight_bold: bool,
+    pub show_coordinates: bool,
+    pub show_zeros: bool,
 }
 
 impl TuiStat {
@@ -49,6 +53,8 @@ impl TuiStat {
             memory_graph_mode: MemoryGraphMode::default(),
             cpu_column: 2,
             list_offset: 0,
+            horizontal_offset: 0,
+            max_list_display: 0, // unlimited
             colorful: true,
             full_command_line: true,
             delay: Duration::from_millis(1500), // 1.5s
@@ -56,6 +62,8 @@ impl TuiStat {
             sort_by_pid: false,
             highlight_sorted: false,
             highlight_bold: false,
+            show_coordinates: false,
+            show_zeros: true,
         }
     }
 

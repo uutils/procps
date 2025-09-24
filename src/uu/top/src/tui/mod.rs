@@ -65,6 +65,24 @@ impl<'a> Tui<'a> {
         height
     }
 
+    fn calc_list_coordinates(&self) -> (usize, usize) {
+        let list_total = self.proc_list.collected.len();
+        let list_offset = self.stat.list_offset;
+        (list_offset, list_total)
+    }
+
+    fn calc_column_coordinates(&self) -> (usize, usize, usize) {
+        let total_columns = self.proc_list.fields.len();
+        let horizontal_offset = self.stat.horizontal_offset;
+        let column_coordinate = min(horizontal_offset, total_columns - 1);
+        let horizontal_offset = if horizontal_offset >= total_columns {
+            horizontal_offset - (total_columns - 1)
+        } else {
+            0
+        };
+        (column_coordinate, total_columns, horizontal_offset * 8)
+    }
+
     fn render_header(&self, area: Rect, buf: &mut Buffer) {
         let constraints = vec![Constraint::Length(1); self.calc_header_height() as usize];
         let colorful = self.stat.colorful;
@@ -347,11 +365,32 @@ impl<'a> Tui<'a> {
                 .render(layout[0], buf);
             return;
         }
-        let input = Line::from(vec![
-            Span::styled(&self.stat.input_label, Style::default().primary(colorful)),
-            Span::raw(" "),
-            Span::raw(&self.stat.input_value),
-        ]);
+        let input = if !self.stat.input_label.is_empty() || !self.stat.input_value.is_empty() {
+            Line::from(vec![
+                Span::styled(&self.stat.input_label, Style::default().primary(colorful)),
+                Span::raw(" "),
+                Span::raw(&self.stat.input_value),
+            ])
+        } else if self.stat.show_coordinates {
+            let list_coordinates = self.calc_list_coordinates();
+            let column_coordinates = self.calc_column_coordinates();
+            Line::from(vec![
+                Span::raw(format!(
+                    "  scroll coordinates: y = {}/{} (tasks), x = {}/{} (fields)",
+                    list_coordinates.0 + 1,
+                    list_coordinates.1,
+                    column_coordinates.0 + 1,
+                    column_coordinates.1
+                )),
+                Span::raw(if column_coordinates.2 > 0 {
+                    format!(" + {}", column_coordinates.2)
+                } else {
+                    String::new()
+                }),
+            ])
+        } else {
+            Line::from("")
+        };
         input.render(area, buf);
     }
 
@@ -386,37 +425,57 @@ impl<'a> Tui<'a> {
             _ => Constraint::Length(0),
         };
 
+        let list_coordinates = self.calc_list_coordinates();
+        let column_coordinates = self.calc_column_coordinates();
+
         let constraints: Vec<Constraint> = self
             .proc_list
             .fields
             .iter()
             .map(|field| build_constraint(field))
+            .skip(column_coordinates.0)
             .collect();
 
-        self.stat.list_offset = min(self.stat.list_offset, self.proc_list.collected.len() - 1);
-
-        let header =
-            Row::new(self.proc_list.fields.clone()).style(Style::default().bg_secondary(colorful));
+        let header = Row::new(
+            self.proc_list
+                .fields
+                .clone()
+                .split_off(column_coordinates.0),
+        )
+        .style(Style::default().bg_secondary(colorful));
 
         let rows = self.proc_list.collected.iter().map(|item| {
-            let cells = item.iter().enumerate().map(|(n, c)| {
-                if highlight_sorted && n == highlight_column {
-                    Cell::from(Span::styled(
-                        c,
-                        if highlight_bold {
-                            Style::default().bg_primary(colorful)
+            let cells = item
+                .iter()
+                .enumerate()
+                .skip(column_coordinates.0)
+                .map(|(n, c)| {
+                    let c = if column_coordinates.2 > 0 {
+                        if c.len() < column_coordinates.2 {
+                            ""
                         } else {
-                            Style::default().primary(colorful)
-                        },
-                    ))
-                } else {
-                    Cell::from(c.as_str())
-                }
-            });
+                            &c[column_coordinates.2..]
+                        }
+                    } else {
+                        c
+                    };
+                    if highlight_sorted && n == highlight_column {
+                        Cell::from(Span::styled(
+                            c,
+                            if highlight_bold {
+                                Style::default().bg_primary(colorful)
+                            } else {
+                                Style::default().primary(colorful)
+                            },
+                        ))
+                    } else {
+                        Cell::from(c)
+                    }
+                });
             Row::new(cells).height(1)
         });
 
-        let mut state = TableState::default().with_offset(self.stat.list_offset);
+        let mut state = TableState::default().with_offset(list_coordinates.0);
 
         let table = Table::new(rows, constraints).header(header);
         StatefulWidget::render(table, area, buf, &mut state);
@@ -425,6 +484,7 @@ impl<'a> Tui<'a> {
 
 impl Widget for Tui<'_> {
     fn render(mut self, area: Rect, buf: &mut Buffer) {
+        self.stat.list_offset = min(self.stat.list_offset, self.proc_list.collected.len() - 1);
         let layout = Layout::new(
             Direction::Vertical,
             [
@@ -437,6 +497,11 @@ impl Widget for Tui<'_> {
 
         self.render_header(layout[0], buf);
         self.render_input(layout[1], buf);
-        self.render_list(layout[2], buf);
+        let mut list_area = layout[2];
+        if self.stat.max_list_display > 0 {
+            let list_height = min(layout[2].height, self.stat.max_list_display as u16) + 1; // 1 for header
+            list_area.height = list_height;
+        }
+        self.render_list(list_area, buf);
     }
 }
