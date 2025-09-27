@@ -41,14 +41,12 @@ pub enum Filter {
 #[derive(Debug)]
 pub(crate) struct Settings {
     // batch:bool
-    filter: Option<Filter>,
     scale_summary_mem: Option<String>,
 }
 
 impl Settings {
     fn new(matches: &ArgMatches) -> Self {
         Self {
-            filter: None,
             scale_summary_mem: matches.get_one::<String>("scale-summary-mem").cloned(),
         }
     }
@@ -79,34 +77,32 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     picker::sysinfo().write().unwrap().refresh_all();
 
     let settings = Settings::new(&matches);
+    let mut tui_stat = TuiStat::new();
 
-    let settings = {
-        let filter = matches
-            .get_many::<u32>("pid")
-            .map(|pidlist| Filter::Pid(pidlist.cloned().collect()))
-            .or_else(|| {
-                matches
-                    .get_one::<String>("filter-any-user")
-                    .map(|user| Filter::User(user.clone()))
-            })
-            .or_else(|| {
-                matches
-                    .get_one::<String>("filter-only-euser")
-                    .map(|euser| Filter::EUser(euser.clone()))
-            });
+    let filter = matches
+        .get_many::<u32>("pid")
+        .map(|pidlist| Filter::Pid(pidlist.cloned().collect()))
+        .or_else(|| {
+            matches
+                .get_one::<String>("filter-any-user")
+                .map(|user| Filter::User(user.clone()))
+        })
+        .or_else(|| {
+            matches
+                .get_one::<String>("filter-only-euser")
+                .map(|euser| Filter::EUser(euser.clone()))
+        });
 
-        let filter = match filter {
-            Some(Filter::User(data)) => Some(Filter::User(try_into_uid(data)?)),
-            // TODO: Make sure this working
-            Some(Filter::EUser(data)) => Some(Filter::EUser(try_into_uid(data)?)),
-            _ => filter,
-        };
-
-        Settings { filter, ..settings }
+    let filter = match filter {
+        Some(Filter::User(data)) => Some(Filter::User(try_into_uid(data)?)),
+        // TODO: Make sure this working
+        Some(Filter::EUser(data)) => Some(Filter::EUser(try_into_uid(data)?)),
+        _ => filter,
     };
+    tui_stat.filter = filter;
 
     let settings = Arc::new(settings);
-    let tui_stat = Arc::new(RwLock::new(TuiStat::new()));
+    let tui_stat = Arc::new(RwLock::new(tui_stat));
     let should_update = Arc::new(AtomicBool::new(true));
     let data = Arc::new(RwLock::new((
         Header::new(&tui_stat.read().unwrap()),
@@ -209,7 +205,7 @@ fn collect(settings: &Settings, fields: &[String], tui_stat: &TuiStat) -> Vec<Ve
         .map(|it| it.as_u32())
         .collect::<Vec<_>>();
 
-    let filter = construct_filter(settings);
+    let filter = construct_filter(tui_stat);
 
     let mut collected = pids
         .into_iter()
@@ -244,8 +240,8 @@ fn collect(settings: &Settings, fields: &[String], tui_stat: &TuiStat) -> Vec<Ve
 }
 
 /// Constructing filter from `Settings`
-fn construct_filter(settings: &Settings) -> Box<dyn Fn(u32) -> bool> {
-    let Some(ref filter) = settings.filter else {
+fn construct_filter(tui_stat: &TuiStat) -> Box<dyn Fn(u32) -> bool> {
+    let Some(ref filter) = tui_stat.filter else {
         return Box::new(|_: u32| true);
     };
 

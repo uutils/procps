@@ -6,7 +6,8 @@
 use crate::header::Header;
 use crate::platform::get_numa_nodes;
 use crate::tui::stat::{CpuValueMode, TuiStat};
-use crate::{selected_fields, ProcList, Settings};
+use crate::Filter::{EUser, User};
+use crate::{selected_fields, try_into_uid, ProcList, Settings};
 use ratatui::crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::RwLock;
@@ -20,6 +21,8 @@ pub(crate) enum InputMode {
 pub(crate) enum InputEvent {
     MaxListDisplay,
     NumaNode,
+    FilterUser,
+    FilterEUser,
 }
 
 macro_rules! char {
@@ -104,6 +107,22 @@ pub fn handle_input(
             char!('t') => {
                 let mut stat = tui_stat.write().unwrap();
                 stat.cpu_graph_mode = stat.cpu_graph_mode.next();
+                should_update.store(true, Ordering::Relaxed);
+            }
+            char!('U') => {
+                let mut stat = tui_stat.write().unwrap();
+                stat.input_label = "Which user (blank for all) ".into();
+                stat.input_value.clear();
+                stat.input_mode = InputMode::Input(InputEvent::FilterUser);
+
+                should_update.store(true, Ordering::Relaxed);
+            }
+            char!('u') => {
+                let mut stat = tui_stat.write().unwrap();
+                stat.input_label = "Which user (blank for all) ".into();
+                stat.input_value.clear();
+                stat.input_mode = InputMode::Input(InputEvent::FilterEUser);
+
                 should_update.store(true, Ordering::Relaxed);
             }
             char!('x') => {
@@ -246,7 +265,7 @@ pub fn handle_input(
             if let Event::Key(key) = e {
                 match key.code {
                     KeyCode::Enter => {
-                        handle_input_value(input_event, tui_stat, data, should_update);
+                        handle_input_value(input_event, settings, tui_stat, data, should_update);
                     }
                     KeyCode::Esc => {
                         let mut stat = tui_stat.write().unwrap();
@@ -273,6 +292,7 @@ pub fn handle_input(
 
 fn handle_input_value(
     input_event: InputEvent,
+    settings: &Settings,
     tui_stat: &RwLock<TuiStat>,
     data: &RwLock<(Header, ProcList)>,
     should_update: &AtomicBool,
@@ -313,6 +333,41 @@ fn handle_input_value(
             stat.cpu_column = 1;
             stat.reset_input();
             data.write().unwrap().0.update_cpu(&stat);
+            should_update.store(true, Ordering::Relaxed);
+        }
+        InputEvent::FilterUser | InputEvent::FilterEUser => {
+            let input_value = { tui_stat.read().unwrap().input_value.clone() };
+            if input_value.is_empty() {
+                let mut stat = tui_stat.write().unwrap();
+                stat.filter = None;
+                data.write().unwrap().1 = ProcList::new(settings, &stat);
+                stat.reset_input();
+                should_update.store(true, Ordering::Relaxed);
+                return;
+            }
+            let user = match try_into_uid(&input_value) {
+                Ok(user) => user,
+                Err(_) => {
+                    let mut stat = tui_stat.write().unwrap();
+                    stat.reset_input();
+                    stat.input_error = Some(" invalid user ".into());
+                    should_update.store(true, Ordering::Relaxed);
+                    return;
+                }
+            };
+
+            let mut stat = tui_stat.write().unwrap();
+            match input_event {
+                InputEvent::FilterUser => {
+                    stat.filter = Some(User(user));
+                }
+                InputEvent::FilterEUser => {
+                    stat.filter = Some(EUser(user));
+                }
+                _ => {}
+            }
+            data.write().unwrap().1 = ProcList::new(settings, &stat);
+            stat.reset_input();
             should_update.store(true, Ordering::Relaxed);
         }
     }
