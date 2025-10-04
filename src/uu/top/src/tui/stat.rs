@@ -30,6 +30,7 @@ pub(crate) struct TuiStat {
     pub highlight_bold: bool,
     pub show_coordinates: bool,
     pub show_zeros: bool,
+    pub irix_mode: bool,
 
     pub filter: Option<crate::Filter>,
 }
@@ -66,6 +67,7 @@ impl TuiStat {
             highlight_bold: false,
             show_coordinates: false,
             show_zeros: true,
+            irix_mode: true,
 
             filter: None,
         }

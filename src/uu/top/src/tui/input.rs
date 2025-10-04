@@ -74,6 +74,15 @@ pub fn handle_input(
                 data.write().unwrap().1 = ProcList::new(settings, &tui_stat.read().unwrap());
                 should_update.store(true, Ordering::Relaxed);
             }
+            char!('I') => {
+                {
+                    let mut stat = tui_stat.write().unwrap();
+                    stat.irix_mode = !stat.irix_mode;
+                }
+
+                data.write().unwrap().1 = ProcList::new(settings, &tui_stat.read().unwrap());
+                should_update.store(true, Ordering::Relaxed);
+            }
             char!('l') => {
                 let mut stat = tui_stat.write().unwrap();
                 stat.show_load_avg = !stat.show_load_avg;
