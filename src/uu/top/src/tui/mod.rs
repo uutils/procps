@@ -354,7 +354,7 @@ impl<'a> Tui<'a> {
 
     fn render_input(&self, area: Rect, buf: &mut Buffer) {
         let colorful = self.stat.colorful;
-        if let Some(v) = self.stat.input_error.as_ref() {
+        if let Some(v) = self.stat.input_message.as_ref() {
             let layout = Layout::new(
                 Direction::Horizontal,
                 [Constraint::Length(v.len() as u16), Constraint::Fill(1)],

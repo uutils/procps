@@ -78,6 +78,10 @@ pub fn handle_input(
                 {
                     let mut stat = tui_stat.write().unwrap();
                     stat.irix_mode = !stat.irix_mode;
+                    stat.input_message = Some(format!(
+                        " Irix mode {} ",
+                        if stat.irix_mode { "On" } else { "Off" }
+                    ));
                 }
 
                 data.write().unwrap().1 = ProcList::new(settings, &tui_stat.read().unwrap());
@@ -312,7 +316,7 @@ fn handle_input_value(
             if input_value.is_err() {
                 let mut stat = tui_stat.write().unwrap();
                 stat.reset_input();
-                stat.input_error = Some(" invalid number ".into());
+                stat.input_message = Some(" invalid number ".into());
                 should_update.store(true, Ordering::Relaxed);
                 return;
             }
@@ -332,7 +336,7 @@ fn handle_input_value(
             {
                 let mut stat = tui_stat.write().unwrap();
                 stat.reset_input();
-                stat.input_error = Some(" invalid numa node ".into());
+                stat.input_message = Some(" invalid numa node ".into());
                 should_update.store(true, Ordering::Relaxed);
                 return;
             }
@@ -359,7 +363,7 @@ fn handle_input_value(
                 Err(_) => {
                     let mut stat = tui_stat.write().unwrap();
                     stat.reset_input();
-                    stat.input_error = Some(" invalid user ".into());
+                    stat.input_message = Some(" invalid user ".into());
                     should_update.store(true, Ordering::Relaxed);
                     return;
                 }

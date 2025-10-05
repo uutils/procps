@@ -121,7 +121,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             {
                 let header = Header::new(&tui_stat.read().unwrap());
                 let proc_list = ProcList::new(&settings, &tui_stat.read().unwrap());
-                tui_stat.write().unwrap().input_error = None;
+                tui_stat.write().unwrap().input_message = None;
                 *data.write().unwrap() = (header, proc_list);
                 should_update.store(true, Ordering::Relaxed);
             }
