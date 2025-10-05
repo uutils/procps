@@ -11,7 +11,7 @@ pub(crate) struct TuiStat {
     pub input_mode: InputMode,
     pub input_label: String,
     pub input_value: String,
-    pub input_error: Option<String>,
+    pub input_message: Option<String>, // Info or error
 
     pub show_load_avg: bool,
     pub cpu_graph_mode: CpuGraphMode,
@@ -30,6 +30,7 @@ pub(crate) struct TuiStat {
     pub highlight_bold: bool,
     pub show_coordinates: bool,
     pub show_zeros: bool,
+    pub irix_mode: bool,
 
     pub filter: Option<crate::Filter>,
 }
@@ -47,7 +48,7 @@ impl TuiStat {
             input_mode: InputMode::Command,
             input_label: String::new(),
             input_value: String::new(),
-            input_error: None,
+            input_message: None,
 
             show_load_avg: true,
             cpu_graph_mode: CpuGraphMode::default(),
@@ -66,6 +67,7 @@ impl TuiStat {
             highlight_bold: false,
             show_coordinates: false,
             show_zeros: true,
+            irix_mode: true,
 
             filter: None,
         }
@@ -75,7 +77,7 @@ impl TuiStat {
         self.input_mode = InputMode::Command;
         self.input_label.clear();
         self.input_value.clear();
-        self.input_error = None;
+        self.input_message = None;
     }
 }
 

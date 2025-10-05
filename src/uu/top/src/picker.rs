@@ -223,13 +223,19 @@ fn todo(_pid: u32, _stat: Stat) -> Box<dyn Column> {
     Box::new("TODO".to_string())
 }
 
-fn cpu(pid: u32, _stat: Stat) -> Box<dyn Column> {
+fn cpu(pid: u32, stat: Stat) -> Box<dyn Column> {
     let binding = sysinfo().read().unwrap();
     let Some(proc) = binding.process(Pid::from_u32(pid)) else {
         return PercentValue::new_boxed(0.0);
     };
 
-    PercentValue::new_boxed(proc.cpu_usage())
+    let cpu_usage = if stat.1.irix_mode {
+        proc.cpu_usage()
+    } else {
+        proc.cpu_usage() / binding.cpus().len() as f32
+    };
+
+    PercentValue::new_boxed(cpu_usage)
 }
 
 fn pid(pid: u32, _stat: Stat) -> Box<dyn Column> {
