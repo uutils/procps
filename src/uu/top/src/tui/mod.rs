@@ -8,6 +8,7 @@ mod input;
 pub mod stat;
 
 pub use input::*;
+use std::borrow::Cow;
 
 use crate::header::{format_memory, Header};
 use crate::tui::color::TuiColor;
@@ -409,9 +410,26 @@ impl<'a> Tui<'a> {
             .iter()
             .position(|f| f == sorter)
             .unwrap_or(0);
+        let user_width = {
+            if let Some(width) = self.stat.width_increment {
+                10 + width
+            } else if let Some(user_column_nth) =
+                self.proc_list.fields.iter().position(|f| f == "USER")
+            {
+                let users: Vec<&String> = self
+                    .proc_list
+                    .collected
+                    .iter()
+                    .map(|item| &item[user_column_nth])
+                    .collect();
+                users.iter().map(|u| u.len()).max().unwrap_or_default() + 1
+            } else {
+                10
+            }
+        };
         let build_constraint = |field: &str| match field {
             "PID" => Constraint::Length(7),
-            "USER" => Constraint::Length(10),
+            "USER" => Constraint::Length(user_width as u16),
             "PR" => Constraint::Length(4),
             "NI" => Constraint::Length(4),
             "VIRT" => Constraint::Length(8),
@@ -452,12 +470,20 @@ impl<'a> Tui<'a> {
                 .map(|(n, c)| {
                     let c = if column_coordinates.2 > 0 {
                         if c.len() < column_coordinates.2 {
-                            ""
+                            // handle offset
+                            Cow::Borrowed("")
                         } else {
-                            &c[column_coordinates.2..]
+                            Cow::Borrowed(&c[column_coordinates.2..])
+                        }
+                    } else if let Constraint::Length(length) = &constraints[n] {
+                        // truncate if too long
+                        if c.len() > *length as usize {
+                            Cow::Owned(format!("{}+", &c[0..*length as usize - 2]))
+                        } else {
+                            Cow::Borrowed(c.as_str())
                         }
                     } else {
-                        c
+                        Cow::Borrowed(c.as_str())
                     };
                     if highlight_sorted && n == highlight_column {
                         Cell::from(Span::styled(
@@ -477,7 +503,7 @@ impl<'a> Tui<'a> {
 
         let mut state = TableState::default().with_offset(list_coordinates.0);
 
-        let table = Table::new(rows, constraints).header(header);
+        let table = Table::new(rows, constraints.clone()).header(header);
         StatefulWidget::render(table, area, buf, &mut state);
     }
 }
