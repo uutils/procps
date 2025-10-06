@@ -214,7 +214,9 @@ pub fn construct_verbose_result(
                 row![pid]
             }
             Some((tty, user, cmd, action)) => {
-                let tty_str = tty.map(|mut t| t.tty().to_string()).unwrap_or_else(|_| "?".to_string());
+                let tty_str = tty
+                    .map(|mut t| t.tty().to_string())
+                    .unwrap_or_else(|_| "?".to_string());
                 row![tty_str, user, pid, cmd, action]
             }
         })
