@@ -23,6 +23,7 @@ pub(crate) enum InputEvent {
     NumaNode,
     FilterUser,
     FilterEUser,
+    WidthIncrement,
 }
 
 macro_rules! char {
@@ -135,6 +136,14 @@ pub fn handle_input(
                 stat.input_label = "Which user (blank for all) ".into();
                 stat.input_value.clear();
                 stat.input_mode = InputMode::Input(InputEvent::FilterEUser);
+
+                should_update.store(true, Ordering::Relaxed);
+            }
+            char!('X') => {
+                let mut stat = tui_stat.write().unwrap();
+                stat.input_label = "width incr is 0, change to (0 default, -1 auto) ".into();
+                stat.input_value.clear();
+                stat.input_mode = InputMode::Input(InputEvent::WidthIncrement);
 
                 should_update.store(true, Ordering::Relaxed);
             }
@@ -380,6 +389,29 @@ fn handle_input_value(
                 _ => {}
             }
             data.write().unwrap().1 = ProcList::new(settings, &stat);
+            stat.reset_input();
+            should_update.store(true, Ordering::Relaxed);
+        }
+        InputEvent::WidthIncrement => {
+            let input_value = { tui_stat.read().unwrap().input_value.parse::<isize>() };
+
+            if input_value.is_err() || input_value.as_ref().is_ok_and(|v| *v < -1) {
+                let is_empty = { tui_stat.read().unwrap().input_value.trim().is_empty() };
+                let mut stat = tui_stat.write().unwrap();
+                stat.reset_input();
+                if !is_empty {
+                    stat.input_message = Some(" Unacceptable integer ".into());
+                }
+                should_update.store(true, Ordering::Relaxed);
+                return;
+            }
+            let input_value = input_value.unwrap();
+            let mut stat = tui_stat.write().unwrap();
+            stat.width_increment = if input_value == -1 {
+                None
+            } else {
+                Some(input_value as usize)
+            };
             stat.reset_input();
             should_update.store(true, Ordering::Relaxed);
         }
