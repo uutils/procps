@@ -24,6 +24,7 @@ pub(crate) enum InputEvent {
     FilterUser,
     FilterEUser,
     WidthIncrement,
+    Delay,
 }
 
 macro_rules! char {
@@ -73,6 +74,14 @@ pub fn handle_input(
                 }
 
                 data.write().unwrap().1 = ProcList::new(settings, &tui_stat.read().unwrap());
+                should_update.store(true, Ordering::Relaxed);
+            }
+            char!('d') => {
+                let mut stat = tui_stat.write().unwrap();
+                stat.input_label = format!("Change delay from {:.1} to ", stat.delay.as_secs_f32());
+                stat.input_value.clear();
+                stat.input_mode = InputMode::Input(InputEvent::Delay);
+
                 should_update.store(true, Ordering::Relaxed);
             }
             char!('I') => {
@@ -412,6 +421,24 @@ fn handle_input_value(
             } else {
                 Some(input_value as usize)
             };
+            stat.reset_input();
+            should_update.store(true, Ordering::Relaxed);
+        }
+        InputEvent::Delay => {
+            let input_value = { tui_stat.read().unwrap().input_value.parse::<f32>() };
+            if input_value.is_err() || input_value.as_ref().is_ok_and(|v| *v < 0.0) {
+                let is_empty = { tui_stat.read().unwrap().input_value.trim().is_empty() };
+                let mut stat = tui_stat.write().unwrap();
+                stat.reset_input();
+                if !is_empty {
+                    stat.input_message = Some(" Unacceptable floating point ".into());
+                }
+                should_update.store(true, Ordering::Relaxed);
+                return;
+            }
+            let input_value = input_value.unwrap();
+            let mut stat = tui_stat.write().unwrap();
+            stat.delay = std::time::Duration::from_secs_f32(input_value);
             stat.reset_input();
             should_update.store(true, Ordering::Relaxed);
         }
