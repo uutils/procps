@@ -54,7 +54,7 @@ impl Settings {
 
 pub(crate) struct ProcList {
     pub fields: Vec<String>,
-    pub collected: Vec<Vec<String>>,
+    pub collected: Vec<(u32, Vec<String>)>,
 }
 
 impl ProcList {
@@ -202,7 +202,7 @@ fn selected_fields() -> Vec<String> {
     .collect()
 }
 
-fn collect(settings: &Settings, fields: &[String], tui_stat: &TuiStat) -> Vec<Vec<String>> {
+fn collect(settings: &Settings, fields: &[String], tui_stat: &TuiStat) -> Vec<(u32, Vec<String>)> {
     let pickers = pickers(fields);
 
     let pids = sysinfo()
@@ -219,12 +219,15 @@ fn collect(settings: &Settings, fields: &[String], tui_stat: &TuiStat) -> Vec<Ve
         .into_iter()
         .filter(|pid| filter(*pid))
         .map(|it| {
-            pickers
-                .iter()
-                .map(move |picker| picker(it, (settings, tui_stat)))
-                .collect::<Vec<_>>()
+            (
+                it,
+                pickers
+                    .iter()
+                    .map(move |picker| picker(it, (settings, tui_stat)))
+                    .collect::<Vec<_>>(),
+            )
         })
-        .collect::<Vec<Vec<Box<dyn Column>>>>();
+        .collect::<Vec<(u32, Vec<Box<dyn Column>>)>>();
 
     let sorter = if tui_stat.sort_by_pid {
         "PID"
@@ -233,13 +236,18 @@ fn collect(settings: &Settings, fields: &[String], tui_stat: &TuiStat) -> Vec<Ve
     };
     let sorter_nth = fields.iter().position(|f| f == sorter).unwrap_or(0);
     if tui_stat.sort_by_pid {
-        collected.sort_by(|a, b| a[sorter_nth].cmp_dyn(&*b[sorter_nth])); // reverse
+        collected.sort_by(|a, b| a.1[sorter_nth].cmp_dyn(&*b.1[sorter_nth])); // reverse
     } else {
-        collected.sort_by(|a, b| b[sorter_nth].cmp_dyn(&*a[sorter_nth]));
+        collected.sort_by(|a, b| b.1[sorter_nth].cmp_dyn(&*a.1[sorter_nth]));
     }
     collected
         .into_iter()
-        .map(|it| it.into_iter().map(|c| c.as_string(tui_stat)).collect())
+        .map(|it| {
+            (
+                it.0,
+                it.1.into_iter().map(|c| c.as_string(tui_stat)).collect(),
+            )
+        })
         .collect()
 }
 

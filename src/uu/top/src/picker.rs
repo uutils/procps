@@ -432,8 +432,7 @@ fn mem(pid: u32, _stat: Stat) -> Box<dyn Column> {
     )
 }
 
-fn command(pid: u32, stat: Stat) -> Box<dyn Column> {
-    let full_command_line = stat.1.full_command_line;
+pub(crate) fn get_command(pid: u32, full_command_line: bool) -> String {
     let f = |cmd: &[OsString]| -> String {
         let binding = cmd
             .iter()
@@ -468,23 +467,26 @@ fn command(pid: u32, stat: Stat) -> Box<dyn Column> {
 
     let binding = sysinfo().read().unwrap();
     let Some(proc) = binding.process(Pid::from_u32(pid)) else {
-        return Box::new("?".to_string());
+        return "?".to_string();
     };
 
-    Box::new(
-        proc.exe()
-            .and_then(|it| {
-                if full_command_line {
-                    it.iter().next_back()
-                } else {
-                    it.file_name()
-                }
-            })
-            .map(|it| it.to_str().unwrap().to_string())
-            .unwrap_or(if full_command_line {
-                f(proc.cmd())
+    proc.exe()
+        .and_then(|it| {
+            if full_command_line {
+                it.iter().next_back()
             } else {
-                proc.name().to_str().unwrap().to_string()
-            }),
-    )
+                it.file_name()
+            }
+        })
+        .map(|it| it.to_str().unwrap().to_string())
+        .unwrap_or(if full_command_line {
+            f(proc.cmd())
+        } else {
+            proc.name().to_str().unwrap().to_string()
+        })
+}
+
+fn command(pid: u32, stat: Stat) -> Box<dyn Column> {
+    let full_command_line = stat.1.full_command_line;
+    Box::new(get_command(pid, full_command_line))
 }

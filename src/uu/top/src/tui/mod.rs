@@ -435,7 +435,7 @@ impl<'a> Tui<'a> {
                     .proc_list
                     .collected
                     .iter()
-                    .map(|item| &item[user_column_nth])
+                    .map(|item| &item.1[user_column_nth])
                     .collect();
                 users.iter().map(|u| u.len()).max().unwrap_or_default() + 1
             } else {
@@ -479,6 +479,7 @@ impl<'a> Tui<'a> {
 
         let rows = self.proc_list.collected.iter().map(|item| {
             let cells = item
+                .1
                 .iter()
                 .enumerate()
                 .skip(column_coordinates.0)
@@ -531,7 +532,18 @@ impl<'a> Tui<'a> {
                 Style::default().bg_secondary(self.stat.colorful),
             ))
             .render(layout[0], buf);
-            Span::raw(&info_bar.content).render(layout[1], buf);
+            let mut lines = vec![];
+            let width = layout[1].width as usize;
+            info_bar.content.lines().for_each(|s| {
+                let mut start = 0;
+                let len = s.len();
+                while start < len {
+                    let end = (start + width).min(len);
+                    lines.push(Line::from(&s[start..end]));
+                    start = end;
+                }
+            });
+            Paragraph::new(lines).render(layout[1], buf);
         }
     }
 }
