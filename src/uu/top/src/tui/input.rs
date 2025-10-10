@@ -4,6 +4,7 @@
 // file that was distributed with this source code.
 
 use crate::header::Header;
+use crate::picker::get_command;
 use crate::platform::get_numa_nodes;
 use crate::tui::stat::{CpuValueMode, TuiStat};
 use crate::Filter::{EUser, User};
@@ -108,6 +109,32 @@ pub fn handle_input(
                 }
 
                 data.write().unwrap().1 = ProcList::new(settings, &tui_stat.read().unwrap());
+                should_update.store(true, Ordering::Relaxed);
+            }
+
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('k'),
+                modifiers: KeyModifiers::CONTROL,
+                ..
+            }) => {
+                let mut data = data.write().unwrap();
+                if data.2.is_some() {
+                    data.2 = None;
+                } else {
+                    let tui_stat = tui_stat.read().unwrap();
+                    let mut nth = tui_stat.list_offset;
+                    if data.1.collected.is_empty() {
+                        return false;
+                    }
+                    if data.1.collected.len() <= nth {
+                        nth = data.1.collected.len() - 1;
+                    }
+                    let pid = data.1.collected[nth].0;
+                    let title =
+                        format!("command line for pid {}, {}", pid, get_command(pid, false));
+                    let content = get_command(pid, true);
+                    data.2 = Some(InfoBar { title, content });
+                }
                 should_update.store(true, Ordering::Relaxed);
             }
             char!('l') => {
