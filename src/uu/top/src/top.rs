@@ -233,7 +233,7 @@ fn collect(settings: &Settings, fields: &[String], tui_stat: &TuiStat) -> Vec<Ve
         .into_iter()
         .map(|it| {
             it.into_iter()
-                .map(|c| c.as_string(tui_stat.show_zeros))
+                .map(|c| c.as_string(tui_stat))
                 .collect()
         })
         .collect()

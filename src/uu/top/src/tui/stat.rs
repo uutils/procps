@@ -32,6 +32,7 @@ pub(crate) struct TuiStat {
     pub show_zeros: bool,
     pub irix_mode: bool,
     pub width_increment: Option<usize>, // None means auto
+    pub time_scale: TimeScale,
 
     pub filter: Option<crate::Filter>,
 }
@@ -69,7 +70,8 @@ impl TuiStat {
             show_coordinates: false,
             show_zeros: true,
             irix_mode: true,
-            width_increment: None,
+            width_increment: Some(0), // fixed
+            time_scale: TimeScale::default(),
 
             filter: None,
         }
@@ -123,7 +125,6 @@ impl CpuValueMode {
     }
 }
 
-#[allow(unused)]
 #[derive(Debug, Default, PartialEq)]
 pub enum MemoryGraphMode {
     #[default]
@@ -140,6 +141,32 @@ impl MemoryGraphMode {
             MemoryGraphMode::Hide => MemoryGraphMode::Sum,
             MemoryGraphMode::Sum => MemoryGraphMode::Bar,
             MemoryGraphMode::Bar => MemoryGraphMode::Block,
+        }
+    }
+}
+
+#[derive(Debug, Default, PartialEq)]
+pub enum TimeScale {
+    #[default]
+    MinSecondCent, // 00:00.00
+    MinSecond, // 00:00
+    HourMin,   // 0,00
+    DayHour,   // 0d+0h
+    Day,       // 0d
+    WeekDay,   // 0w+0d
+    Week,      // 0w
+}
+
+impl TimeScale {
+    pub fn next(&self) -> TimeScale {
+        match self {
+            TimeScale::MinSecondCent => TimeScale::MinSecond,
+            TimeScale::MinSecond => TimeScale::HourMin,
+            TimeScale::HourMin => TimeScale::DayHour,
+            TimeScale::DayHour => TimeScale::Day,
+            TimeScale::Day => TimeScale::WeekDay,
+            TimeScale::WeekDay => TimeScale::Week,
+            TimeScale::Week => TimeScale::MinSecondCent,
         }
     }
 }

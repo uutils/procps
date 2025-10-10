@@ -3,7 +3,7 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use crate::tui::stat::TuiStat;
+use crate::tui::stat::{TimeScale, TuiStat};
 use crate::Settings;
 use std::any::Any;
 use std::cmp::Ordering;
@@ -24,13 +24,13 @@ pub fn sysinfo() -> &'static RwLock<System> {
 }
 
 pub trait Column {
-    fn as_string(&self, show_zeros: bool) -> String;
+    fn as_string(&self, tui_stat: &TuiStat) -> String;
     fn cmp_dyn(&self, other: &dyn Column) -> Ordering;
     fn as_any(&self) -> &dyn Any;
 }
 
 impl Column for String {
-    fn as_string(&self, _show_zeros: bool) -> String {
+    fn as_string(&self, _tui_stat: &TuiStat) -> String {
         self.clone()
     }
 
@@ -47,8 +47,8 @@ impl Column for String {
 }
 
 impl Column for u32 {
-    fn as_string(&self, show_zeros: bool) -> String {
-        if !show_zeros && self == &0 {
+    fn as_string(&self, tui_stat: &TuiStat) -> String {
+        if !tui_stat.show_zeros && self == &0 {
             return String::new();
         }
         self.to_string()
@@ -67,8 +67,8 @@ impl Column for u32 {
 }
 
 impl Column for Option<i32> {
-    fn as_string(&self, show_zeros: bool) -> String {
-        if !show_zeros && self == &Some(0) {
+    fn as_string(&self, tui_stat: &TuiStat) -> String {
+        if !tui_stat.show_zeros && self == &Some(0) {
             return String::new();
         }
         self.map(|v| v.to_string()).unwrap_or_default()
@@ -102,8 +102,8 @@ impl PercentValue {
 }
 
 impl Column for PercentValue {
-    fn as_string(&self, show_zeros: bool) -> String {
-        if !show_zeros && self.value == 0.0 {
+    fn as_string(&self, tui_stat: &TuiStat) -> String {
+        if !tui_stat.show_zeros && self.value == 0.0 {
             return String::new();
         }
         format!("{:.1}", self.value)
@@ -132,8 +132,8 @@ impl MemValue {
 }
 
 impl Column for MemValue {
-    fn as_string(&self, show_zeros: bool) -> String {
-        if !show_zeros && self.value == 0 {
+    fn as_string(&self, tui_stat: &TuiStat) -> String {
+        if !tui_stat.show_zeros && self.value == 0 {
             return String::new();
         }
         let mem_mb = self.value as f64 / bytesize::MIB as f64;
@@ -156,33 +156,63 @@ impl Column for MemValue {
     }
 }
 
-struct TimeMSValue {
-    min: u64,
+struct TimeValue {
     sec: f64,
 }
 
-impl TimeMSValue {
-    fn new_boxed(min: u64, sec: f64) -> Box<Self> {
-        Box::new(Self { min, sec })
+impl TimeValue {
+    fn new_boxed(sec: f64) -> Box<Self> {
+        Box::new(Self { sec })
     }
 }
 
-impl Column for TimeMSValue {
-    fn as_string(&self, show_zeros: bool) -> String {
-        if !show_zeros && self.min == 0 && self.sec < 0.01 {
+impl Column for TimeValue {
+    fn as_string(&self, tui_stat: &TuiStat) -> String {
+        if !tui_stat.show_zeros && self.sec < 0.01 {
             return String::new();
         }
-        format!("{}:{:0>5.2}", self.min, self.sec)
+        match tui_stat.time_scale {
+            TimeScale::MinSecondCent => {
+                let min = (self.sec / 60.0).floor() as u32;
+                let sec = self.sec - (min * 60) as f64;
+                format!("{}:{:0>5.2}", min, sec)
+            }
+            TimeScale::MinSecond => {
+                let min = (self.sec / 60.0).floor() as u32;
+                let sec = (self.sec - (min * 60) as f64).floor() as u32;
+                format!("{}:{:0>2}", min, sec)
+            }
+            TimeScale::HourMin => {
+                let hour = (self.sec / 3600.0).floor() as u32;
+                let min = ((self.sec - (hour * 3600) as f64) / 60.0).floor() as u32;
+                format!("{},{:0>2}", hour, min)
+            }
+            TimeScale::DayHour => {
+                let day = (self.sec / 86400.0).floor() as u32;
+                let hour = ((self.sec - (day * 86400) as f64) / 3600.0).floor() as u32;
+                format!("{}d+{}h", day, hour)
+            }
+            TimeScale::Day => {
+                let day = (self.sec / 86400.0).floor() as u32;
+                format!("{}d", day)
+            }
+            TimeScale::WeekDay => {
+                let week = (self.sec / 604800.0).floor() as u32;
+                let day = ((self.sec - (week * 604800) as f64) / 86400.0).floor() as u32;
+                format!("{}w+{}d", week, day)
+            }
+            TimeScale::Week => {
+                let week = (self.sec / 604800.0).floor() as u32;
+                format!("{}w", week)
+            }
+        }
     }
 
     fn cmp_dyn(&self, other: &dyn Column) -> Ordering {
         other
             .as_any()
-            .downcast_ref::<TimeMSValue>()
-            .map(|o| match self.min.cmp(&o.min) {
-                Ordering::Equal => self.sec.partial_cmp(&o.sec).unwrap_or(Ordering::Equal),
-                ord => ord,
-            })
+            .downcast_ref::<TimeValue>()
+            .map(|o| self.sec.partial_cmp(&o.sec).unwrap_or(Ordering::Equal))
             .unwrap_or(Ordering::Equal)
     }
     fn as_any(&self) -> &dyn Any {
@@ -383,18 +413,12 @@ fn s(pid: u32, _stat: Stat) -> Box<dyn Column> {
 fn time_plus(pid: u32, _stat: Stat) -> Box<dyn Column> {
     let binding = sysinfo().read().unwrap();
     let Some(proc) = binding.process(Pid::from_u32(pid)) else {
-        return TimeMSValue::new_boxed(0, 0.0);
+        return TimeValue::new_boxed(0.0);
     };
 
-    let (min, sec) = {
-        let total = proc.accumulated_cpu_time();
-        let minute = total / (60 * 1000);
-        let second = (total % (60 * 1000)) as f64 / 1000.0;
+    let second = proc.accumulated_cpu_time() as f64 / 1000.0;
 
-        (minute, second)
-    };
-
-    TimeMSValue::new_boxed(min, sec)
+    TimeValue::new_boxed(second)
 }
 
 fn mem(pid: u32, _stat: Stat) -> Box<dyn Column> {

@@ -84,6 +84,19 @@ pub fn handle_input(
 
                 should_update.store(true, Ordering::Relaxed);
             }
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('e'),
+                modifiers: KeyModifiers::CONTROL,
+                ..
+            }) => {
+                {
+                    let mut stat = tui_stat.write().unwrap();
+                    stat.time_scale = stat.time_scale.next();
+                }
+
+                data.write().unwrap().1 = ProcList::new(settings, &tui_stat.read().unwrap());
+                should_update.store(true, Ordering::Relaxed);
+            }
             char!('I') => {
                 {
                     let mut stat = tui_stat.write().unwrap();
