@@ -66,6 +66,11 @@ impl ProcList {
     }
 }
 
+pub(crate) struct InfoBar {
+    pub title: String,
+    pub content: String,
+}
+
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
@@ -107,6 +112,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let data = Arc::new(RwLock::new((
         Header::new(&tui_stat.read().unwrap()),
         ProcList::new(&settings, &tui_stat.read().unwrap()),
+        None,
     )));
 
     // update
@@ -122,7 +128,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 let header = Header::new(&tui_stat.read().unwrap());
                 let proc_list = ProcList::new(&settings, &tui_stat.read().unwrap());
                 tui_stat.write().unwrap().input_message = None;
-                *data.write().unwrap() = (header, proc_list);
+                let mut data = data.write().unwrap();
+                data.0 = header;
+                data.1 = proc_list;
                 should_update.store(true, Ordering::Relaxed);
             }
         });
@@ -231,11 +239,7 @@ fn collect(settings: &Settings, fields: &[String], tui_stat: &TuiStat) -> Vec<Ve
     }
     collected
         .into_iter()
-        .map(|it| {
-            it.into_iter()
-                .map(|c| c.as_string(tui_stat))
-                .collect()
-        })
+        .map(|it| it.into_iter().map(|c| c.as_string(tui_stat)).collect())
         .collect()
 }
 

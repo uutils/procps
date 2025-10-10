@@ -7,7 +7,7 @@ use crate::header::Header;
 use crate::platform::get_numa_nodes;
 use crate::tui::stat::{CpuValueMode, TuiStat};
 use crate::Filter::{EUser, User};
-use crate::{selected_fields, try_into_uid, ProcList, Settings};
+use crate::{selected_fields, try_into_uid, InfoBar, ProcList, Settings};
 use ratatui::crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::RwLock;
@@ -40,7 +40,7 @@ pub fn handle_input(
     e: Event,
     settings: &Settings,
     tui_stat: &RwLock<TuiStat>,
-    data: &RwLock<(Header, ProcList)>,
+    data: &RwLock<(Header, ProcList, Option<InfoBar>)>,
     should_update: &AtomicBool,
 ) -> bool {
     let input_mode = { tui_stat.read().unwrap().input_mode };
@@ -338,7 +338,7 @@ fn handle_input_value(
     input_event: InputEvent,
     settings: &Settings,
     tui_stat: &RwLock<TuiStat>,
-    data: &RwLock<(Header, ProcList)>,
+    data: &RwLock<(Header, ProcList, Option<InfoBar>)>,
     should_update: &AtomicBool,
 ) {
     match input_event {
