@@ -432,6 +432,15 @@ fn mem(pid: u32, _stat: Stat) -> Box<dyn Column> {
     )
 }
 
+pub(crate) fn get_cgroup(pid: u32) -> String {
+    let path = PathBuf::from_str(&format!("/proc/{pid}/cgroup")).unwrap();
+    if let Ok(file) = File::open(path) {
+        read_to_string(file).unwrap()
+    } else {
+        String::new()
+    }
+}
+
 pub(crate) fn get_command(pid: u32, full_command_line: bool) -> String {
     let f = |cmd: &[OsString]| -> String {
         let binding = cmd
