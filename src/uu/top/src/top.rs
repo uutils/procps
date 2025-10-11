@@ -54,7 +54,7 @@ impl Settings {
 
 pub(crate) struct ProcList {
     pub fields: Vec<String>,
-    pub collected: Vec<Vec<String>>,
+    pub collected: Vec<(u32, Vec<String>)>,
 }
 
 impl ProcList {
@@ -64,6 +64,11 @@ impl ProcList {
 
         Self { fields, collected }
     }
+}
+
+pub(crate) struct InfoBar {
+    pub title: String,
+    pub content: String,
 }
 
 #[uucore::main]
@@ -107,6 +112,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let data = Arc::new(RwLock::new((
         Header::new(&tui_stat.read().unwrap()),
         ProcList::new(&settings, &tui_stat.read().unwrap()),
+        None,
     )));
 
     // update
@@ -122,7 +128,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 let header = Header::new(&tui_stat.read().unwrap());
                 let proc_list = ProcList::new(&settings, &tui_stat.read().unwrap());
                 tui_stat.write().unwrap().input_message = None;
-                *data.write().unwrap() = (header, proc_list);
+                let mut data = data.write().unwrap();
+                data.0 = header;
+                data.1 = proc_list;
                 should_update.store(true, Ordering::Relaxed);
             }
         });
@@ -194,7 +202,7 @@ fn selected_fields() -> Vec<String> {
     .collect()
 }
 
-fn collect(settings: &Settings, fields: &[String], tui_stat: &TuiStat) -> Vec<Vec<String>> {
+fn collect(settings: &Settings, fields: &[String], tui_stat: &TuiStat) -> Vec<(u32, Vec<String>)> {
     let pickers = pickers(fields);
 
     let pids = sysinfo()
@@ -211,12 +219,15 @@ fn collect(settings: &Settings, fields: &[String], tui_stat: &TuiStat) -> Vec<Ve
         .into_iter()
         .filter(|pid| filter(*pid))
         .map(|it| {
-            pickers
-                .iter()
-                .map(move |picker| picker(it, (settings, tui_stat)))
-                .collect::<Vec<_>>()
+            (
+                it,
+                pickers
+                    .iter()
+                    .map(move |picker| picker(it, (settings, tui_stat)))
+                    .collect::<Vec<_>>(),
+            )
         })
-        .collect::<Vec<Vec<Box<dyn Column>>>>();
+        .collect::<Vec<(u32, Vec<Box<dyn Column>>)>>();
 
     let sorter = if tui_stat.sort_by_pid {
         "PID"
@@ -225,16 +236,17 @@ fn collect(settings: &Settings, fields: &[String], tui_stat: &TuiStat) -> Vec<Ve
     };
     let sorter_nth = fields.iter().position(|f| f == sorter).unwrap_or(0);
     if tui_stat.sort_by_pid {
-        collected.sort_by(|a, b| a[sorter_nth].cmp_dyn(&*b[sorter_nth])); // reverse
+        collected.sort_by(|a, b| a.1[sorter_nth].cmp_dyn(&*b.1[sorter_nth])); // reverse
     } else {
-        collected.sort_by(|a, b| b[sorter_nth].cmp_dyn(&*a[sorter_nth]));
+        collected.sort_by(|a, b| b.1[sorter_nth].cmp_dyn(&*a.1[sorter_nth]));
     }
     collected
         .into_iter()
         .map(|it| {
-            it.into_iter()
-                .map(|c| c.as_string(tui_stat.show_zeros))
-                .collect()
+            (
+                it.0,
+                it.1.into_iter().map(|c| c.as_string(tui_stat)).collect(),
+            )
         })
         .collect()
 }
