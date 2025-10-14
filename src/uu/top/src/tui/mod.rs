@@ -13,7 +13,7 @@ use std::borrow::Cow;
 use crate::header::{format_memory, Header};
 use crate::tui::color::TuiColor;
 use crate::tui::stat::{CpuGraphMode, MemoryGraphMode, TuiStat};
-use crate::ProcList;
+use crate::{InfoBar, ProcList};
 use ratatui::prelude::*;
 use ratatui::widgets::{Cell, Paragraph, Row, Table, TableState};
 use std::cmp::min;
@@ -22,19 +22,21 @@ pub struct Tui<'a> {
     settings: &'a crate::Settings,
     header: &'a Header,
     proc_list: &'a ProcList,
+    info_bar: &'a Option<InfoBar>,
     stat: &'a mut TuiStat,
 }
 
 impl<'a> Tui<'a> {
     pub fn new(
         settings: &'a crate::Settings,
-        data: &'a (Header, ProcList),
+        data: &'a (Header, ProcList, Option<InfoBar>),
         stat: &'a mut TuiStat,
     ) -> Self {
         Self {
             settings,
             header: &data.0,
             proc_list: &data.1,
+            info_bar: &data.2,
             stat,
         }
     }
@@ -64,6 +66,19 @@ impl<'a> Tui<'a> {
         }
 
         height
+    }
+
+    fn calc_info_bar_height(&self, width: u16) -> u16 {
+        if let Some(info_bar) = &self.info_bar {
+            let lines: u16 = info_bar
+                .content
+                .lines()
+                .map(|s| (s.len() as u16).div_ceil(width))
+                .sum();
+            lines + 1 // 1 for title
+        } else {
+            0
+        }
     }
 
     fn calc_list_coordinates(&self) -> (usize, usize) {
@@ -420,7 +435,7 @@ impl<'a> Tui<'a> {
                     .proc_list
                     .collected
                     .iter()
-                    .map(|item| &item[user_column_nth])
+                    .map(|item| &item.1[user_column_nth])
                     .collect();
                 users.iter().map(|u| u.len()).max().unwrap_or_default() + 1
             } else {
@@ -464,6 +479,7 @@ impl<'a> Tui<'a> {
 
         let rows = self.proc_list.collected.iter().map(|item| {
             let cells = item
+                .1
                 .iter()
                 .enumerate()
                 .skip(column_coordinates.0)
@@ -506,6 +522,30 @@ impl<'a> Tui<'a> {
         let table = Table::new(rows, constraints.clone()).header(header);
         StatefulWidget::render(table, area, buf, &mut state);
     }
+
+    fn render_info_bar(&self, area: Rect, buf: &mut Buffer) {
+        if let Some(info_bar) = self.info_bar.as_ref() {
+            let constraints = [Constraint::Length(1), Constraint::Min(1)];
+            let layout = Layout::new(Direction::Vertical, constraints).split(area);
+            Line::from(Span::styled(
+                format!("{:<width$}", &info_bar.title, width = area.width as usize),
+                Style::default().bg_secondary(self.stat.colorful),
+            ))
+            .render(layout[0], buf);
+            let mut lines = vec![];
+            let width = layout[1].width as usize;
+            info_bar.content.lines().for_each(|s| {
+                let mut start = 0;
+                let len = s.len();
+                while start < len {
+                    let end = (start + width).min(len);
+                    lines.push(Line::from(&s[start..end]));
+                    start = end;
+                }
+            });
+            Paragraph::new(lines).render(layout[1], buf);
+        }
+    }
 }
 
 impl Widget for Tui<'_> {
@@ -524,6 +564,7 @@ impl Widget for Tui<'_> {
                 Constraint::Length(self.calc_header_height()),
                 Constraint::Length(1),
                 Constraint::Min(0),
+                Constraint::Length(self.calc_info_bar_height(area.width)),
             ],
         )
         .split(area);
@@ -536,5 +577,6 @@ impl Widget for Tui<'_> {
             list_area.height = list_height;
         }
         self.render_list(list_area, buf);
+        self.render_info_bar(layout[3], buf);
     }
 }
