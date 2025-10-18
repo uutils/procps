@@ -435,6 +435,7 @@ fn mem(pid: u32, _stat: Stat) -> Box<dyn Column> {
 #[cfg(target_os = "linux")]
 pub(crate) fn get_supplementary_groups(pid: u32) -> String {
     use sysinfo::{Gid, Groups};
+
     let groups = Groups::new_with_refreshed_list();
     let path = PathBuf::from_str(&format!("/proc/{pid}/status")).unwrap();
     if let Ok(file) = File::open(path) {
@@ -452,10 +453,8 @@ pub(crate) fn get_supplementary_groups(pid: u32) -> String {
                 return groups;
             }
         }
-        String::new()
-    } else {
-        String::new()
     }
+    String::new()
 }
 
 #[cfg(target_os = "linux")]

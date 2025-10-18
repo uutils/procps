@@ -30,6 +30,10 @@ pub(crate) enum InputEvent {
     ReniceProc,
     #[cfg(target_os = "linux")]
     ReniceValue,
+    #[cfg(unix)]
+    KillProc,
+    #[cfg(unix)]
+    KillSignal,
 }
 
 macro_rules! char {
@@ -167,6 +171,25 @@ pub fn handle_input(
                     let content = get_command(pid, true);
                     data.2 = Some(InfoBar { title, content });
                 }
+                should_update.store(true, Ordering::Relaxed);
+            }
+            #[cfg(unix)]
+            char!('k') => {
+                let data = data.read().unwrap();
+                let mut tui_stat = tui_stat.write().unwrap();
+                let mut nth = tui_stat.list_offset;
+                if data.1.collected.is_empty() {
+                    return false;
+                }
+                if data.1.collected.len() <= nth {
+                    nth = data.1.collected.len() - 1;
+                }
+                let pid = data.1.collected[nth].0;
+                tui_stat.input_value.clear();
+                tui_stat.input_label = format!("PID to signal/kill [default pid = {}]", pid);
+                tui_stat.selected_process = Some(pid);
+                tui_stat.input_mode = InputMode::Input(InputEvent::KillProc);
+
                 should_update.store(true, Ordering::Relaxed);
             }
             char!('l') => {
@@ -603,6 +626,53 @@ fn handle_input_value(
                 stat.input_message = Some(format!(
                     " Failed renice of PID {} to {}: {} ",
                     pid, input_value, e
+                ));
+            }
+            should_update.store(true, Ordering::Relaxed);
+        }
+        #[cfg(unix)]
+        InputEvent::KillProc => {
+            let input_value = { tui_stat.read().unwrap().input_value.parse::<u32>() };
+            let mut stat = tui_stat.write().unwrap();
+            if let Ok(pid) = input_value {
+                stat.selected_process = Some(pid);
+            } else {
+                let is_empty = stat.input_value.trim().is_empty();
+                stat.reset_input();
+                if !is_empty {
+                    stat.input_message = Some(" Unacceptable integer ".into());
+                    should_update.store(true, Ordering::Relaxed);
+                    return;
+                }
+            };
+            stat.input_value.clear();
+            stat.input_label = format!(
+                "Send pid {} signal [15/sigterm]",
+                stat.selected_process.unwrap()
+            );
+            stat.input_mode = InputMode::Input(InputEvent::KillSignal);
+            should_update.store(true, Ordering::Relaxed);
+        }
+        #[cfg(unix)]
+        InputEvent::KillSignal => {
+            use uucore::signals::signal_by_name_or_value;
+            let mut stat = tui_stat.write().unwrap();
+            stat.input_mode = InputMode::Command;
+            stat.reset_input();
+            let signal = if stat.input_value.is_empty() {
+                15
+            } else if let Some(sig) = signal_by_name_or_value(&stat.input_value) {
+                sig
+            } else {
+                stat.input_message = Some(" Unacceptable signal value".into());
+                should_update.store(true, Ordering::Relaxed);
+                return;
+            };
+            let pid = stat.selected_process.unwrap();
+            if let Err(e) = crate::action::kill_process(pid, signal) {
+                stat.input_message = Some(format!(
+                    " Failed signal pid {} with {}: {} ",
+                    pid, signal, e
                 ));
             }
             should_update.store(true, Ordering::Relaxed);

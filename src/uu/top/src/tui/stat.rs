@@ -12,6 +12,7 @@ pub(crate) struct TuiStat {
     pub input_label: String,
     pub input_value: String,
     pub input_message: Option<String>, // Info or error
+    #[allow(dead_code)]
     pub selected_process: Option<u32>,
 
     pub show_load_avg: bool,
