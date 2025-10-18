@@ -11,7 +11,7 @@ license.workspace = true
 version.workspace = true
 
 [dependencies]
-uucore = { workspace = true, features = ["utmpx", "uptime"] }
+uucore = { workspace = true, features = ["utmpx", "uptime", "signals"] }
 clap = { workspace = true }
 crossterm = { workspace = true }
 libc = { workspace = true }

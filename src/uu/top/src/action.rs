@@ -14,3 +14,16 @@ pub(crate) fn renice(pid: u32, nice_value: i32) -> uucore::error::UResult<()> {
         Ok(())
     }
 }
+
+#[cfg(unix)]
+pub(crate) fn kill_process(pid: u32, sig: usize) -> uucore::error::UResult<()> {
+    use nix::sys::signal;
+    use nix::sys::signal::Signal;
+    use nix::unistd::Pid;
+    use uucore::error::USimpleError;
+    let result = signal::kill(Pid::from_raw(pid as i32), Signal::try_from(sig as i32)?);
+    match result {
+        Ok(_) => Ok(()),
+        Err(_) => Err(USimpleError::new(0, "Permission Denied")),
+    }
+}
