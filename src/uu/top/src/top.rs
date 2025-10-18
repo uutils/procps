@@ -24,6 +24,7 @@ use uucore::{
 const ABOUT: &str = help_about!("top.md");
 const USAGE: &str = help_usage!("top.md");
 
+mod action;
 mod field;
 mod header;
 mod picker;
