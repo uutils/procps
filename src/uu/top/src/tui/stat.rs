@@ -12,6 +12,7 @@ pub(crate) struct TuiStat {
     pub input_label: String,
     pub input_value: String,
     pub input_message: Option<String>, // Info or error
+    pub selected_process: Option<u32>,
 
     pub show_load_avg: bool,
     pub cpu_graph_mode: CpuGraphMode,
@@ -51,6 +52,7 @@ impl TuiStat {
             input_label: String::new(),
             input_value: String::new(),
             input_message: None,
+            selected_process: None,
 
             show_load_avg: true,
             cpu_graph_mode: CpuGraphMode::default(),
