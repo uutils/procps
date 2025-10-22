@@ -4,7 +4,7 @@
 // file that was distributed with this source code.
 
 use crate::header::Header;
-use crate::picker::{get_cgroup, get_command};
+use crate::picker::get_command;
 use crate::platform::get_numa_nodes;
 use crate::tui::stat::{CpuValueMode, TuiStat};
 use crate::Filter::{EUser, User};
@@ -26,6 +26,14 @@ pub(crate) enum InputEvent {
     FilterEUser,
     WidthIncrement,
     Delay,
+    #[cfg(target_os = "linux")]
+    ReniceProc,
+    #[cfg(target_os = "linux")]
+    ReniceValue,
+    #[cfg(unix)]
+    KillProc,
+    #[cfg(unix)]
+    KillSignal,
 }
 
 macro_rules! char {
@@ -98,6 +106,7 @@ pub fn handle_input(
                 data.write().unwrap().1 = ProcList::new(settings, &tui_stat.read().unwrap());
                 should_update.store(true, Ordering::Relaxed);
             }
+            #[cfg(target_os = "linux")]
             Event::Key(KeyEvent {
                 code: KeyCode::Char('g'),
                 modifiers: KeyModifiers::CONTROL,
@@ -121,7 +130,7 @@ pub fn handle_input(
                         pid,
                         get_command(pid, false)
                     );
-                    let content = get_cgroup(pid);
+                    let content = crate::picker::get_cgroup(pid);
                     data.2 = Some(InfoBar { title, content });
                 }
                 should_update.store(true, Ordering::Relaxed);
@@ -164,6 +173,25 @@ pub fn handle_input(
                 }
                 should_update.store(true, Ordering::Relaxed);
             }
+            #[cfg(unix)]
+            char!('k') => {
+                let data = data.read().unwrap();
+                let mut tui_stat = tui_stat.write().unwrap();
+                let mut nth = tui_stat.list_offset;
+                if data.1.collected.is_empty() {
+                    return false;
+                }
+                if data.1.collected.len() <= nth {
+                    nth = data.1.collected.len() - 1;
+                }
+                let pid = data.1.collected[nth].0;
+                tui_stat.input_value.clear();
+                tui_stat.input_label = format!("PID to signal/kill [default pid = {}]", pid);
+                tui_stat.selected_process = Some(pid);
+                tui_stat.input_mode = InputMode::Input(InputEvent::KillProc);
+
+                should_update.store(true, Ordering::Relaxed);
+            }
             char!('l') => {
                 let mut stat = tui_stat.write().unwrap();
                 stat.show_load_avg = !stat.show_load_avg;
@@ -194,9 +222,57 @@ pub fn handle_input(
                 data.write().unwrap().1 = ProcList::new(settings, &tui_stat.read().unwrap());
                 should_update.store(true, Ordering::Relaxed);
             }
+            #[cfg(target_os = "linux")]
+            char!('r') => {
+                let data = data.read().unwrap();
+                let mut tui_stat = tui_stat.write().unwrap();
+                let mut nth = tui_stat.list_offset;
+                if data.1.collected.is_empty() {
+                    return false;
+                }
+                if data.1.collected.len() <= nth {
+                    nth = data.1.collected.len() - 1;
+                }
+                let pid = data.1.collected[nth].0;
+                tui_stat.input_value.clear();
+                tui_stat.input_label = format!("PID to renice [default pid = {}]", pid);
+                tui_stat.selected_process = Some(pid);
+                tui_stat.input_mode = InputMode::Input(InputEvent::ReniceProc);
+
+                should_update.store(true, Ordering::Relaxed);
+            }
             char!('t') => {
                 let mut stat = tui_stat.write().unwrap();
                 stat.cpu_graph_mode = stat.cpu_graph_mode.next();
+                should_update.store(true, Ordering::Relaxed);
+            }
+            #[cfg(target_os = "linux")]
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('u'),
+                modifiers: KeyModifiers::CONTROL,
+                ..
+            }) => {
+                let mut data = data.write().unwrap();
+                if data.2.is_some() {
+                    data.2 = None;
+                } else {
+                    let tui_stat = tui_stat.read().unwrap();
+                    let mut nth = tui_stat.list_offset;
+                    if data.1.collected.is_empty() {
+                        return false;
+                    }
+                    if data.1.collected.len() <= nth {
+                        nth = data.1.collected.len() - 1;
+                    }
+                    let pid = data.1.collected[nth].0;
+                    let title = format!(
+                        "supplementary groups for pid {}, {}",
+                        pid,
+                        get_command(pid, false)
+                    );
+                    let content = crate::picker::get_supplementary_groups(pid);
+                    data.2 = Some(InfoBar { title, content });
+                }
                 should_update.store(true, Ordering::Relaxed);
             }
             char!('U') => {
@@ -507,6 +583,98 @@ fn handle_input_value(
             let mut stat = tui_stat.write().unwrap();
             stat.delay = std::time::Duration::from_secs_f32(input_value);
             stat.reset_input();
+            should_update.store(true, Ordering::Relaxed);
+        }
+        #[cfg(target_os = "linux")]
+        InputEvent::ReniceProc => {
+            let input_value = { tui_stat.read().unwrap().input_value.parse::<u32>() };
+            let mut stat = tui_stat.write().unwrap();
+            if let Ok(pid) = input_value {
+                stat.selected_process = Some(pid);
+            } else {
+                let is_empty = stat.input_value.trim().is_empty();
+                stat.reset_input();
+                if !is_empty {
+                    stat.input_message = Some(" Unacceptable integer ".into());
+                    should_update.store(true, Ordering::Relaxed);
+                    return;
+                }
+            };
+            stat.input_value.clear();
+            stat.input_label = format!("Renice pid {} to value", stat.selected_process.unwrap());
+            stat.input_mode = InputMode::Input(InputEvent::ReniceValue);
+            should_update.store(true, Ordering::Relaxed);
+        }
+        #[cfg(target_os = "linux")]
+        InputEvent::ReniceValue => {
+            let mut stat = tui_stat.write().unwrap();
+            let input_value = stat.input_value.parse::<i32>();
+            stat.input_mode = InputMode::Command;
+            stat.reset_input();
+            if input_value.is_err() || input_value.as_ref().is_ok_and(|v| *v < -20 || *v > 19) {
+                let is_empty = { tui_stat.read().unwrap().input_value.trim().is_empty() };
+                let mut stat = tui_stat.write().unwrap();
+                if !is_empty {
+                    stat.input_message = Some(" Unacceptable nice value ".into());
+                }
+                should_update.store(true, Ordering::Relaxed);
+                return;
+            }
+            let input_value = input_value.unwrap();
+            let pid = stat.selected_process.unwrap();
+            if let Err(e) = crate::action::renice(pid, input_value) {
+                stat.input_message = Some(format!(
+                    " Failed renice of PID {} to {}: {} ",
+                    pid, input_value, e
+                ));
+            }
+            should_update.store(true, Ordering::Relaxed);
+        }
+        #[cfg(unix)]
+        InputEvent::KillProc => {
+            let input_value = { tui_stat.read().unwrap().input_value.parse::<u32>() };
+            let mut stat = tui_stat.write().unwrap();
+            if let Ok(pid) = input_value {
+                stat.selected_process = Some(pid);
+            } else {
+                let is_empty = stat.input_value.trim().is_empty();
+                stat.reset_input();
+                if !is_empty {
+                    stat.input_message = Some(" Unacceptable integer ".into());
+                    should_update.store(true, Ordering::Relaxed);
+                    return;
+                }
+            };
+            stat.input_value.clear();
+            stat.input_label = format!(
+                "Send pid {} signal [15/sigterm]",
+                stat.selected_process.unwrap()
+            );
+            stat.input_mode = InputMode::Input(InputEvent::KillSignal);
+            should_update.store(true, Ordering::Relaxed);
+        }
+        #[cfg(unix)]
+        InputEvent::KillSignal => {
+            use uucore::signals::signal_by_name_or_value;
+            let mut stat = tui_stat.write().unwrap();
+            stat.input_mode = InputMode::Command;
+            stat.reset_input();
+            let signal = if stat.input_value.is_empty() {
+                15
+            } else if let Some(sig) = signal_by_name_or_value(&stat.input_value) {
+                sig
+            } else {
+                stat.input_message = Some(" Unacceptable signal value".into());
+                should_update.store(true, Ordering::Relaxed);
+                return;
+            };
+            let pid = stat.selected_process.unwrap();
+            if let Err(e) = crate::action::kill_process(pid, signal) {
+                stat.input_message = Some(format!(
+                    " Failed signal pid {} with {}: {} ",
+                    pid, signal, e
+                ));
+            }
             should_update.store(true, Ordering::Relaxed);
         }
     }

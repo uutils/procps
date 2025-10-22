@@ -432,6 +432,32 @@ fn mem(pid: u32, _stat: Stat) -> Box<dyn Column> {
     )
 }
 
+#[cfg(target_os = "linux")]
+pub(crate) fn get_supplementary_groups(pid: u32) -> String {
+    use sysinfo::{Gid, Groups};
+
+    let groups = Groups::new_with_refreshed_list();
+    let path = PathBuf::from_str(&format!("/proc/{pid}/status")).unwrap();
+    if let Ok(file) = File::open(path) {
+        let content = read_to_string(file).unwrap();
+        for line in content.lines() {
+            if line.starts_with("Groups:") {
+                let groups = line
+                    .split_whitespace()
+                    .skip(1)
+                    .filter_map(|s| Gid::from_str(s).ok())
+                    .filter_map(|gid| groups.iter().find(|g| g.id() == &gid))
+                    .map(|group| group.name())
+                    .collect::<Vec<_>>()
+                    .join(",");
+                return groups;
+            }
+        }
+    }
+    String::new()
+}
+
+#[cfg(target_os = "linux")]
 pub(crate) fn get_cgroup(pid: u32) -> String {
     let path = PathBuf::from_str(&format!("/proc/{pid}/cgroup")).unwrap();
     if let Ok(file) = File::open(path) {
