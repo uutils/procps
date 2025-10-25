@@ -38,9 +38,12 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         .collect::<Vec<_>>();
     let mut proc_infos = Vec::new();
 
-    proc_infos.extend(collector::basic_collector(&snapshot));
-    proc_infos.extend(collector::process_collector(&matches, &snapshot));
-    proc_infos.extend(collector::session_collector(&matches, &snapshot));
+    if !matches.get_flag("A") && !matches.get_flag("a") && !matches.get_flag("d") {
+        proc_infos.extend(collector::basic_collector(&snapshot));
+    } else {
+        proc_infos.extend(collector::process_collector(&matches, &snapshot));
+        proc_infos.extend(collector::session_collector(&matches, &snapshot));
+    }
 
     proc_infos.sort_by(|a, b| a.borrow().pid.cmp(&b.borrow().pid));
     proc_infos.dedup_by(|a, b| a.borrow().pid == b.borrow().pid);
