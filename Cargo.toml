@@ -75,7 +75,7 @@ terminal_size = "0.4.2"
 textwrap = { version = "0.16.1", features = ["terminal_size"] }
 thiserror = "2.0.4"
 uucore = "0.2.2"
-uutests = "0.2.0"
+uutests = "0.3.0"
 walkdir = "2.5.0"
 windows = { version = "0.62.0" }
 windows-sys = { version = "0.61.0", default-features = false }
