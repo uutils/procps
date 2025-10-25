@@ -42,6 +42,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     proc_infos.extend(collector::process_collector(&matches, &snapshot));
     proc_infos.extend(collector::session_collector(&matches, &snapshot));
 
+    proc_infos.sort_by(|a, b| a.borrow().pid.cmp(&b.borrow().pid));
     proc_infos.dedup_by(|a, b| a.borrow().pid == b.borrow().pid);
 
     sorting::sort(&mut proc_infos, &matches);
