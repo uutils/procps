@@ -3,7 +3,7 @@
 [![License](http://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/uutils/procps/blob/main/LICENSE)
 [![dependency status](https://deps.rs/repo/github/uutils/procps/status.svg)](https://deps.rs/repo/github/uutils/procps)
 
-[![CodeCov](https://codecov.io/gh/uutils/procps/branch/master/graph/badge.svg)](https://codecov.io/gh/uutils/procps)
+[![CodeCov](https://codecov.io/gh/uutils/procps/branch/main/graph/badge.svg)](https://codecov.io/gh/uutils/procps)
 
 # procps
 
