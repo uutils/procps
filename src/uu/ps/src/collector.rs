@@ -39,13 +39,13 @@ pub(crate) fn basic_collector(
         // SAFETY: The `libc::getpid` always return i32
         let proc_path =
             PathBuf::from_str(&format!("/proc/{}/", unsafe { libc::getpid() })).unwrap();
-        let current_proc_info = ProcessInformation::try_new(proc_path).unwrap();
+        let mut current_proc_info = ProcessInformation::try_new(proc_path).unwrap();
 
         current_proc_info.tty()
     };
 
     for proc_info in proc_snapshot {
-        let proc_ttys = proc_info.borrow().tty();
+        let proc_ttys = proc_info.borrow_mut().tty();
 
         if proc_ttys == current_tty {
             result.push(proc_info.clone());
