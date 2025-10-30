@@ -6,7 +6,7 @@
 use clap::ArgMatches;
 #[cfg(target_family = "unix")]
 use nix::errno::Errno;
-use std::{cell::RefCell, path::PathBuf, rc::Rc, str::FromStr};
+use std::{cell::RefCell, rc::Rc};
 use uu_pgrep::process::{ProcessInformation, Teletype};
 
 // TODO: Temporary add to this file, this function will add to uucore.
@@ -29,25 +29,18 @@ fn getsid(_pid: i32) -> Option<i32> {
     Some(0)
 }
 
-// Guessing it matches the current terminal
+// Default behavior: select processes with same terminal and same effective user ID
 pub(crate) fn basic_collector(
     proc_snapshot: &[Rc<RefCell<ProcessInformation>>],
 ) -> Vec<Rc<RefCell<ProcessInformation>>> {
     let mut result = Vec::new();
 
-    let current_tty = {
-        // SAFETY: The `libc::getpid` always return i32
-        let proc_path =
-            PathBuf::from_str(&format!("/proc/{}/", unsafe { libc::getpid() })).unwrap();
-        let current_proc_info = ProcessInformation::try_new(proc_path).unwrap();
-
-        current_proc_info.tty()
-    };
+    let mut cur = ProcessInformation::current_process_info().unwrap();
+    let tty = cur.tty();
+    let euid = cur.euid().unwrap();
 
     for proc_info in proc_snapshot {
-        let proc_ttys = proc_info.borrow().tty();
-
-        if proc_ttys == current_tty {
+        if proc_info.borrow().tty() == tty && proc_info.borrow_mut().euid().unwrap() == euid {
             result.push(proc_info.clone());
         }
     }
@@ -85,9 +78,14 @@ pub(crate) fn session_collector(
     let tty = |proc: &Rc<RefCell<ProcessInformation>>| proc.borrow_mut().tty();
 
     // flag `-d`
-    // TODO: Implementation this collection, guessing it pid=sid
     if matches.get_flag("d") {
-        proc_snapshot.iter().for_each(|_| {});
+        for proc_info in proc_snapshot {
+            let pid = proc_info.borrow().pid;
+
+            if getsid(pid as i32) != Some(pid as i32) {
+                result.push(proc_info.clone());
+            }
+        }
     }
 
     // flag `-a`
