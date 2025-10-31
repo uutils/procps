@@ -133,6 +133,12 @@ fn test_register_format() {
 
 #[test]
 #[cfg(target_os = "linux")]
+fn test_x_format() {
+    check_header("-x", &["PID", "TTY", "STAT", "TIME", "COMMAND"]);
+}
+
+#[test]
+#[cfg(target_os = "linux")]
 fn test_code_mapping() {
     new_ucmd!()
         .args(&["-o", "cmd=CCMD"])

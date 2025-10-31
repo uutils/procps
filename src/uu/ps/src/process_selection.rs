@@ -43,6 +43,9 @@ pub struct ProcessSelectionSettings {
     /// - `-d` Select all processes except session leaders.
     pub select_non_session_leaders: bool,
 
+    /// - '-x' Lift "must have a tty" restriction.
+    pub dont_require_tty: bool,
+
     /// - `--deselect` Negates the selection.
     pub negate_selection: bool,
 }
@@ -53,6 +56,7 @@ impl ProcessSelectionSettings {
             select_all: matches.get_flag("A"),
             select_non_session_leaders_with_tty: matches.get_flag("a"),
             select_non_session_leaders: matches.get_flag("d"),
+            dont_require_tty: matches.get_flag("x"),
             negate_selection: matches.get_flag("deselect"),
         }
     }
@@ -75,8 +79,9 @@ impl ProcessSelectionSettings {
                 return Ok(!is_session_leader(process));
             }
 
-            // Default behavior: select processes with same terminal and same effective user ID
-            Ok(process.tty() == current_tty && process.euid().unwrap() == current_euid)
+            // Default behavior: select processes with same effective user ID and same tty (except -x removes tty restriction)
+            Ok(process.euid().unwrap() == current_euid
+                && (self.dont_require_tty || process.tty() == current_tty))
         };
 
         let mut selected = vec![];

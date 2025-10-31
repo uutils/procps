@@ -12,7 +12,7 @@ mod sorting;
 use clap::crate_version;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use mapping::{
-    collect_code_mapping, default_codes, default_mapping, default_with_psr_codes,
+    bsd_format_codes, collect_code_mapping, default_codes, default_mapping, default_with_psr_codes,
     extra_full_format_codes, full_format_codes, job_format_codes, long_format_codes,
     long_y_format_codes, register_format_codes, signal_format_codes, user_format_codes,
     vm_format_codes,
@@ -65,6 +65,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         user_format_codes()
     } else if matches.get_flag("v") {
         vm_format_codes()
+    } else if matches.get_flag("x") {
+        bsd_format_codes()
     } else if matches.get_flag("X") {
         register_format_codes()
     } else if arg_formats.is_empty() {
@@ -179,11 +181,10 @@ pub fn uu_app() -> Command {
             //     .action(ArgAction::SetTrue)
             //     .help("all processes on this terminal")
             //     .allow_hyphen_values(true),
-            // Arg::new("x")
-            //     .short('x')
-            //     .action(ArgAction::SetTrue)
-            //     .help("processes without controlling ttys")
-            //     .allow_hyphen_values(true),
+            Arg::new("x")
+                .short('x')
+                .action(ArgAction::SetTrue)
+                .help("processes without controlling ttys"),
         ])
         .arg(
             Arg::new("f")

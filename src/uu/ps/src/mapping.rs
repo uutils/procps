@@ -104,6 +104,13 @@ pub(crate) fn vm_format_codes() -> Vec<String> {
     .to_vec()
 }
 
+/// Returns the format codes used when BSD flags (e.g. -x) are used.
+pub(crate) fn bsd_format_codes() -> Vec<String> {
+    ["pid", "tname", "stat", "time", "command"]
+        .map(Into::into)
+        .to_vec()
+}
+
 /// Returns the register format codes (for -X flag).
 pub(crate) fn register_format_codes() -> Vec<String> {
     [
