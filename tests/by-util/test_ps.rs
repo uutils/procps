@@ -179,3 +179,20 @@ fn test_no_headers_flags() {
             .stdout_does_not_match(&regex);
     }
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_deselect() {
+    // Inverse of all processes should be empty
+    new_ucmd!()
+        .args(&["--deselect", "-A", "--no-headers"])
+        .fails()
+        .code_is(1)
+        .stdout_is("");
+
+    // PID 1 should be present in inverse of default filter criteria
+    new_ucmd!()
+        .args(&["--deselect"])
+        .succeeds()
+        .stdout_matches(&Regex::new("\n *1 ").unwrap());
+}

@@ -42,6 +42,9 @@ pub struct ProcessSelectionSettings {
     pub select_non_session_leaders_with_tty: bool,
     /// - `-d` Select all processes except session leaders.
     pub select_non_session_leaders: bool,
+
+    /// - `--deselect` Negates the selection.
+    pub negate_selection: bool,
 }
 
 impl ProcessSelectionSettings {
@@ -50,6 +53,7 @@ impl ProcessSelectionSettings {
             select_all: matches.get_flag("A"),
             select_non_session_leaders_with_tty: matches.get_flag("a"),
             select_non_session_leaders: matches.get_flag("d"),
+            negate_selection: matches.get_flag("deselect"),
         }
     }
 
@@ -77,7 +81,7 @@ impl ProcessSelectionSettings {
 
         let mut selected = vec![];
         for mut process in walk_process() {
-            if matches_criteria(&mut process)? {
+            if matches_criteria(&mut process)? ^ self.negate_selection {
                 selected.push(process);
             }
         }
