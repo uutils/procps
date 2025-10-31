@@ -135,10 +135,11 @@ fn sid(proc_info: RefCell<ProcessInformation>) -> String {
 }
 
 fn tty(proc_info: RefCell<ProcessInformation>) -> String {
-    match proc_info.borrow().tty() {
-        Teletype::Tty(tty) => format!("tty{tty}"),
-        Teletype::TtyS(ttys) => format!("ttyS{ttys}"),
-        Teletype::Pts(pts) => format!("pts/{pts}"),
+    match proc_info.borrow_mut().tty() {
+        Teletype::Known(device_path) => device_path
+            .strip_prefix("/dev/")
+            .unwrap_or(&device_path)
+            .to_owned(),
         Teletype::Unknown => "?".to_owned(),
     }
 }
