@@ -3,10 +3,10 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-mod collector;
 mod mapping;
 mod parser;
 mod picker;
+mod process_selection;
 mod sorting;
 
 use clap::crate_version;
@@ -19,8 +19,8 @@ use mapping::{
 };
 use parser::{parser, OptionalKeyValue};
 use prettytable::{format::consts::FORMAT_CLEAN, Row, Table};
-use std::{cell::RefCell, rc::Rc};
-use uu_pgrep::process::walk_process;
+use process_selection::ProcessSelectionSettings;
+use std::cell::RefCell;
 use uucore::{
     error::{UError, UResult, USimpleError},
     format_usage, help_about, help_usage,
@@ -33,20 +33,8 @@ const USAGE: &str = help_usage!("ps.md");
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
 
-    let snapshot = walk_process()
-        .map(|it| Rc::new(RefCell::new(it)))
-        .collect::<Vec<_>>();
-    let mut proc_infos = Vec::new();
-
-    if !matches.get_flag("A") && !matches.get_flag("a") && !matches.get_flag("d") {
-        proc_infos.extend(collector::basic_collector(&snapshot));
-    } else {
-        proc_infos.extend(collector::process_collector(&matches, &snapshot));
-        proc_infos.extend(collector::session_collector(&matches, &snapshot));
-    }
-
-    proc_infos.sort_by(|a, b| a.borrow().pid.cmp(&b.borrow().pid));
-    proc_infos.dedup_by(|a, b| a.borrow().pid == b.borrow().pid);
+    let selection_settings = ProcessSelectionSettings::from_matches(&matches);
+    let mut proc_infos = selection_settings.select_processes()?;
 
     sorting::sort(&mut proc_infos, &matches);
 
@@ -90,7 +78,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     for proc in proc_infos {
         let picked = pickers
             .iter()
-            .map(|picker| picker(Rc::unwrap_or_clone(proc.clone())));
+            .map(|picker| picker(RefCell::new(proc.clone())));
         rows.push(Row::from_iter(picked));
     }
 

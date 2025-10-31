@@ -1,0 +1,87 @@
+// This file is part of the uutils procps package.
+//
+// For the full copyright and license information, please view the LICENSE
+// file that was distributed with this source code.
+
+use clap::ArgMatches;
+use uu_pgrep::process::{walk_process, ProcessInformation, Teletype};
+use uucore::error::UResult;
+
+#[cfg(target_family = "unix")]
+use nix::errno::Errno;
+
+// TODO: Temporary add to this file, this function will add to uucore.
+#[cfg(not(target_os = "redox"))]
+#[cfg(target_family = "unix")]
+fn getsid(pid: i32) -> Option<i32> {
+    unsafe {
+        let result = libc::getsid(pid);
+        if Errno::last() == Errno::UnknownErrno {
+            Some(result)
+        } else {
+            None
+        }
+    }
+}
+
+// TODO: Temporary add to this file, this function will add to uucore.
+#[cfg(target_family = "windows")]
+fn getsid(_pid: i32) -> Option<i32> {
+    Some(0)
+}
+
+fn is_session_leader(process: &ProcessInformation) -> bool {
+    let pid = process.pid as i32;
+    getsid(pid) == Some(pid)
+}
+
+pub struct ProcessSelectionSettings {
+    /// - `-A` Select all processes.  Identical to `-e`.
+    pub select_all: bool,
+    /// - `-a` Select all processes except both session leaders (see getsid(2)) and processes not associated with a terminal.
+    pub select_non_session_leaders_with_tty: bool,
+    /// - `-d` Select all processes except session leaders.
+    pub select_non_session_leaders: bool,
+}
+
+impl ProcessSelectionSettings {
+    pub fn from_matches(matches: &ArgMatches) -> Self {
+        Self {
+            select_all: matches.get_flag("A"),
+            select_non_session_leaders_with_tty: matches.get_flag("a"),
+            select_non_session_leaders: matches.get_flag("d"),
+        }
+    }
+
+    pub fn select_processes(self) -> UResult<Vec<ProcessInformation>> {
+        let mut current_process = ProcessInformation::current_process_info().unwrap();
+        let current_tty = current_process.tty();
+        let current_euid = current_process.euid().unwrap();
+
+        let matches_criteria = |process: &mut ProcessInformation| -> UResult<bool> {
+            if self.select_all {
+                return Ok(true);
+            }
+
+            if self.select_non_session_leaders_with_tty {
+                return Ok(!is_session_leader(process) && process.tty() != Teletype::Unknown);
+            }
+
+            if self.select_non_session_leaders {
+                return Ok(!is_session_leader(process));
+            }
+
+            // Default behavior: select processes with same terminal and same effective user ID
+            Ok(process.tty() == current_tty && process.euid().unwrap() == current_euid)
+        };
+
+        let mut selected = vec![];
+        for mut process in walk_process() {
+            if matches_criteria(&mut process)? {
+                selected.push(process);
+            }
+        }
+
+        Ok(selected)
+    }
+}
