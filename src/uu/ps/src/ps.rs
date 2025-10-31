@@ -171,11 +171,10 @@ pub fn uu_app() -> Command {
                 .short('N')
                 .help("negate selection")
                 .action(ArgAction::SetTrue),
-            // Arg::new("r")
-            //     .short('r')
-            //     .action(ArgAction::SetTrue)
-            //     .help("only running processes")
-            //     .allow_hyphen_values(true),
+            Arg::new("r")
+                .short('r')
+                .action(ArgAction::SetTrue)
+                .help("only running processes"),
             // Arg::new("T")
             //     .short('T')
             //     .action(ArgAction::SetTrue)

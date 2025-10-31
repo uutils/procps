@@ -4,7 +4,7 @@
 // file that was distributed with this source code.
 
 use clap::ArgMatches;
-use uu_pgrep::process::{walk_process, ProcessInformation, Teletype};
+use uu_pgrep::process::{walk_process, ProcessInformation, RunState, Teletype};
 use uucore::error::UResult;
 
 #[cfg(target_family = "unix")]
@@ -46,6 +46,9 @@ pub struct ProcessSelectionSettings {
     /// - '-x' Lift "must have a tty" restriction.
     pub dont_require_tty: bool,
 
+    /// - `-r` Restrict the selection to only running processes.
+    pub only_running: bool,
+
     /// - `--deselect` Negates the selection.
     pub negate_selection: bool,
 }
@@ -57,6 +60,7 @@ impl ProcessSelectionSettings {
             select_non_session_leaders_with_tty: matches.get_flag("a"),
             select_non_session_leaders: matches.get_flag("d"),
             dont_require_tty: matches.get_flag("x"),
+            only_running: matches.get_flag("r"),
             negate_selection: matches.get_flag("deselect"),
         }
     }
@@ -67,6 +71,10 @@ impl ProcessSelectionSettings {
         let current_euid = current_process.euid().unwrap();
 
         let matches_criteria = |process: &mut ProcessInformation| -> UResult<bool> {
+            if self.only_running && !process.run_state().is_ok_and(|x| x == RunState::Running) {
+                return Ok(false);
+            }
+
             if self.select_all {
                 return Ok(true);
             }
