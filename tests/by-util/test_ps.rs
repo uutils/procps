@@ -3,6 +3,8 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+#[cfg(target_os = "linux")]
+use regex::Regex;
 use uutests::new_ucmd;
 
 #[test]
@@ -164,4 +166,16 @@ fn test_code_mapping() {
         .succeeds()
         .stdout_contains("CMD1")
         .stdout_contains("CMD2");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_no_headers_flags() {
+    let regex = Regex::new("^ *PID +").unwrap();
+    for flag in &["--no-headers", "--no-heading"] {
+        new_ucmd!()
+            .arg(flag)
+            .succeeds()
+            .stdout_does_not_match(&regex);
+    }
 }

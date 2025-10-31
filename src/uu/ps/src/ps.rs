@@ -106,15 +106,16 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         collect_code_mapping(&arg_formats)
     };
 
-    let header = code_mapping
-        .iter()
-        .map(|(_, header)| header)
-        .map(Into::into)
-        .collect::<Vec<String>>();
-
-    // Apply header
-    let mut table = Table::from_iter([Row::from_iter(header)]);
+    let mut table = Table::new();
     table.set_format(*FORMAT_CLEAN);
+    if !matches.get_flag("no-headers") {
+        let header = code_mapping
+            .iter()
+            .map(|(_, header)| header)
+            .map(Into::into)
+            .collect::<Vec<String>>();
+        table.add_row(Row::from_iter(header));
+    }
     table.extend(rows);
 
     print!("{table}");
@@ -262,6 +263,13 @@ pub fn uu_app() -> Command {
                 .value_delimiter(',')
                 .value_parser(parser)
                 .help("user-defined format"),
+        )
+        .arg(
+            Arg::new("no-headers")
+                .long("no-headers")
+                .visible_alias("no-heading")
+                .action(ArgAction::SetTrue)
+                .help("do not print header at all"),
         )
     // .args([
     //     Arg::new("command").short('c').help("command name"),
