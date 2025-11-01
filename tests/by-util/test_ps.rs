@@ -202,3 +202,38 @@ fn test_deselect() {
         .succeeds()
         .stdout_matches(&Regex::new("\n *1 ").unwrap());
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_pid_selection() {
+    let our_pid = std::process::id();
+    // Test that only pid 1 and pid of the test runner is present
+    let test = |pid_args: &[&str]| {
+        let match_regex = Regex::new(&format!("^ *1 *\n *{our_pid} *\n$")).unwrap();
+        let mut args = vec!["--no-headers", "-o", "pid"];
+        args.extend_from_slice(pid_args);
+        new_ucmd!()
+            .args(&args)
+            .succeeds()
+            .stdout_matches(&match_regex);
+    };
+
+    for flag in ["-p", "--pid"] {
+        test(&[flag, &format!("1 {our_pid}")]);
+        test(&[flag, &format!("1,{our_pid}")]);
+        test(&[flag, "1", flag, &our_pid.to_string()]);
+    }
+
+    // Test nonexistent PID (should show no output)
+    new_ucmd!()
+        .args(&["-p", "0", "--no-headers"])
+        .fails()
+        .code_is(1)
+        .stdout_is("");
+
+    // Test invalid PID
+    new_ucmd!()
+        .args(&["-p", "invalid"])
+        .fails()
+        .stderr_contains("invalid number");
+}

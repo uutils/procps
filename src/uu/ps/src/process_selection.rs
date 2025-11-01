@@ -4,6 +4,7 @@
 // file that was distributed with this source code.
 
 use clap::ArgMatches;
+use std::collections::HashSet;
 use uu_pgrep::process::{walk_process, ProcessInformation, RunState, Teletype};
 use uucore::error::UResult;
 
@@ -46,6 +47,9 @@ pub struct ProcessSelectionSettings {
     /// - '-x' Lift "must have a tty" restriction.
     pub dont_require_tty: bool,
 
+    /// Select specific process IDs (-p, --pid)
+    pub pids: Option<HashSet<usize>>,
+
     /// - `-r` Restrict the selection to only running processes.
     pub only_running: bool,
 
@@ -60,6 +64,9 @@ impl ProcessSelectionSettings {
             select_non_session_leaders_with_tty: matches.get_flag("a"),
             select_non_session_leaders: matches.get_flag("d"),
             dont_require_tty: matches.get_flag("x"),
+            pids: matches
+                .get_many::<Vec<usize>>("pid")
+                .map(|xs| xs.flatten().copied().collect()),
             only_running: matches.get_flag("r"),
             negate_selection: matches.get_flag("deselect"),
         }
@@ -73,6 +80,10 @@ impl ProcessSelectionSettings {
         let matches_criteria = |process: &mut ProcessInformation| -> UResult<bool> {
             if self.only_running && !process.run_state().is_ok_and(|x| x == RunState::Running) {
                 return Ok(false);
+            }
+
+            if let Some(ref pids) = self.pids {
+                return Ok(pids.contains(&process.pid));
             }
 
             if self.select_all {

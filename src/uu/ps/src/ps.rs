@@ -138,6 +138,15 @@ fn collect_format(
     Ok(collect)
 }
 
+fn parse_numeric_list(s: &str) -> Result<Vec<usize>, String> {
+    s.split(|c: char| c.is_whitespace() || c == ',')
+        .map(|word| {
+            word.parse::<usize>()
+                .map_err(|_| format!("invalid number: '{}'", word))
+        })
+        .collect()
+}
+
 #[allow(clippy::cognitive_complexity)]
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
@@ -262,6 +271,14 @@ pub fn uu_app() -> Command {
                 .action(ArgAction::SetTrue)
                 .help("do not print header at all"),
         )
+        .arg(
+            Arg::new("pid")
+                .short('p')
+                .long("pid")
+                .action(ArgAction::Append)
+                .value_parser(parse_numeric_list)
+                .help("select by process ID"),
+        )
     // .args([
     //     Arg::new("command").short('c').help("command name"),
     //     Arg::new("GID")
@@ -272,7 +289,6 @@ pub fn uu_app() -> Command {
     //         .short('g')
     //         .long("group")
     //         .help("session or effective group name"),
-    //     Arg::new("PID").short('p').long("pid").help("process id"),
     //     Arg::new("pPID").long("ppid").help("parent process id"),
     //     Arg::new("qPID")
     //         .short('q')
