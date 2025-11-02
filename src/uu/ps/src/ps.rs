@@ -100,7 +100,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         default_codes();
         codes
             .into_iter()
-            .map(|code| (code.clone(), default_mapping[&code].to_string()))
+            .map(|code| (code.clone(), default_mapping[&code].clone()))
             .collect::<Vec<_>>()
     } else {
         collect_code_mapping(&arg_formats)

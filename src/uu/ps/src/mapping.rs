@@ -15,7 +15,7 @@ pub(crate) fn collect_code_mapping(formats: &[OptionalKeyValue]) -> Vec<(String,
             let key = it.key().to_string();
             match it.value() {
                 Some(value) => (key, value.clone()),
-                None => (key.clone(), mapping.get(&key).unwrap().to_string()),
+                None => (key.clone(), mapping.get(&key).unwrap().clone()),
             }
         })
         .collect()
