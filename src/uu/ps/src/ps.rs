@@ -35,6 +35,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     let selection_settings = ProcessSelectionSettings::from_matches(&matches);
     let mut proc_infos = selection_settings.select_processes()?;
+    if proc_infos.is_empty() {
+        uucore::error::set_exit_code(1);
+    }
 
     sorting::sort(&mut proc_infos, &matches);
 
