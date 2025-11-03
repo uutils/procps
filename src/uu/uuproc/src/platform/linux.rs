@@ -78,85 +78,13 @@ impl ProcessInformation {
         })
     }
 
-    pub fn current_process_info() -> Result<LinuxProcessInfo, io::Error> {
+    pub fn current_process_info() -> Result<Self, io::Error> {
         use std::str::FromStr;
 
         let pid = uucore::process::getpid();
-        LinuxProcessInfo::try_new(PathBuf::from_str(&format!("/proc/{pid}")).unwrap())
+        Self::try_new(PathBuf::from_str(&format!("/proc/{pid}")).unwrap())
     }
 
-    fn status(&mut self) -> Rc<HashMap<String, String>> {
-        if let Some(c) = &self.cached_status {
-            return Rc::clone(c);
-        }
-
-        let result = self
-            .inner_status
-            .lines()
-            .filter_map(|it| it.split_once(':'))
-            .map(|it| (it.0.to_string(), it.1.trim_start().to_string()))
-            .collect::<HashMap<_, _>>();
-
-        let result = Rc::new(result);
-        self.cached_status = Some(Rc::clone(&result));
-        Rc::clone(&result)
-    }
-
-    fn stat(&mut self) -> Rc<Vec<String>> {
-        if let Some(c) = &self.cached_stat {
-            return Rc::clone(c);
-        }
-
-        let result: Vec<_> = stat_split(&self.inner_stat);
-        let result = Rc::new(result);
-        self.cached_stat = Some(Rc::clone(&result));
-        Rc::clone(&result)
-    }
-
-    fn get_numeric_stat_field(&mut self, index: usize) -> Result<u64, io::Error> {
-        self.stat()
-            .get(index)
-            .ok_or(io::ErrorKind::InvalidData)?
-            .parse::<u64>()
-            .map_err(|_| io::ErrorKind::InvalidData.into())
-    }
-
-    fn get_uid_or_gid_field(&mut self, field: &str, index: usize) -> Result<u32, io::Error> {
-        self.status()
-            .get(field)
-            .ok_or(io::ErrorKind::InvalidData)?
-            .split_whitespace()
-            .nth(index)
-            .ok_or(io::ErrorKind::InvalidData)?
-            .parse::<u32>()
-            .map_err(|_| io::ErrorKind::InvalidData.into())
-    }
-
-    fn get_hex_status_field(&mut self, field_name: &str) -> Result<u64, io::Error> {
-        self.status()
-            .get(field_name)
-            .ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!("{field_name} field not found"),
-                )
-            })
-            .and_then(|value| {
-                u64::from_str_radix(value.trim(), 16).map_err(|_| {
-                    io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        format!("Invalid {field_name} value"),
-                    )
-                })
-            })
-    }
-
-    fn tty_nr(&mut self) -> Result<u64, io::Error> {
-        self.get_numeric_stat_field(6)
-    }
-}
-
-impl ProcessInformation {
     pub fn proc_status(&self) -> &str {
         &self.inner_status
     }

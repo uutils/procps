@@ -401,11 +401,32 @@ fn test_walk_process_handles_processes_with_spaces_in_name() {
         .filter(|p| p.cmdline.contains(' '))
         .collect();
 
-    // Most systems have processes with spaces in command line
-    assert!(
-        !with_spaces.is_empty(),
-        "Should find processes with spaces in command line"
-    );
+    // Linux and FreeBSD have full command lines with arguments
+    // macOS only has process name (16 bytes max), so spaces are rare
+    #[cfg(target_os = "linux")]
+    {
+        assert!(
+            !with_spaces.is_empty(),
+            "Should find processes with spaces in command line on Linux"
+        );
+    }
+
+    #[cfg(target_os = "freebsd")]
+    {
+        assert!(
+            !with_spaces.is_empty(),
+            "Should find processes with spaces in command line on FreeBSD"
+        );
+    }
+
+    // macOS: just verify we can handle them if they exist
+    #[cfg(target_os = "macos")]
+    {
+        for proc in with_spaces {
+            // Should not panic on spaces
+            assert!(!proc.cmdline.is_empty());
+        }
+    }
 }
 
 #[test]
@@ -440,7 +461,7 @@ fn test_walk_process_handles_process_with_no_cmdline() {
     // Some processes may have empty command lines (kernel threads)
     let processes: Vec<_> = walk_process().collect();
 
-    let empty_cmdline: Vec<_> = processes.iter().filter(|p| p.cmdline.is_empty()).collect();
+    let _empty_cmdline: Vec<_> = processes.iter().filter(|p| p.cmdline.is_empty()).collect();
 
     // On Linux, kernel threads have empty command lines
     #[cfg(target_os = "linux")]
@@ -616,7 +637,7 @@ fn test_windows_current_process_detection() {
 #[cfg(unix)]
 fn test_unix_process_hierarchy() {
     // Verify process hierarchy on Unix systems
-    let processes: Vec<_> = walk_process().collect();
+    let _processes: Vec<_> = walk_process().collect();
 
     // Should have init process (PID 1) on Unix
     #[cfg(target_os = "linux")]
@@ -670,11 +691,11 @@ fn test_walk_process_performance_iterator_vs_collect() {
     for _proc in walk_process() {
         count_iter += 1;
     }
-    let elapsed_iter = start_iter.elapsed();
+    let _elapsed_iter = start_iter.elapsed();
 
     let start_collect = std::time::Instant::now();
     let processes: Vec<_> = walk_process().collect();
-    let elapsed_collect = start_collect.elapsed();
+    let _elapsed_collect = start_collect.elapsed();
 
     // Allow for small variance due to processes starting/stopping during enumeration
     let diff = (count_iter as i32 - processes.len() as i32).abs();
