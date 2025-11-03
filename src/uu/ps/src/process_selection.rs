@@ -82,12 +82,12 @@ impl ProcessSelectionSettings {
                 return Ok(false);
             }
 
-            if let Some(ref pids) = self.pids {
-                return Ok(pids.contains(&process.pid));
-            }
-
             if self.select_all {
                 return Ok(true);
+            }
+
+            if let Some(ref pids) = self.pids {
+                return Ok(pids.contains(&process.pid));
             }
 
             if self.select_non_session_leaders_with_tty {
