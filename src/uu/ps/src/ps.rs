@@ -21,6 +21,8 @@ use parser::{parser, OptionalKeyValue};
 use prettytable::{format::consts::FORMAT_CLEAN, Row, Table};
 use process_selection::ProcessSelectionSettings;
 use std::cell::RefCell;
+#[cfg(unix)]
+use uucore::entries::{grp2gid, usr2uid};
 use uucore::{
     error::{UError, UResult, USimpleError},
     format_usage, help_about, help_usage,
@@ -28,6 +30,22 @@ use uucore::{
 
 const ABOUT: &str = help_about!("ps.md");
 const USAGE: &str = help_usage!("ps.md");
+
+#[cfg(not(unix))]
+pub fn usr2uid(_name: &str) -> std::io::Result<u32> {
+    Err(std::io::Error::new(
+        std::io::ErrorKind::InvalidInput,
+        "unsupported on this platform",
+    ))
+}
+
+#[cfg(not(unix))]
+pub fn grp2gid(_name: &str) -> std::io::Result<u32> {
+    Err(std::io::Error::new(
+        std::io::ErrorKind::InvalidInput,
+        "unsupported on this platform",
+    ))
+}
 
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
@@ -138,13 +156,43 @@ fn collect_format(
     Ok(collect)
 }
 
-fn parse_numeric_list(s: &str) -> Result<Vec<usize>, String> {
+fn split_arg_list(s: &str) -> impl Iterator<Item = &str> {
     s.split(|c: char| c.is_whitespace() || c == ',')
+}
+
+fn parse_numeric_list(s: &str) -> Result<Vec<usize>, String> {
+    split_arg_list(s)
         .map(|word| {
             word.parse::<usize>()
                 .map_err(|_| format!("invalid number: '{}'", word))
         })
         .collect()
+}
+
+fn parse_uid_list(s: &str) -> Result<Vec<u32>, String> {
+    split_arg_list(s)
+        .map(|uid_or_username| {
+            uid_or_username
+                .parse::<u32>()
+                .or_else(|_| usr2uid(uid_or_username))
+                .map_err(|_| format!("invalid user name '{}'", uid_or_username))
+        })
+        .collect()
+}
+
+fn parse_gid_list(s: &str) -> Result<Vec<u32>, String> {
+    split_arg_list(s)
+        .map(|gid_or_group_name| {
+            gid_or_group_name
+                .parse::<u32>()
+                .or_else(|_| grp2gid(gid_or_group_name))
+                .map_err(|_| format!("invalid group name '{}'", gid_or_group_name))
+        })
+        .collect()
+}
+
+fn parse_command_list(s: &str) -> Result<Vec<String>, String> {
+    Ok(split_arg_list(s).map(|part| part.to_string()).collect())
 }
 
 #[allow(clippy::cognitive_complexity)]
@@ -272,6 +320,13 @@ pub fn uu_app() -> Command {
                 .help("do not print header at all"),
         )
         .arg(
+            Arg::new("command")
+                .short('C')
+                .action(ArgAction::Append)
+                .value_parser(parse_command_list)
+                .help("select by command name"),
+        )
+        .arg(
             Arg::new("pid")
                 .short('p')
                 .long("pid")
@@ -279,33 +334,57 @@ pub fn uu_app() -> Command {
                 .value_parser(parse_numeric_list)
                 .help("select by process ID"),
         )
+        .arg(
+            Arg::new("ppid")
+                .long("ppid")
+                .action(ArgAction::Append)
+                .value_parser(parse_numeric_list)
+                .help("select by parent process ID"),
+        )
+        .arg(
+            Arg::new("sid")
+                .long("sid")
+                .action(ArgAction::Append)
+                .value_parser(parse_numeric_list)
+                .help("select by session ID"),
+        )
+        .arg(
+            Arg::new("real-group")
+                .short('G')
+                .long("Group")
+                .action(ArgAction::Append)
+                .value_parser(parse_gid_list)
+                .help("select by real group ID (RGID) or name"),
+        )
+        .arg(
+            Arg::new("effective-group")
+                .short('g')
+                .long("group")
+                .action(ArgAction::Append)
+                .value_parser(parse_gid_list)
+                .help("select by effective group ID (EGID) or name"),
+        )
+        .arg(
+            Arg::new("real-user")
+                .short('U')
+                .long("User")
+                .action(ArgAction::Append)
+                .value_parser(parse_uid_list)
+                .help("select by real user ID (RUID) or name"),
+        )
+        .arg(
+            Arg::new("effective-user")
+                .long("user")
+                .action(ArgAction::Append)
+                .value_parser(parse_uid_list)
+                .help("select by effective user ID (EUID) or name"),
+        )
     // .args([
-    //     Arg::new("command").short('c').help("command name"),
-    //     Arg::new("GID")
-    //         .short('G')
-    //         .long("Group")
-    //         .help("real group id or name"),
-    //     Arg::new("group")
-    //         .short('g')
-    //         .long("group")
-    //         .help("session or effective group name"),
     //     Arg::new("pPID").long("ppid").help("parent process id"),
     //     Arg::new("qPID")
     //         .short('q')
     //         .long("quick-pid")
     //         .help("process id"),
-    //     Arg::new("session")
-    //         .short('s')
-    //         .long("sid")
-    //         .help("session id"),
     //     Arg::new("t").short('t').long("tty").help("terminal"),
-    //     Arg::new("eUID")
-    //         .short('u')
-    //         .long("user")
-    //         .help("effective user id or name"),
-    //     Arg::new("rUID")
-    //         .short('U')
-    //         .long("User")
-    //         .help("real user id or name"),
     // ])
 }
