@@ -135,7 +135,7 @@ fn sid(proc_info: RefCell<ProcessInformation>) -> String {
 }
 
 fn tty(proc_info: RefCell<ProcessInformation>) -> String {
-    match proc_info.borrow().tty() {
+    match proc_info.borrow_mut().tty() {
         Teletype::Tty(tty) => format!("tty{tty}"),
         Teletype::TtyS(ttys) => format!("ttyS{ttys}"),
         Teletype::Pts(pts) => format!("pts/{pts}"),

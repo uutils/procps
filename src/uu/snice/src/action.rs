@@ -62,7 +62,10 @@ impl SelectedTarget {
                 let pid = pid.as_u32();
                 let path = PathBuf::from_str(&format!("/proc/{pid}/")).unwrap();
 
-                ProcessInformation::try_new(path).unwrap().tty() == *tty
+                ProcessInformation::try_new(path)
+                    .map(|mut p| p.tty())
+                    .unwrap_or(Teletype::Unknown)
+                    == *tty
             })
             .map(|(pid, _)| pid.as_u32())
             .collect()

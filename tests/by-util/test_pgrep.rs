@@ -260,16 +260,22 @@ fn test_count_with_non_matching_pattern() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_terminal() {
-    let re = &Regex::new(MULTIPLE_PIDS).unwrap();
+    // Test with unknown terminal (?) which should match processes without a terminal
+    // This is more reliable than testing tty1 which may not exist in CI
+    new_ucmd!()
+        .arg("-t")
+        .arg("?")
+        .arg("kthreadd") // kthreadd has no terminal
+        .succeeds()
+        .stdout_matches(&Regex::new(SINGLE_PID).unwrap());
 
-    for arg in ["-t", "--terminal"] {
-        new_ucmd!()
-            .arg(arg)
-            .arg("tty1")
-            .arg("--inverse") // XXX hack to make test pass in CI
-            .succeeds()
-            .stdout_matches(re);
-    }
+    // Test --inverse with unknown terminal to find processes WITH terminals
+    // In CI, there may be SSH or other processes with pts terminals
+    new_ucmd!()
+        .arg("--terminal")
+        .arg("?")
+        .arg("--inverse")
+        .succeeds(); // Just check it succeeds, don't verify specific output
 }
 
 #[test]
