@@ -486,7 +486,7 @@ fn test_walk_process_handles_rapid_enumeration() {
     }
 
     // Should find a consistent set of processes
-    assert!(all_pids.len() > 0, "Should find processes");
+    assert!(!all_pids.is_empty(), "Should find processes");
 }
 
 #[test]
@@ -698,7 +698,7 @@ fn test_walk_process_performance_iterator_vs_collect() {
     let _elapsed_collect = start_collect.elapsed();
 
     // Allow for small variance due to processes starting/stopping during enumeration
-    let diff = (count_iter as i32 - processes.len() as i32).abs();
+    let diff = (count_iter - (processes.len() as i32)).abs();
     assert!(
         diff <= 5,
         "Iterator and collect should find similar number of processes, got {} and {}",

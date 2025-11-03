@@ -233,6 +233,7 @@ impl MapLine {
 mod test {
     use super::*;
 
+    #[allow(clippy::too_many_arguments)]
     fn create_map_line(
         address: &str,
         low: u64,
