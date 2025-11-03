@@ -26,7 +26,7 @@ libc = { workspace = true }
 # macOS-specific dependencies can be added here
 
 [target.'cfg(target_os = "windows")'.dependencies]
-# Windows-specific dependencies can be added here
+winapi = { version = "0.3", features = ["tlhelp32", "minwindef"] }
 
 [lib]
 path = "src/lib.rs"

@@ -1943,6 +1943,7 @@ dependencies = [
  "regex",
  "uucore 0.2.2",
  "walkdir",
+ "winapi",
 ]
 
 [[package]]

@@ -461,7 +461,7 @@ fn test_walk_process_handles_process_with_no_cmdline() {
     // Some processes may have empty command lines (kernel threads)
     let processes: Vec<_> = walk_process().collect();
 
-    let _empty_cmdline: Vec<_> = processes.iter().filter(|p| p.cmdline.is_empty()).collect();
+    let empty_cmdline: Vec<_> = processes.iter().filter(|p| p.cmdline.is_empty()).collect();
 
     // On Linux, kernel threads have empty command lines
     #[cfg(target_os = "linux")]
@@ -637,7 +637,7 @@ fn test_windows_current_process_detection() {
 #[cfg(unix)]
 fn test_unix_process_hierarchy() {
     // Verify process hierarchy on Unix systems
-    let _processes: Vec<_> = walk_process().collect();
+    let processes: Vec<_> = walk_process().collect();
 
     // Should have init process (PID 1) on Unix
     #[cfg(target_os = "linux")]
