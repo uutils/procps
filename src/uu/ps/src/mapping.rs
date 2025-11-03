@@ -15,7 +15,7 @@ pub(crate) fn collect_code_mapping(formats: &[OptionalKeyValue]) -> Vec<(String,
             let key = it.key().to_string();
             match it.value() {
                 Some(value) => (key, value.clone()),
-                None => (key.clone(), mapping.get(&key).unwrap().to_string()),
+                None => (key.clone(), mapping.get(&key).unwrap().clone()),
             }
         })
         .collect()
@@ -102,6 +102,13 @@ pub(crate) fn vm_format_codes() -> Vec<String> {
     ]
     .map(Into::into)
     .to_vec()
+}
+
+/// Returns the format codes used when BSD flags (e.g. -x) are used.
+pub(crate) fn bsd_format_codes() -> Vec<String> {
+    ["pid", "tname", "stat", "time", "command"]
+        .map(Into::into)
+        .to_vec()
 }
 
 /// Returns the register format codes (for -X flag).

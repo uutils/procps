@@ -3,24 +3,24 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-mod collector;
 mod mapping;
 mod parser;
 mod picker;
+mod process_selection;
 mod sorting;
 
 use clap::crate_version;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use mapping::{
-    collect_code_mapping, default_codes, default_mapping, default_with_psr_codes,
+    bsd_format_codes, collect_code_mapping, default_codes, default_mapping, default_with_psr_codes,
     extra_full_format_codes, full_format_codes, job_format_codes, long_format_codes,
     long_y_format_codes, register_format_codes, signal_format_codes, user_format_codes,
     vm_format_codes,
 };
 use parser::{parser, OptionalKeyValue};
 use prettytable::{format::consts::FORMAT_CLEAN, Row, Table};
-use std::{cell::RefCell, rc::Rc};
-use uu_pgrep::process::walk_process;
+use process_selection::ProcessSelectionSettings;
+use std::cell::RefCell;
 use uucore::{
     error::{UError, UResult, USimpleError},
     format_usage, help_about, help_usage,
@@ -33,20 +33,11 @@ const USAGE: &str = help_usage!("ps.md");
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
 
-    let snapshot = walk_process()
-        .map(|it| Rc::new(RefCell::new(it)))
-        .collect::<Vec<_>>();
-    let mut proc_infos = Vec::new();
-
-    if !matches.get_flag("A") && !matches.get_flag("a") && !matches.get_flag("d") {
-        proc_infos.extend(collector::basic_collector(&snapshot));
-    } else {
-        proc_infos.extend(collector::process_collector(&matches, &snapshot));
-        proc_infos.extend(collector::session_collector(&matches, &snapshot));
+    let selection_settings = ProcessSelectionSettings::from_matches(&matches);
+    let mut proc_infos = selection_settings.select_processes()?;
+    if proc_infos.is_empty() {
+        uucore::error::set_exit_code(1);
     }
-
-    proc_infos.sort_by(|a, b| a.borrow().pid.cmp(&b.borrow().pid));
-    proc_infos.dedup_by(|a, b| a.borrow().pid == b.borrow().pid);
 
     sorting::sort(&mut proc_infos, &matches);
 
@@ -74,6 +65,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         user_format_codes()
     } else if matches.get_flag("v") {
         vm_format_codes()
+    } else if matches.get_flag("x") {
+        bsd_format_codes()
     } else if matches.get_flag("X") {
         register_format_codes()
     } else if arg_formats.is_empty() {
@@ -90,7 +83,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     for proc in proc_infos {
         let picked = pickers
             .iter()
-            .map(|picker| picker(Rc::unwrap_or_clone(proc.clone())));
+            .map(|picker| picker(RefCell::new(proc.clone())));
         rows.push(Row::from_iter(picked));
     }
 
@@ -100,21 +93,22 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         default_codes();
         codes
             .into_iter()
-            .map(|code| (code.clone(), default_mapping[&code].to_string()))
+            .map(|code| (code.clone(), default_mapping[&code].clone()))
             .collect::<Vec<_>>()
     } else {
         collect_code_mapping(&arg_formats)
     };
 
-    let header = code_mapping
-        .iter()
-        .map(|(_, header)| header)
-        .map(Into::into)
-        .collect::<Vec<String>>();
-
-    // Apply header
-    let mut table = Table::from_iter([Row::from_iter(header)]);
+    let mut table = Table::new();
     table.set_format(*FORMAT_CLEAN);
+    if !matches.get_flag("no-headers") {
+        let header = code_mapping
+            .iter()
+            .map(|(_, header)| header)
+            .map(Into::into)
+            .collect::<Vec<String>>();
+        table.add_row(Row::from_iter(header));
+    }
     table.extend(rows);
 
     print!("{table}");
@@ -142,6 +136,15 @@ fn collect_format(
     }
 
     Ok(collect)
+}
+
+fn parse_numeric_list(s: &str) -> Result<Vec<usize>, String> {
+    s.split(|c: char| c.is_whitespace() || c == ',')
+        .map(|word| {
+            word.parse::<usize>()
+                .map_err(|_| format!("invalid number: '{}'", word))
+        })
+        .collect()
 }
 
 #[allow(clippy::cognitive_complexity)]
@@ -177,21 +180,19 @@ pub fn uu_app() -> Command {
                 .short('N')
                 .help("negate selection")
                 .action(ArgAction::SetTrue),
-            // Arg::new("r")
-            //     .short('r')
-            //     .action(ArgAction::SetTrue)
-            //     .help("only running processes")
-            //     .allow_hyphen_values(true),
+            Arg::new("r")
+                .short('r')
+                .action(ArgAction::SetTrue)
+                .help("only running processes"),
             // Arg::new("T")
             //     .short('T')
             //     .action(ArgAction::SetTrue)
             //     .help("all processes on this terminal")
             //     .allow_hyphen_values(true),
-            // Arg::new("x")
-            //     .short('x')
-            //     .action(ArgAction::SetTrue)
-            //     .help("processes without controlling ttys")
-            //     .allow_hyphen_values(true),
+            Arg::new("x")
+                .short('x')
+                .action(ArgAction::SetTrue)
+                .help("processes without controlling ttys"),
         ])
         .arg(
             Arg::new("f")
@@ -263,6 +264,21 @@ pub fn uu_app() -> Command {
                 .value_parser(parser)
                 .help("user-defined format"),
         )
+        .arg(
+            Arg::new("no-headers")
+                .long("no-headers")
+                .visible_alias("no-heading")
+                .action(ArgAction::SetTrue)
+                .help("do not print header at all"),
+        )
+        .arg(
+            Arg::new("pid")
+                .short('p')
+                .long("pid")
+                .action(ArgAction::Append)
+                .value_parser(parse_numeric_list)
+                .help("select by process ID"),
+        )
     // .args([
     //     Arg::new("command").short('c').help("command name"),
     //     Arg::new("GID")
@@ -273,7 +289,6 @@ pub fn uu_app() -> Command {
     //         .short('g')
     //         .long("group")
     //         .help("session or effective group name"),
-    //     Arg::new("PID").short('p').long("pid").help("process id"),
     //     Arg::new("pPID").long("ppid").help("parent process id"),
     //     Arg::new("qPID")
     //         .short('q')

@@ -209,7 +209,7 @@ fn try_get_pattern_from(matches: &ArgMatches) -> UResult<String> {
         pattern
     };
 
-    Ok(pattern.to_string())
+    Ok(pattern.clone())
 }
 
 fn any_matches<T: Eq + Hash>(optional_ids: &Option<HashSet<T>>, id: T) -> bool {

@@ -293,7 +293,7 @@ pub(crate) fn parse_data(line: &str) -> Option<(String, Vec<u64>)> {
 
     split.first().map(|name| {
         (
-            name.to_string(),
+            name.clone(),
             split
                 .clone()
                 .into_iter()

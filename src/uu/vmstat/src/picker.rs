@@ -324,7 +324,7 @@ fn get_process_info(
     let blocked = proc_data.stat.get("procs_blocked").unwrap();
     let len = if matches.get_flag("wide") { 4 } else { 2 };
 
-    vec![(len, runnable.to_string()), (len, blocked.to_string())]
+    vec![(len, runnable.clone()), (len, blocked.clone())]
 }
 
 #[cfg(target_os = "linux")]
