@@ -243,10 +243,7 @@ fn get_all_processes() -> Vec<ProcessInformation> {
         )
     };
 
-    eprintln!("[DEBUG] proc_listpids returned: {}", num_pids);
-
     if num_pids <= 0 {
-        eprintln!("[DEBUG] proc_listpids returned <= 0, returning empty process list");
         return processes;
     }
 
