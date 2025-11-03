@@ -160,6 +160,9 @@ opt-level = "z"
 panic = "abort"
 strip = true
 
+[lints]
+workspace = true
+
 [workspace.lints.clippy]
 default_trait_access = "warn"
 manual_string_new = "warn"
