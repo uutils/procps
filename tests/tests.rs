@@ -82,3 +82,6 @@ mod test_sysctl;
 #[cfg(feature = "tload")]
 #[path = "by-util/test_tload.rs"]
 mod test_tload;
+
+#[path = "by-util/test_uuproc.rs"]
+mod test_uuproc;
