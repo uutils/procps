@@ -159,3 +159,13 @@ inherits = "release"
 opt-level = "z"
 panic = "abort"
 strip = true
+
+[workspace.lints.clippy]
+default_trait_access = "warn"
+manual_string_new = "warn"
+cognitive_complexity = "warn"
+implicit_clone = "warn"
+range-plus-one = "warn"
+redundant-clone = "warn"
+match_bool = "warn"
+semicolon_if_nothing_returned = "warn"
