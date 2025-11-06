@@ -44,10 +44,10 @@ pub struct ProcessSelectionSettings {
     /// - `-d` Select all processes except session leaders.
     pub select_non_session_leaders: bool,
 
-    /// - '-x' Lift "must have a tty" restriction.
+    /// - `-x` Lift "must have a tty" restriction.
     pub dont_require_tty: bool,
 
-    /// Select specific process IDs (-p, --pid)
+    /// - `-p, --pid` Select specific process IDs
     pub pids: Option<HashSet<usize>>,
 
     /// - `-r` Restrict the selection to only running processes.
