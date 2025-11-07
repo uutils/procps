@@ -44,11 +44,25 @@ pub struct ProcessSelectionSettings {
     /// - `-d` Select all processes except session leaders.
     pub select_non_session_leaders: bool,
 
-    /// - '-x' Lift "must have a tty" restriction.
+    /// - `-x` Lift "must have a tty" restriction.
     pub dont_require_tty: bool,
 
-    /// Select specific process IDs (-p, --pid)
+    /// - `-C` Select by command name
+    pub command_names: Option<HashSet<String>>,
+    /// - `-p, --pid` Select specific process IDs
     pub pids: Option<HashSet<usize>>,
+    /// - `--ppid` Select specific parent process IDs
+    pub ppids: Option<HashSet<usize>>,
+    /// - `--sid` Select specific session IDs
+    pub sids: Option<HashSet<usize>>,
+    /// - `-G, --Group` Select by real group ID or name
+    pub real_groups: Option<HashSet<u32>>,
+    /// - `-g, --group` Select by effective group ID or name
+    pub eff_groups: Option<HashSet<u32>>,
+    /// - `-U, --User` Select by real user ID or name
+    pub real_users: Option<HashSet<u32>>,
+    /// - `-u, --user` Select by effective user ID or name
+    pub eff_users: Option<HashSet<u32>>,
 
     /// - `-r` Restrict the selection to only running processes.
     pub only_running: bool,
@@ -64,8 +78,29 @@ impl ProcessSelectionSettings {
             select_non_session_leaders_with_tty: matches.get_flag("a"),
             select_non_session_leaders: matches.get_flag("d"),
             dont_require_tty: matches.get_flag("x"),
+            command_names: matches
+                .get_many::<Vec<String>>("command")
+                .map(|xs| xs.flatten().cloned().collect()),
             pids: matches
                 .get_many::<Vec<usize>>("pid")
+                .map(|xs| xs.flatten().copied().collect()),
+            ppids: matches
+                .get_many::<Vec<usize>>("ppid")
+                .map(|xs| xs.flatten().copied().collect()),
+            sids: matches
+                .get_many::<Vec<usize>>("sid")
+                .map(|xs| xs.flatten().copied().collect()),
+            real_groups: matches
+                .get_many::<Vec<u32>>("real-group")
+                .map(|xs| xs.flatten().copied().collect()),
+            eff_groups: matches
+                .get_many::<Vec<u32>>("effective-group")
+                .map(|xs| xs.flatten().copied().collect()),
+            real_users: matches
+                .get_many::<Vec<u32>>("real-user")
+                .map(|xs| xs.flatten().copied().collect()),
+            eff_users: matches
+                .get_many::<Vec<u32>>("effective-user")
                 .map(|xs| xs.flatten().copied().collect()),
             only_running: matches.get_flag("r"),
             negate_selection: matches.get_flag("deselect"),
@@ -82,12 +117,34 @@ impl ProcessSelectionSettings {
                 return Ok(false);
             }
 
-            if let Some(ref pids) = self.pids {
-                return Ok(pids.contains(&process.pid));
-            }
-
             if self.select_all {
                 return Ok(true);
+            }
+
+            // Flags in this group seem to cause rest of the flags to be ignored
+            let mut matched: Option<bool> = None;
+            fn update_match<T, U>(
+                matched: &mut Option<bool>,
+                set_opt: &Option<HashSet<T>>,
+                value: U,
+            ) where
+                T: std::cmp::Eq + std::hash::Hash + std::borrow::Borrow<U>,
+                U: std::cmp::Eq + std::hash::Hash,
+            {
+                if let Some(ref set) = set_opt {
+                    *matched.get_or_insert_default() |= set.contains(&value);
+                }
+            }
+            update_match(&mut matched, &self.command_names, process.name().unwrap());
+            update_match(&mut matched, &self.pids, process.pid);
+            update_match(&mut matched, &self.ppids, process.ppid().unwrap() as usize);
+            update_match(&mut matched, &self.sids, process.sid().unwrap() as usize);
+            update_match(&mut matched, &self.real_users, process.uid().unwrap());
+            update_match(&mut matched, &self.eff_users, process.euid().unwrap());
+            update_match(&mut matched, &self.real_groups, process.gid().unwrap());
+            update_match(&mut matched, &self.eff_groups, process.egid().unwrap());
+            if let Some(m) = matched {
+                return Ok(m);
             }
 
             if self.select_non_session_leaders_with_tty {

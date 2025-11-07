@@ -7,6 +7,9 @@
 use regex::Regex;
 use uutests::new_ucmd;
 
+#[cfg(target_os = "linux")]
+use uucore::process::geteuid;
+
 #[test]
 #[cfg(target_os = "linux")]
 fn test_select_all_processes() {
@@ -194,13 +197,35 @@ fn test_deselect() {
         .args(&["--deselect", "-A", "--no-headers"])
         .fails()
         .code_is(1)
-        .stdout_is("");
+        .no_output();
 
     // PID 1 should be present in inverse of default filter criteria
     new_ucmd!()
         .args(&["--deselect"])
         .succeeds()
         .stdout_matches(&Regex::new("\n *1 ").unwrap());
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_command_name_selection() {
+    // Test that test runner process can be located with -C flag
+    let our_pid = std::process::id();
+    let our_comm = std::fs::read_to_string(format!("/proc/{}/comm", our_pid))
+        .unwrap()
+        .trim()
+        .to_string();
+    new_ucmd!()
+        .args(&["-C", &our_comm, "--no-headers", "-o", "pid"])
+        .succeeds()
+        .stdout_contains(our_pid.to_string());
+
+    // Test nonexistent command
+    new_ucmd!()
+        .args(&["-C", "non_existent_command", "--no-headers"])
+        .fails()
+        .code_is(1)
+        .no_output();
 }
 
 #[test]
@@ -224,16 +249,156 @@ fn test_pid_selection() {
         test(&[flag, "1", flag, &our_pid.to_string()]);
     }
 
-    // Test nonexistent PID (should show no output)
+    // Test nonexistent PID
     new_ucmd!()
         .args(&["-p", "0", "--no-headers"])
         .fails()
         .code_is(1)
-        .stdout_is("");
+        .no_output();
 
     // Test invalid PID
     new_ucmd!()
         .args(&["-p", "invalid"])
         .fails()
         .stderr_contains("invalid number");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_ppid_selection() {
+    new_ucmd!()
+        .args(&["--ppid", "1"])
+        .succeeds()
+        .stdout_does_not_match(&Regex::new(".*\n *1 +.*").unwrap());
+
+    // Test nonexistent PPID
+    new_ucmd!()
+        .args(&["--ppid", "999999", "--no-headers"])
+        .fails()
+        .code_is(1)
+        .no_output();
+
+    // Test invalid PPID
+    new_ucmd!()
+        .args(&["--ppid", "invalid"])
+        .fails()
+        .stderr_contains("invalid number");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_sid_selection() {
+    new_ucmd!()
+        .args(&["--sid", "1"])
+        .succeeds()
+        .stdout_matches(&Regex::new(".*\n *1 +.*").unwrap());
+
+    // Test nonexistent SID
+    new_ucmd!()
+        .args(&["--sid", "999999", "--no-headers"])
+        .fails()
+        .code_is(1)
+        .no_output();
+
+    // Test invalid SID
+    new_ucmd!()
+        .args(&["--sid", "invalid"])
+        .fails()
+        .stderr_contains("invalid number");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_effective_user_selection() {
+    let regex = Regex::new("^( *0 +root *\n)+").unwrap();
+
+    for user_param in ["root", "0"] {
+        new_ucmd!()
+            .args(&["--user", user_param, "--no-headers", "-o", "euid,euser"])
+            .succeeds()
+            .stdout_matches(&regex);
+    }
+
+    new_ucmd!()
+        .args(&["--user", "nonexistent_user"])
+        .fails()
+        .stderr_contains("invalid user name");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_real_user_selection() {
+    let regex = Regex::new("^( *0 +root *\n)+").unwrap();
+
+    for user_param in ["root", "0"] {
+        new_ucmd!()
+            .args(&["--User", user_param, "--no-headers", "-o", "ruid,ruser"])
+            .succeeds()
+            .stdout_matches(&regex);
+    }
+
+    new_ucmd!()
+        .args(&["--User", "nonexistent_user"])
+        .fails()
+        .stderr_contains("invalid user name");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_effective_group_selection() {
+    let regex = Regex::new("^( *0 +root *\n)+").unwrap();
+
+    for group_param in ["root", "0"] {
+        new_ucmd!()
+            .args(&["--group", group_param, "--no-headers", "-o", "egid,egroup"])
+            .succeeds()
+            .stdout_matches(&regex);
+    }
+
+    new_ucmd!()
+        .args(&["--group", "nonexistent_group"])
+        .fails()
+        .stderr_contains("invalid group name");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_real_group_selection() {
+    let regex = Regex::new("^( *0 +root *\n)+").unwrap();
+
+    for group_param in ["root", "0"] {
+        new_ucmd!()
+            .args(&["--Group", group_param, "--no-headers", "-o", "rgid,rgroup"])
+            .succeeds()
+            .stdout_matches(&regex);
+    }
+
+    new_ucmd!()
+        .args(&["--Group", "nonexistent_group"])
+        .fails()
+        .stderr_contains("invalid group name");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_combined_selection_criteria() {
+    let pids: Vec<u32> = new_ucmd!()
+        .args(&[
+            "--pid",
+            "1",
+            "--user",
+            &geteuid().to_string(),
+            "--no-headers",
+            "-o",
+            "pid",
+        ])
+        .succeeds()
+        .stdout_str()
+        .lines()
+        .filter_map(|line| line.trim().parse::<u32>().ok())
+        .collect();
+
+    // Should include PID 1 and processes owned by current user
+    assert!(pids.contains(&1));
+    assert!(pids.len() > 1);
 }
