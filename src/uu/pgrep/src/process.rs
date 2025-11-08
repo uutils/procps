@@ -6,13 +6,12 @@
 use regex::Regex;
 use std::fs::read_link;
 use std::hash::Hash;
-use std::sync::LazyLock;
+use std::sync::{LazyLock, OnceLock};
 use std::{
     collections::HashMap,
     fmt::{self, Display, Formatter},
     fs, io,
     path::PathBuf,
-    rc::Rc,
 };
 use walkdir::{DirEntry, WalkDir};
 
@@ -346,7 +345,7 @@ impl Namespace {
 }
 
 /// Process ID and its information
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default)]
 pub struct ProcessInformation {
     pub pid: usize,
     pub cmdline: String,
@@ -355,13 +354,13 @@ pub struct ProcessInformation {
     inner_stat: String,
 
     /// Processed `/proc/self/status` file
-    cached_status: Option<Rc<HashMap<String, String>>>,
+    status: OnceLock<HashMap<String, String>>,
     /// Processed `/proc/self/stat` file
-    cached_stat: Option<Rc<Vec<String>>>,
+    stat: OnceLock<Vec<String>>,
 
     cached_start_time: Option<u64>,
 
-    cached_thread_ids: Option<Rc<Vec<usize>>>,
+    thread_ids: OnceLock<Vec<usize>>,
 }
 
 impl ProcessInformation {
@@ -429,34 +428,19 @@ impl ProcessInformation {
     }
 
     /// Collect information from `/proc/<pid>/status` file
-    pub fn status(&mut self) -> Rc<HashMap<String, String>> {
-        if let Some(c) = &self.cached_status {
-            return Rc::clone(c);
-        }
-
-        let result = self
-            .inner_status
-            .lines()
-            .filter_map(|it| it.split_once(':'))
-            .map(|it| (it.0.to_string(), it.1.trim_start().to_string()))
-            .collect::<HashMap<_, _>>();
-
-        let result = Rc::new(result);
-        self.cached_status = Some(Rc::clone(&result));
-        Rc::clone(&result)
+    pub fn status(&self) -> &HashMap<String, String> {
+        self.status.get_or_init(|| {
+            self.inner_status
+                .lines()
+                .filter_map(|it| it.split_once(':'))
+                .map(|it| (it.0.to_string(), it.1.trim_start().to_string()))
+                .collect::<HashMap<_, _>>()
+        })
     }
 
     /// Collect information from `/proc/<pid>/stat` file
-    pub fn stat(&mut self) -> Rc<Vec<String>> {
-        if let Some(c) = &self.cached_stat {
-            return Rc::clone(c);
-        }
-
-        let result: Vec<_> = stat_split(&self.inner_stat);
-
-        let result = Rc::new(result);
-        self.cached_stat = Some(Rc::clone(&result));
-        Rc::clone(&result)
+    pub fn stat(&self) -> &Vec<String> {
+        self.stat.get_or_init(|| stat_split(&self.inner_stat))
     }
 
     pub fn name(&mut self) -> Result<String, io::Error> {
@@ -642,13 +626,9 @@ impl ProcessInformation {
         Teletype::Unknown
     }
 
-    pub fn thread_ids(&mut self) -> Rc<Vec<usize>> {
-        if let Some(c) = &self.cached_thread_ids {
-            return Rc::clone(c);
-        }
-
-        let tids_dir = format!("/proc/{}/task", self.pid);
-        let result = Rc::new(
+    pub fn thread_ids(&mut self) -> &[usize] {
+        self.thread_ids.get_or_init(|| {
+            let tids_dir = format!("/proc/{}/task", self.pid);
             WalkDir::new(tids_dir)
                 .min_depth(1)
                 .max_depth(1)
@@ -660,11 +640,8 @@ impl ProcessInformation {
                         .file_name()
                         .map(|it| it.to_str().unwrap().parse::<usize>().unwrap())
                 })
-                .collect::<Vec<_>>(),
-        );
-
-        self.cached_thread_ids = Some(Rc::clone(&result));
-        Rc::clone(&result)
+                .collect::<Vec<_>>()
+        })
     }
 
     pub fn env_vars(&self) -> Result<HashMap<String, String>, io::Error> {

@@ -122,7 +122,7 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<usize> {
                 }
 
                 if matches.get_flag("t") {
-                    processed.extend_from_slice(&process.thread_ids());
+                    processed.extend_from_slice(process.thread_ids());
                 } else {
                     processed.push(process.pid);
                 }
