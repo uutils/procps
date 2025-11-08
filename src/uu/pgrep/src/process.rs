@@ -218,15 +218,19 @@ impl TryFrom<&str> for CgroupMembership {
     }
 }
 
-// See https://www.man7.org/linux/man-pages/man7/namespaces.7.html
+/// See https://www.man7.org/linux/man-pages/man7/namespaces.7.html
+///
+/// # Support status
+///
+/// **_Linux only._**
 #[derive(Default)]
 pub struct Namespace {
-    pub ipc: Option<String>,
-    pub mnt: Option<String>,
-    pub net: Option<String>,
-    pub pid: Option<String>,
-    pub user: Option<String>,
-    pub uts: Option<String>,
+    pub ipc: Option<u64>,
+    pub mnt: Option<u64>,
+    pub net: Option<u64>,
+    pub pid: Option<u64>,
+    pub user: Option<u64>,
+    pub uts: Option<u64>,
 }
 
 impl Namespace {
@@ -241,26 +245,49 @@ impl Namespace {
         }
     }
 
-    pub fn from_pid(pid: usize) -> Result<Self, io::Error> {
-        let mut ns = Namespace::new();
-        let path = PathBuf::from(format!("/proc/{pid}/ns"));
-        for entry in fs::read_dir(path)? {
-            let entry = entry?;
-            if let Some(name) = entry.file_name().to_str() {
-                if let Ok(value) = read_link(entry.path()) {
-                    match name {
-                        "ipc" => ns.ipc = Some(value.to_str().unwrap_or_default().to_string()),
-                        "mnt" => ns.mnt = Some(value.to_str().unwrap_or_default().to_string()),
-                        "net" => ns.net = Some(value.to_str().unwrap_or_default().to_string()),
-                        "pid" => ns.pid = Some(value.to_str().unwrap_or_default().to_string()),
-                        "user" => ns.user = Some(value.to_str().unwrap_or_default().to_string()),
-                        "uts" => ns.uts = Some(value.to_str().unwrap_or_default().to_string()),
-                        _ => {}
-                    }
-                }
+    #[cfg(target_os = "linux")]
+    pub fn from_pid(pid: usize) -> io::Result<Self> {
+        use std::os::fd::OwnedFd;
+
+        use rustix::fs::{openat, statx, AtFlags, Mode, OFlags, StatxFlags, CWD};
+
+        let f = |name: &str, fd: &OwnedFd| {
+            statx(
+                fd,
+                name,
+                AtFlags::empty(), // NO FOLLOW LINKS
+                StatxFlags::INO,  // INNODE ONLY
+            )
+        };
+
+        let ns_dir = openat(
+            CWD,
+            PathBuf::from(format!("/proc/{}/ns", pid)),
+            OFlags::RDONLY | OFlags::CLOEXEC,
+            Mode::empty(),
+        )?;
+        let mut ns = Namespace::default();
+
+        for (name, slot) in [
+            ("ipc", &mut ns.ipc),
+            ("mnt", &mut ns.mnt),
+            ("net", &mut ns.net),
+            ("pid", &mut ns.pid),
+            ("user", &mut ns.user),
+            ("uts", &mut ns.uts),
+        ] {
+            match f(name, &ns_dir) {
+                Ok(st) => *slot = Some(st.stx_ino),
+                Err(e) => return Err(e.into()),
             }
         }
         Ok(ns)
+    }
+
+    /// TODO: implementation for other system
+    #[cfg(not(target_os = "linux"))]
+    pub fn from_pid(_pid: usize) -> Result<Self, io::Error> {
+        Ok(Namespace::new())
     }
 
     pub fn filter(&mut self, filters: &[&str]) {

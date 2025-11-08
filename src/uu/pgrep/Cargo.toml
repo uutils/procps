@@ -14,10 +14,11 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-uucore = { workspace = true, features = ["entries", "signals", "process"] }
 clap = { workspace = true }
-walkdir = { workspace = true }
 regex = { workspace = true }
+rustix = { workspace = true }
+uucore = { workspace = true, features = ["entries", "signals", "process"] }
+walkdir = { workspace = true }
 
 [lib]
 path = "src/pgrep.rs"
