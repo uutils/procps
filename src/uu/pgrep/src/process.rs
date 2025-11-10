@@ -26,9 +26,9 @@ pub enum Teletype {
 impl Display for Teletype {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            Self::Tty(id) => write!(f, "/dev/pts/{id}"),
-            Self::TtyS(id) => write!(f, "/dev/tty{id}"),
-            Self::Pts(id) => write!(f, "/dev/ttyS{id}"),
+            Self::Tty(id) => write!(f, "/dev/tty{id}"),
+            Self::TtyS(id) => write!(f, "/dev/ttyS{id}"),
+            Self::Pts(id) => write!(f, "/dev/pts/{id}"),
             Self::Unknown => write!(f, "?"),
         }
     }
@@ -94,6 +94,38 @@ impl TryFrom<PathBuf> for Teletype {
             f("tty").ok_or(()).map(Teletype::Tty)
         } else {
             Err(())
+        }
+    }
+}
+
+impl TryFrom<u64> for Teletype {
+    type Error = ();
+
+    fn try_from(tty_nr: u64) -> Result<Self, Self::Error> {
+        // tty_nr is 0 for processes without a controlling terminal
+        if tty_nr == 0 {
+            return Ok(Self::Unknown);
+        }
+
+        // Extract major and minor device numbers
+        // In Linux, tty_nr is encoded as: (major << 8) | minor
+        // However, for pts devices, the encoding is different: major is 136-143
+        let major = (tty_nr >> 8) & 0xFFF;
+        let minor = (tty_nr & 0xFF) | ((tty_nr >> 12) & 0xFFF00);
+
+        match major {
+            // Virtual console terminals (/dev/tty1, /dev/tty2, etc.)
+            4 => Ok(Self::Tty(minor)),
+            // Serial terminals (/dev/ttyS0, /dev/ttyS1, etc.)
+            5 => Ok(Self::TtyS(minor)),
+            // Pseudo-terminals (/dev/pts/0, /dev/pts/1, etc.)
+            // pts major numbers are 136-143
+            136..=143 => {
+                let pts_num = (major - 136) * 256 + minor;
+                Ok(Self::Pts(pts_num))
+            }
+            // Unknown terminal type
+            _ => Ok(Self::Unknown),
         }
     }
 }
@@ -493,6 +525,12 @@ impl ProcessInformation {
         self.get_numeric_stat_field(5)
     }
 
+    pub fn tty_nr(&mut self) -> Result<u64, io::Error> {
+        // the tty_nr is the seventh field in /proc/<PID>/stat
+        // (https://www.kernel.org/doc/html/latest/filesystems/proc.html#id10)
+        self.get_numeric_stat_field(6)
+    }
+
     fn get_uid_or_gid_field(&mut self, field: &str, index: usize) -> Result<u32, io::Error> {
         self.status()
             .get(field)
@@ -602,13 +640,23 @@ impl ProcessInformation {
         RunState::try_from(self.stat().get(2).unwrap().as_str())
     }
 
-    /// This function will scan the `/proc/<pid>/fd` directory
+    /// Get the controlling terminal of the process.
     ///
-    /// If the process does not belong to any terminal and mismatched permission,
-    /// the result will contain [TerminalType::Unknown].
+    /// This function first tries to get the terminal from `/proc/<pid>/stat` (field 7, tty_nr)
+    /// which is world-readable and doesn't require special permissions.
+    /// Only if that fails, it falls back to scanning `/proc/<pid>/fd` directory.
     ///
-    /// Otherwise [TerminalType::Unknown] does not appear in the result.
-    pub fn tty(&self) -> Teletype {
+    /// Returns [Teletype::Unknown] if the process has no controlling terminal.
+    pub fn tty(&mut self) -> Teletype {
+        // First try to get tty_nr from stat file (always accessible)
+        if let Ok(tty_nr) = self.tty_nr() {
+            if let Ok(tty) = Teletype::try_from(tty_nr) {
+                return tty;
+            }
+        }
+
+        // Fall back to scanning /proc/<pid>/fd directory
+        // This requires permissions to read the process's fd directory
         let path = PathBuf::from(format!("/proc/{}/fd", self.pid));
 
         let Ok(result) = fs::read_dir(path) else {
@@ -735,6 +783,32 @@ mod tests {
     use uucore::process::getpid;
 
     #[test]
+    fn test_tty_nr_decoding() {
+        // Test no controlling terminal
+        assert_eq!(Teletype::try_from(0u64).unwrap(), Teletype::Unknown);
+
+        // Test virtual console terminals (/dev/tty1, /dev/tty2, etc.)
+        // tty1: major=4, minor=1 => (4 << 8) | 1 = 1025
+        assert_eq!(Teletype::try_from(1025u64).unwrap(), Teletype::Tty(1));
+        // tty12: major=4, minor=12 => (4 << 8) | 12 = 1036
+        assert_eq!(Teletype::try_from(1036u64).unwrap(), Teletype::Tty(12));
+
+        // Test serial terminals (/dev/ttyS0, /dev/ttyS1, etc.)
+        // ttyS0: major=5, minor=0 => (5 << 8) | 0 = 1280
+        assert_eq!(Teletype::try_from(1280u64).unwrap(), Teletype::TtyS(0));
+        // ttyS1: major=5, minor=1 => (5 << 8) | 1 = 1281
+        assert_eq!(Teletype::try_from(1281u64).unwrap(), Teletype::TtyS(1));
+
+        // Test pseudo-terminals (/dev/pts/0, /dev/pts/1, etc.)
+        // pts/0: major=136, minor=0 => (136 << 8) | 0 = 34816
+        assert_eq!(Teletype::try_from(34816u64).unwrap(), Teletype::Pts(0));
+        // pts/1: major=136, minor=1 => (136 << 8) | 1 = 34817
+        assert_eq!(Teletype::try_from(34817u64).unwrap(), Teletype::Pts(1));
+        // pts/256: major=137, minor=0 => (137 << 8) | 0 = 35072
+        assert_eq!(Teletype::try_from(35072u64).unwrap(), Teletype::Pts(256));
+    }
+
+    #[test]
     fn test_run_state_conversion() {
         assert_eq!(RunState::try_from("R").unwrap(), RunState::Running);
         assert_eq!(RunState::try_from("S").unwrap(), RunState::Sleeping);
@@ -763,7 +837,7 @@ mod tests {
     #[test]
     #[cfg(target_os = "linux")]
     fn test_pid_entry() {
-        let pid_entry = ProcessInformation::current_process_info().unwrap();
+        let mut pid_entry = ProcessInformation::current_process_info().unwrap();
         let mut result = WalkDir::new(format!("/proc/{}/fd", getpid()))
             .into_iter()
             .flatten()
