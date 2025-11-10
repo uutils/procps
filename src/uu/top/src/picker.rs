@@ -317,8 +317,8 @@ fn pr(_pid: u32, _stat: Stat) -> Box<dyn Column> {
 
 #[cfg(not(target_os = "windows"))]
 fn get_nice(pid: u32) -> i32 {
-    use libc::{getpriority, PRIO_PROCESS};
     use nix::errno::Errno;
+    use uucore::libc::{getpriority, PRIO_PROCESS};
 
     // this is nice value, not priority value
     let result = unsafe { getpriority(PRIO_PROCESS, pid) };
@@ -381,7 +381,7 @@ fn shr(pid: u32, _stat: Stat) -> Box<dyn Column> {
     let content = read_to_string(file).unwrap();
     let values = content.split_whitespace();
     if let Some(shared) = values.collect::<Vec<_>>().get(2) {
-        let page_size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) };
+        let page_size = unsafe { uucore::libc::sysconf(uucore::libc::_SC_PAGESIZE) };
         MemValue::new_boxed(shared.parse::<u64>().unwrap() * page_size as u64)
     } else {
         MemValue::new_boxed(0)

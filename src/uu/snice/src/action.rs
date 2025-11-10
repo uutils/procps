@@ -113,8 +113,8 @@ impl Display for ActionResult {
 /// But we don't know if the process of pid are exist, if [None], the process doesn't exist
 #[cfg(target_os = "linux")]
 fn set_priority(pid: u32, prio: &Priority, take_action: bool) -> Option<ActionResult> {
-    use libc::{getpriority, setpriority, PRIO_PROCESS};
     use nix::errno::Errno;
+    use uucore::libc::{getpriority, setpriority, PRIO_PROCESS};
 
     // Very dirty.
     let current_priority = {

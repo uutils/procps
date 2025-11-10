@@ -14,10 +14,9 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-uucore = { workspace = true, features = ["utmpx"] }
+uucore = { workspace = true, features = ["utmpx", "libc"] }
 clap = { workspace = true }
 chrono = { workspace = true, default-features = false, features = ["clock"] }
-libc = { workspace = true }
 prettytable-rs = { workspace = true }
 nix = { workspace = true }
 

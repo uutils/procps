@@ -8,10 +8,10 @@ use chrono::{Datelike, Local};
 use clap::crate_version;
 use clap::{Arg, ArgAction, Command};
 #[cfg(target_os = "linux")]
-use libc::{sysconf, _SC_CLK_TCK};
-#[cfg(target_os = "linux")]
 use std::{collections::HashMap, fs, path::Path, time::SystemTime};
 use std::{process, time::Duration};
+#[cfg(target_os = "linux")]
+use uucore::libc::{sysconf, _SC_CLK_TCK};
 use uucore::uptime::{
     get_formatted_loadavg, get_formatted_nusers, get_formatted_time, get_uptime, UptimeError,
 };

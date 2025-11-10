@@ -61,7 +61,6 @@ crossterm = "0.29.0"
 ctor = "0.6.0"
 dirs = "6.0.0"
 jiff = "0.2.15"
-libc = "0.2.154"
 nix = { version = "0.30", default-features = false, features = ["process"] }
 phf = "0.13.1"
 phf_codegen = "0.13.0"
@@ -115,12 +114,16 @@ watch = { optional = true, version = "0.0.1", package = "uu_watch", path = "src/
 [dev-dependencies]
 chrono = { workspace = true }
 ctor = { workspace = true }
-libc = { workspace = true }
 pretty_assertions = "1.4.0"
 rand = { workspace = true }
 regex = { workspace = true }
 tempfile = { workspace = true }
-uucore = { workspace = true, features = ["entries", "process", "signals"] }
+uucore = { workspace = true, features = [
+    "entries",
+    "libc",
+    "process",
+    "signals",
+] }
 uutests = { workspace = true }
 
 [target.'cfg(unix)'.dev-dependencies]

@@ -14,9 +14,8 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-uucore = { workspace = true, features = ["signals"] }
+uucore = { workspace = true, features = ["signals", "libc"] }
 clap = { workspace = true }
-libc = { workspace = true }
 nix = { workspace = true }
 prettytable-rs = { workspace = true }
 thiserror = { workspace = true }

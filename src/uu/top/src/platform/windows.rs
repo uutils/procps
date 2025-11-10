@@ -36,7 +36,7 @@ pub fn get_cpu_loads() -> Vec<uu_vmstat::CpuLoadRaw> {
     let status = unsafe {
         NtQuerySystemInformation(
             windows_sys::Wdk::System::SystemInformation::SystemProcessorPerformanceInformation,
-            data.as_mut_ptr() as *mut libc::c_void,
+            data.as_mut_ptr() as *mut uucore::libc::c_void,
             (n_cpu * size_of::<SystemProcessorPerformanceInformation>()) as u32,
             std::ptr::null_mut(),
         )

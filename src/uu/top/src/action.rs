@@ -5,8 +5,8 @@
 
 #[cfg(target_os = "linux")]
 pub(crate) fn renice(pid: u32, nice_value: i32) -> uucore::error::UResult<()> {
-    use libc::{setpriority, PRIO_PROCESS};
     use uucore::error::USimpleError;
+    use uucore::libc::{setpriority, PRIO_PROCESS};
 
     let result = unsafe { setpriority(PRIO_PROCESS, pid, nice_value) };
     if result == -1 {

@@ -8,12 +8,12 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 extern "C" {
-    pub fn sd_booted() -> libc::c_int;
-    pub fn sd_get_sessions(sessions: *mut *mut *mut libc::c_char) -> libc::c_int;
+    pub fn sd_booted() -> uucore::libc::c_int;
+    pub fn sd_get_sessions(sessions: *mut *mut *mut uucore::libc::c_char) -> uucore::libc::c_int;
     pub fn sd_session_get_class(
-        session: *const libc::c_char,
-        class: *mut *mut libc::c_char,
-    ) -> libc::c_int;
+        session: *const uucore::libc::c_char,
+        class: *mut *mut uucore::libc::c_char,
+    ) -> uucore::libc::c_int;
 }
 
 pub fn get_nusers_systemd() -> uucore::error::UResult<usize> {
