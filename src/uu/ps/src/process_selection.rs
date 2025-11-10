@@ -16,7 +16,7 @@ use nix::errno::Errno;
 #[cfg(target_family = "unix")]
 fn getsid(pid: i32) -> Option<i32> {
     unsafe {
-        let result = libc::getsid(pid);
+        let result = uucore::libc::getsid(pid);
         if Errno::last() == Errno::UnknownErrno {
             Some(result)
         } else {
