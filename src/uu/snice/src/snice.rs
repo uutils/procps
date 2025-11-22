@@ -129,7 +129,7 @@ pub fn ask_user(pid: u32) -> bool {
     let process = process_snapshot().process(Pid::from_u32(pid)).unwrap();
 
     let tty = ProcessInformation::try_new(PathBuf::from_str(&format!("/proc/{pid}")).unwrap())
-        .map(|v| v.tty().to_string())
+        .map(|mut v| v.tty().to_string())
         .unwrap_or(String::from("?"));
 
     let user = process
@@ -188,7 +188,8 @@ pub fn construct_verbose_result(
             let process = process_snapshot().process(Pid::from_u32(pid)).unwrap();
 
             let tty =
-                ProcessInformation::try_new(PathBuf::from_str(&format!("/proc/{pid}")).unwrap());
+                ProcessInformation::try_new(PathBuf::from_str(&format!("/proc/{pid}")).unwrap())
+                    .map(|mut v| v.tty().to_string());
 
             let user = process
                 .user_id()
@@ -214,7 +215,7 @@ pub fn construct_verbose_result(
                 row![pid]
             }
             Some((tty, user, cmd, action)) => {
-                row![tty.unwrap().tty(), user, pid, cmd, action]
+                row![tty.unwrap(), user, pid, cmd, action]
             }
         })
         .collect::<Table>();
