@@ -52,7 +52,6 @@ impl SelectedTarget {
 
     #[cfg(target_os = "linux")]
     fn from_tty(tty: &Teletype) -> Vec<u32> {
-        use std::{path::PathBuf, str::FromStr};
         use uu_pgrep::process::ProcessInformation;
 
         process_snapshot()
@@ -60,9 +59,8 @@ impl SelectedTarget {
             .iter()
             .filter(|(pid, _)| {
                 let pid = pid.as_u32();
-                let path = PathBuf::from_str(&format!("/proc/{pid}/")).unwrap();
 
-                ProcessInformation::try_new(path).unwrap().tty() == *tty
+                ProcessInformation::from_pid(pid as usize).unwrap().tty() == *tty
             })
             .map(|(pid, _)| pid.as_u32())
             .collect()

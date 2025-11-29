@@ -30,16 +30,9 @@ pub(crate) fn wait(procs: &[ProcessInformation]) {
 }
 #[cfg(target_os = "linux")]
 fn is_running(pid: usize) -> bool {
-    use std::{path::PathBuf, str::FromStr};
     use uu_pgrep::process::RunState;
 
-    let proc = PathBuf::from_str(&format!("/proc/{pid}")).unwrap();
-
-    if !proc.exists() {
-        return false;
-    }
-
-    match ProcessInformation::try_new(proc) {
+    match ProcessInformation::from_pid(pid) {
         Ok(mut proc) => proc
             .run_state()
             .map(|it| it != RunState::Stopped)
