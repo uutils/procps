@@ -49,6 +49,8 @@ pub struct ProcessSelectionSettings {
 
     /// - `-C` Select by command name
     pub command_names: Option<HashSet<String>>,
+    /// - `-q, --quick-pid` Quick process selection by PID
+    pub quick_pids: Option<HashSet<usize>>,
     /// - `-p, --pid` Select specific process IDs
     pub pids: Option<HashSet<usize>>,
     /// - `--ppid` Select specific parent process IDs
@@ -81,6 +83,9 @@ impl ProcessSelectionSettings {
             command_names: matches
                 .get_many::<Vec<String>>("command")
                 .map(|xs| xs.flatten().cloned().collect()),
+            quick_pids: matches
+                .get_many::<Vec<usize>>("quick-pid")
+                .map(|xs| xs.flatten().copied().collect()),
             pids: matches
                 .get_many::<Vec<usize>>("pid")
                 .map(|xs| xs.flatten().copied().collect()),
@@ -108,6 +113,18 @@ impl ProcessSelectionSettings {
     }
 
     pub fn select_processes(self) -> UResult<Vec<ProcessInformation>> {
+        if let Some(ref quick_pids) = self.quick_pids {
+            let mut selected = Vec::new();
+            for &pid in quick_pids {
+                if let Ok(process) =
+                    ProcessInformation::try_new(std::path::PathBuf::from(format!("/proc/{}", pid)))
+                {
+                    selected.push(process);
+                }
+            }
+            return Ok(selected);
+        }
+
         let mut current_process = ProcessInformation::current_process_info().unwrap();
         let current_tty = current_process.tty();
         let current_euid = current_process.euid().unwrap();

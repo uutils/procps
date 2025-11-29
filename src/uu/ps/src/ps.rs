@@ -379,12 +379,12 @@ pub fn uu_app() -> Command {
                 .value_parser(parse_uid_list)
                 .help("select by effective user ID (EUID) or name"),
         )
-    // .args([
-    //     Arg::new("pPID").long("ppid").help("parent process id"),
-    //     Arg::new("qPID")
-    //         .short('q')
-    //         .long("quick-pid")
-    //         .help("process id"),
-    //     Arg::new("t").short('t').long("tty").help("terminal"),
-    // ])
+        .arg(
+            Arg::new("quick-pid")
+                .short('q')
+                .long("quick-pid")
+                .action(ArgAction::Append)
+                .value_parser(parse_numeric_list)
+                .help("quick process selection by PID"),
+        )
 }
