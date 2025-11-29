@@ -1,0 +1,33 @@
+[package]
+name = "uu_uuproc"
+description = "uuproc ~ (uutils) Cross-platform process information abstraction"
+repository = "https://github.com/uutils/procps/tree/main/src/uu/uuproc"
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+uucore = { workspace = true }
+regex = { workspace = true }
+walkdir = { workspace = true }
+libc = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# Linux-specific dependencies can be added here
+
+[target.'cfg(target_os = "freebsd")'.dependencies]
+# FreeBSD-specific dependencies can be added here
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# macOS-specific dependencies can be added here
+
+[target.'cfg(target_os = "windows")'.dependencies]
+winapi = { version = "0.3", features = ["tlhelp32", "minwindef"] }
+
+[lib]
+path = "src/lib.rs"
+
