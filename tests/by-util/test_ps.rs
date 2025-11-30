@@ -230,7 +230,7 @@ fn test_command_name_selection() {
 
 #[test]
 #[cfg(target_os = "linux")]
-fn test_pid_selection() {
+fn test_pid_and_quick_pid_selection() {
     let our_pid = std::process::id();
     // Test that only pid 1 and pid of the test runner is present
     let test = |pid_args: &[&str]| {
@@ -243,24 +243,24 @@ fn test_pid_selection() {
             .stdout_matches(&match_regex);
     };
 
-    for flag in ["-p", "--pid"] {
+    for flag in ["-p", "--pid", "-q", "--quick-pid"] {
         test(&[flag, &format!("1 {our_pid}")]);
         test(&[flag, &format!("1,{our_pid}")]);
         test(&[flag, "1", flag, &our_pid.to_string()]);
+
+        // Test nonexistent PID
+        new_ucmd!()
+            .args(&[flag, "0", "--no-headers"])
+            .fails()
+            .code_is(1)
+            .no_output();
+
+        // Test invalid PID
+        new_ucmd!()
+            .args(&[flag, "invalid"])
+            .fails()
+            .stderr_contains("invalid number");
     }
-
-    // Test nonexistent PID
-    new_ucmd!()
-        .args(&["-p", "0", "--no-headers"])
-        .fails()
-        .code_is(1)
-        .no_output();
-
-    // Test invalid PID
-    new_ucmd!()
-        .args(&["-p", "invalid"])
-        .fails()
-        .stderr_contains("invalid number");
 }
 
 #[test]
