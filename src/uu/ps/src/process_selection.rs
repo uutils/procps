@@ -116,9 +116,7 @@ impl ProcessSelectionSettings {
         if let Some(ref quick_pids) = self.quick_pids {
             let mut selected = Vec::new();
             for &pid in quick_pids {
-                if let Ok(process) =
-                    ProcessInformation::try_new(std::path::PathBuf::from(format!("/proc/{}", pid)))
-                {
+                if let Ok(process) = ProcessInformation::from_pid(pid) {
                     selected.push(process);
                 }
             }

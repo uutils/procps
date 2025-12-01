@@ -485,15 +485,17 @@ impl ProcessInformation {
         })
     }
 
-    pub fn current_process_info() -> Result<ProcessInformation, io::Error> {
-        use std::str::FromStr;
+    pub fn from_pid(pid: usize) -> Result<Self, io::Error> {
+        Self::try_new(PathBuf::from(format!("/proc/{}", pid)))
+    }
 
+    pub fn current_process_info() -> Result<ProcessInformation, io::Error> {
         #[cfg(target_os = "linux")]
         let pid = uucore::process::getpid();
         #[cfg(not(target_os = "linux"))]
         let pid = 0; // dummy
 
-        ProcessInformation::try_new(PathBuf::from_str(&format!("/proc/{pid}")).unwrap())
+        Self::from_pid(pid as usize)
     }
 
     pub fn proc_status(&self) -> &str {
@@ -967,7 +969,7 @@ unknown              /dev/tty        4 1-63 console"#;
     #[test]
     #[cfg(target_os = "linux")]
     fn test_cgroups() {
-        let mut pid_entry = ProcessInformation::try_new("/proc/1".into()).unwrap();
+        let mut pid_entry = ProcessInformation::from_pid(1).unwrap();
         if pid_entry.name().unwrap() == "systemd" {
             let cgroups = pid_entry.cgroups().unwrap();
             if let Some(membership) = cgroups.iter().find(|cg| cg.hierarchy_id == 0) {

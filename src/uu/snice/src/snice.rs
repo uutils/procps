@@ -10,8 +10,8 @@ use clap::{crate_version, Arg, Command};
 use prettytable::{format::consts::FORMAT_CLEAN, row, Table};
 pub use process_matcher::clap_args;
 use process_matcher::*;
+use std::collections::HashSet;
 use std::io::Write;
-use std::{collections::HashSet, path::PathBuf, str::FromStr};
 use sysinfo::Pid;
 use uu_pgrep::process::ProcessInformation;
 #[cfg(target_family = "unix")]
@@ -128,7 +128,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 pub fn ask_user(pid: u32) -> bool {
     let process = process_snapshot().process(Pid::from_u32(pid)).unwrap();
 
-    let tty = ProcessInformation::try_new(PathBuf::from_str(&format!("/proc/{pid}")).unwrap())
+    let tty = ProcessInformation::from_pid(pid as usize)
         .map(|mut v| v.tty().to_string())
         .unwrap_or(String::from("?"));
 
@@ -187,9 +187,7 @@ pub fn construct_verbose_result(
 
             let process = process_snapshot().process(Pid::from_u32(pid)).unwrap();
 
-            let tty =
-                ProcessInformation::try_new(PathBuf::from_str(&format!("/proc/{pid}")).unwrap())
-                    .map(|mut v| v.tty().to_string());
+            let tty = ProcessInformation::from_pid(pid as usize).map(|mut v| v.tty().to_string());
 
             let user = process
                 .user_id()
