@@ -15,16 +15,13 @@ use std::io::Error;
 #[cfg(unix)]
 use uu_pgrep::process::ProcessInformation;
 use uu_pgrep::process_matcher;
+use uucore::error::UResult;
 #[cfg(unix)]
 use uucore::{
     error::FromIo,
     show,
     signals::{signal_by_name_or_value, signal_name_by_value},
 };
-use uucore::{error::UResult, format_usage, help_about, help_usage};
-
-const ABOUT: &str = help_about!("pkill.md");
-const USAGE: &str = help_usage!("pkill.md");
 
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
@@ -133,8 +130,8 @@ fn kill(pids: &Vec<ProcessInformation>, sig: Option<Signal>, queue: Option<u32>,
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
-        .about(ABOUT)
-        .override_usage(format_usage(USAGE))
+        .about("Kills processes based on name and other attributes")
+        .override_usage("pkill [options] <pattern>")
         .args_override_self(true)
         .args([
             // arg!(-<sig>                    "signal to send (either number or name)"),

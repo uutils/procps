@@ -14,15 +14,9 @@ use std::collections::HashSet;
 use std::io::Write;
 use sysinfo::Pid;
 use uu_pgrep::process::ProcessInformation;
+use uucore::error::{UResult, USimpleError};
 #[cfg(target_family = "unix")]
 use uucore::signals::ALL_SIGNALS;
-use uucore::{
-    error::{UResult, USimpleError},
-    format_usage, help_about, help_usage,
-};
-
-const ABOUT: &str = help_about!("snice.md");
-const USAGE: &str = help_usage!("snice.md");
 
 mod action;
 mod priority;
@@ -238,8 +232,8 @@ pub fn collect_pids(targets: &[SelectedTarget]) -> Vec<u32> {
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
-        .about(ABOUT)
-        .override_usage(format_usage(USAGE))
+        .about("Send a signal or report process status")
+        .override_usage("snice [priority] [options] expression")
         .infer_long_args(true)
         .arg_required_else_help(true)
         .arg(Arg::new("priority"))

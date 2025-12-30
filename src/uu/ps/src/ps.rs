@@ -23,13 +23,7 @@ use process_selection::ProcessSelectionSettings;
 use std::cell::RefCell;
 #[cfg(unix)]
 use uucore::entries::{grp2gid, usr2uid};
-use uucore::{
-    error::{UError, UResult, USimpleError},
-    format_usage, help_about, help_usage,
-};
-
-const ABOUT: &str = help_about!("ps.md");
-const USAGE: &str = help_usage!("ps.md");
+use uucore::error::{UError, UResult, USimpleError};
 
 #[cfg(not(unix))]
 pub fn usr2uid(_name: &str) -> std::io::Result<u32> {
@@ -199,8 +193,8 @@ fn parse_command_list(s: &str) -> Result<Vec<String>, String> {
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
-        .about(ABOUT)
-        .override_usage(format_usage(USAGE))
+        .about("Report a snapshot of the current processes")
+        .override_usage("ps [options]")
         .infer_long_args(true)
         .disable_help_flag(true)
         .arg(Arg::new("help").long("help").action(ArgAction::Help))

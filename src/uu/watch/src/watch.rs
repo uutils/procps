@@ -10,10 +10,7 @@ use std::num::ParseIntError;
 use std::process::{Command as SystemCommand, Stdio};
 use std::thread::sleep;
 use std::time::Duration;
-use uucore::{error::UResult, format_usage, help_about, help_usage};
-
-const ABOUT: &str = help_about!("watch.md");
-const USAGE: &str = help_usage!("watch.md");
+use uucore::error::UResult;
 
 fn parse_interval(input: &str) -> Result<Duration, ParseIntError> {
     // Find index where to split string into seconds and nanos
@@ -109,8 +106,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
-        .about(ABOUT)
-        .override_usage(format_usage(USAGE))
+        .about("Execute a program periodically, showing output fullscreen")
+        .override_usage("watch [options] command")
         .infer_long_args(true)
         .arg(
             Arg::new("command")

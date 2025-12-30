@@ -18,13 +18,7 @@ use std::ops::Mul;
 use std::process;
 use std::thread::sleep;
 use std::time::Duration;
-use uucore::{
-    error::{UResult, USimpleError},
-    format_usage, help_about, help_usage,
-};
-
-const ABOUT: &str = help_about!("free.md");
-const USAGE: &str = help_usage!("free.md");
+use uucore::error::{UResult, USimpleError};
 
 /// The unit of number is [UnitMultiplier::Bytes]
 #[derive(Default, Clone)]
@@ -249,8 +243,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
-        .about(ABOUT)
-        .override_usage(format_usage(USAGE))
+        .about("Display amount of free and used memory in the system")
+        .override_usage("free [options]")
         .args_override_self(true)
         .infer_long_args(true)
         .disable_help_flag(true)

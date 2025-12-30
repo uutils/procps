@@ -10,6 +10,7 @@ use clap::{Arg, ArgAction, Command};
 #[cfg(target_os = "linux")]
 use std::{collections::HashMap, fs, path::Path, time::SystemTime};
 use std::{process, time::Duration};
+use uucore::error::UResult;
 #[cfg(target_os = "linux")]
 use uucore::libc::{sysconf, _SC_CLK_TCK};
 use uucore::uptime::{
@@ -17,10 +18,6 @@ use uucore::uptime::{
 };
 #[cfg(target_os = "linux")]
 use uucore::utmpx::Utmpx;
-use uucore::{error::UResult, format_usage, help_about, help_usage};
-
-const ABOUT: &str = help_about!("w.md");
-const USAGE: &str = help_usage!("w.md");
 
 struct UserInfo {
     user: String,
@@ -316,8 +313,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
-        .about(ABOUT)
-        .override_usage(format_usage(USAGE))
+        .about("Show who is logged on and what they are doing")
+        .override_usage("w [options] [user]")
         .infer_long_args(true)
         .disable_help_flag(true)
         .arg(

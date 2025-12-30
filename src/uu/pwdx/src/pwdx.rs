@@ -7,10 +7,6 @@ use clap::{crate_version, Arg, Command};
 use std::env;
 use sysinfo::{Pid, System};
 use uucore::error::{set_exit_code, UResult, USimpleError};
-use uucore::{format_usage, help_about, help_usage};
-
-const ABOUT: &str = help_about!("pwdx.md");
-const USAGE: &str = help_usage!("pwdx.md");
 
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
@@ -52,8 +48,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
-        .about(ABOUT)
-        .override_usage(format_usage(USAGE))
+        .about("Report current working directory of a process")
+        .override_usage("pwdx [options] pid [...]")
         .infer_long_args(true)
         .arg(
             Arg::new("pid")

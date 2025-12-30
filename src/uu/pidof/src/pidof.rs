@@ -7,12 +7,9 @@ use std::path::PathBuf;
 
 use clap::{crate_version, Arg, ArgAction, ArgMatches, Command};
 use uu_pgrep::process::{walk_process, ProcessInformation};
+use uucore::error::UResult;
 #[cfg(unix)]
 use uucore::process::geteuid;
-use uucore::{error::UResult, format_usage, help_about, help_usage};
-
-const ABOUT: &str = help_about!("pidof.md");
-const USAGE: &str = help_usage!("pidof.md");
 
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
@@ -147,8 +144,8 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<usize> {
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
-        .about(ABOUT)
-        .override_usage(format_usage(USAGE))
+        .about("Find the process ID of a running program")
+        .override_usage("pidof [options] [program [...]]")
         .infer_long_args(true)
         .arg(
             Arg::new("program-name")

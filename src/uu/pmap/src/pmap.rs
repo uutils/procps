@@ -11,14 +11,10 @@ use std::env;
 use std::fs;
 use std::io::{Error, ErrorKind};
 use uucore::error::{set_exit_code, UResult, USimpleError};
-use uucore::{format_usage, help_about, help_usage};
 
 mod maps_format_parser;
 mod pmap_config;
 mod smaps_format_parser;
-
-const ABOUT: &str = help_about!("pmap.md");
-const USAGE: &str = help_usage!("pmap.md");
 
 mod options {
     pub const PID: &str = "pid";
@@ -440,8 +436,8 @@ fn output_device_format(pid: &str, pmap_config: &PmapConfig) -> Result<(), Error
 pub fn uu_app() -> Command {
     Command::new(env!("CARGO_PKG_NAME"))
         .version(crate_version!())
-        .about(ABOUT)
-        .override_usage(format_usage(USAGE))
+        .about("Report memory map of a process")
+        .override_usage("pmap [options] pid [...]")
         .infer_long_args(true)
         .arg(
             Arg::new(options::PID)
