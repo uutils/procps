@@ -8,10 +8,7 @@ pub mod process;
 pub mod process_matcher;
 
 use clap::{arg, crate_version, Command};
-use uucore::{error::UResult, format_usage, help_about, help_usage};
-
-const ABOUT: &str = help_about!("pgrep.md");
-const USAGE: &str = help_usage!("pgrep.md");
+use uucore::error::UResult;
 
 /// # Conceptual model of `pgrep`
 ///
@@ -74,8 +71,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
-        .about(ABOUT)
-        .override_usage(format_usage(USAGE))
+        .about("look up, signal, or wait for processes based on name and other attributes")
+        .override_usage("pgrep [options] <pattern>")
         .args_override_self(true)
         .args([
             arg!(-d     --delimiter <string>    "specify output delimiter")

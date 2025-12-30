@@ -11,10 +11,7 @@ use std::time::Duration;
 use clap::{arg, crate_version, value_parser, ArgAction, ArgMatches, Command};
 use crossterm::event::{self, KeyCode, KeyEvent, KeyModifiers};
 use tui::{LegacyTui, ModernTui};
-use uucore::{error::UResult, format_usage, help_about, help_usage};
-
-const ABOUT: &str = help_about!("tload.md");
-const USAGE: &str = help_usage!("tload.md");
+use uucore::error::UResult;
 
 mod tui;
 
@@ -143,8 +140,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
-        .about(ABOUT)
-        .override_usage(format_usage(USAGE))
+        .about("tload prints a graph of the current system load average to the specified tty (or the tty of the tload process if none is specified)")
+        .override_usage("tload [options] [tty]")
         .infer_long_args(true)
         .args([
             arg!(-d --delay     <secs>  "update delay in seconds")

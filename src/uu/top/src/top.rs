@@ -8,21 +8,14 @@ use crate::picker::Column;
 use crate::tui::stat::TuiStat;
 use crate::tui::{handle_input, Tui};
 use clap::{arg, crate_version, value_parser, ArgAction, ArgGroup, ArgMatches, Command};
-use picker::pickers;
-use picker::sysinfo;
+use picker::{pickers, sysinfo};
 use ratatui::crossterm::event;
 use ratatui::prelude::Widget;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 use std::{thread, thread::sleep, time::Duration};
 use sysinfo::{Pid, Users};
-use uucore::{
-    error::{UResult, USimpleError},
-    format_usage, help_about, help_usage,
-};
-
-const ABOUT: &str = help_about!("top.md");
-const USAGE: &str = help_usage!("top.md");
+use uucore::error::{UResult, USimpleError};
 
 mod action;
 mod field;
@@ -310,8 +303,8 @@ fn construct_filter(tui_stat: &TuiStat) -> Box<dyn Fn(u32) -> bool> {
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
-        .about(ABOUT)
-        .override_usage(format_usage(USAGE))
+        .about("Display Linux processes")
+        .override_usage("top [options]")
         .infer_long_args(true)
         .args([
             // arg!(-b  --"batch-mode"                         "run in non-interactive batch mode"),

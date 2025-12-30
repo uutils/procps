@@ -5,13 +5,10 @@
 
 use clap::{arg, crate_version, Command};
 use uu_pgrep::process_matcher;
-use uucore::{error::UResult, format_usage, help_about, help_usage};
+use uucore::error::UResult;
 use wait::wait;
 
 mod wait;
-
-const ABOUT: &str = help_about!("pidwait.md");
-const USAGE: &str = help_usage!("pidwait.md");
 
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
@@ -50,8 +47,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
-        .about(ABOUT)
-        .override_usage(format_usage(USAGE))
+        .about("Wait for processes based on name")
+        .override_usage("pidwait [options] pattern")
         .infer_long_args(true)
         .args([arg!(-e --echo                      "display PIDs before waiting")])
         .args(process_matcher::clap_args(

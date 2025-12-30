@@ -5,11 +5,7 @@
 
 pub use crate::parse::SlabInfo;
 use clap::{arg, crate_version, ArgAction, Command};
-use uucore::{error::UResult, format_usage, help_about, help_section, help_usage};
-
-const ABOUT: &str = help_about!("slabtop.md");
-const AFTER_HELP: &str = help_section!("after help", "slabtop.md");
-const USAGE: &str = help_usage!("slabtop.md");
+use uucore::error::UResult;
 
 mod parse;
 
@@ -125,10 +121,23 @@ fn output_list(info: &SlabInfo) {
 
 #[allow(clippy::cognitive_complexity)]
 pub fn uu_app() -> Command {
+    const AFTER_HELP: &str = "The following are valid sort criteria:
+
+ a    sort by number of active objects
+ b    sort by objects per slab
+ c    sort by cache size
+ l    sort by number of slabs
+ v    sort by (non display) number of active slabs
+ n    sort by name
+ o    sort by number of objects (the default)
+ p    sort by (non display) pages per slab
+ s    sort by object size
+ u    sort by cache utilization";
+
     Command::new(uucore::util_name())
         .version(crate_version!())
-        .about(ABOUT)
-        .override_usage(format_usage(USAGE))
+        .about("Display kernel slab cache information in real time")
+        .override_usage("slabtop [options]")
         .infer_long_args(true)
         .args([
             // arg!(-d --delay <secs>  "delay updates"),

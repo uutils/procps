@@ -15,10 +15,6 @@ use clap::{arg, crate_version, ArgMatches, Command};
 pub use parser::*;
 #[allow(unused_imports)]
 use uucore::error::{UResult, USimpleError};
-use uucore::{format_usage, help_about, help_usage};
-
-const ABOUT: &str = help_about!("vmstat.md");
-const USAGE: &str = help_usage!("vmstat.md");
 
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
@@ -292,8 +288,8 @@ fn print_data(
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
-        .about(ABOUT)
-        .override_usage(format_usage(USAGE))
+        .about("Report virtual memory statistics")
+        .override_usage("vmstat [options]")
         .infer_long_args(true)
         .args([
             arg!(<delay> "The delay between updates in seconds")

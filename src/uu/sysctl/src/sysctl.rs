@@ -6,10 +6,6 @@
 use clap::{crate_version, Arg, ArgAction, Command};
 use std::env;
 use uucore::error::UResult;
-use uucore::{format_usage, help_about, help_usage};
-
-const ABOUT: &str = help_about!("sysctl.md");
-const USAGE: &str = help_usage!("sysctl.md");
 
 #[cfg(target_os = "linux")]
 mod linux {
@@ -138,8 +134,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
-        .about(ABOUT)
-        .override_usage(format_usage(USAGE))
+        .about("Show or modify kernel parameters at runtime")
+        .override_usage("sysctl [options] [variable[=value]]...")
         .infer_long_args(true)
         .arg(
             Arg::new("variables")

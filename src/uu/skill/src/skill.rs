@@ -9,13 +9,9 @@ use nix::{sys::signal, sys::signal::Signal, unistd::Pid};
 use uu_snice::{
     collect_pids, construct_verbose_result, print_signals, process_matcher, ActionResult,
 };
-use uucore::error::USimpleError;
+use uucore::error::{UResult, USimpleError};
 #[cfg(unix)]
 use uucore::signals::signal_by_name_or_value;
-use uucore::{error::UResult, format_usage, help_about, help_usage};
-
-const ABOUT: &str = help_about!("skill.md");
-const USAGE: &str = help_usage!("skill.md");
 
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
@@ -93,8 +89,8 @@ fn perform_action(
 pub fn uu_app() -> Command {
     Command::new(uucore::util_name())
         .version(crate_version!())
-        .about(ABOUT)
-        .override_usage(format_usage(USAGE))
+        .about("Report processes matching an expression and send a signal to them")
+        .override_usage("skill [signal] [options] <expression>")
         .infer_long_args(true)
         .arg_required_else_help(true)
         .arg(Arg::new("signal"))
