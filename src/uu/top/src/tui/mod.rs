@@ -11,7 +11,7 @@ pub use input::*;
 use std::borrow::Cow;
 
 use crate::header::{format_memory, Header};
-use crate::tui::color::TuiColor;
+use crate::tui::color::TuiColorHelper;
 use crate::tui::stat::{CpuGraphMode, MemoryGraphMode, TuiStat};
 use crate::{InfoBar, ProcList};
 use ratatui::prelude::*;

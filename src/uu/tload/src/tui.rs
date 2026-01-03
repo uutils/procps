@@ -6,7 +6,7 @@
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Style, Stylize},
+    style::Style,
     symbols::Marker,
     text::{Line, Text},
     widgets::{Axis, Block, Borders, Chart, Dataset, GraphType, Paragraph, Widget},
