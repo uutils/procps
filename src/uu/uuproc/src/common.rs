@@ -6,11 +6,46 @@
 use std::fmt::{self, Display, Formatter};
 use std::io;
 
+/// Errors that can occur when working with process information
+#[derive(Debug, Clone)]
+pub enum ProcessError {
+    /// Process with given PID does not exist
+    NotFound(usize),
+    /// Permission denied when accessing process information
+    PermissionDenied(usize),
+    /// Invalid or malformed data in /proc filesystem
+    InvalidData(String),
+    /// Requested feature is not supported on this platform
+    Unsupported(String),
+    /// I/O error occurred
+    Io(String),
+}
+
+impl std::fmt::Display for ProcessError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::NotFound(pid) => write!(f, "Process {} not found", pid),
+            Self::PermissionDenied(pid) => write!(f, "Permission denied for process {}", pid),
+            Self::InvalidData(msg) => write!(f, "Invalid process data: {}", msg),
+            Self::Unsupported(feature) => write!(f, "Feature not supported: {}", feature),
+            Self::Io(msg) => write!(f, "I/O error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for ProcessError {}
+
+impl From<std::io::Error> for ProcessError {
+    fn from(err: std::io::Error) -> Self {
+        Self::Io(err.to_string())
+    }
+}
+
 /// Macro to define RunState variants with their character representations
 /// Usage: define_runstates!(Running => 'R', Sleeping => 'S', ...)
 macro_rules! define_runstates {
     ($($variant:ident => $char:expr),+ $(,)?) => {
-        /// Process run state
+        /// Process run state from `/proc/<pid>/stat` field 3.
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub enum RunState {
             $(#[doc = concat!("Process state: ", stringify!($char))]
@@ -78,7 +113,28 @@ impl TryFrom<String> for RunState {
 /// Macro to define Teletype variants with their device paths and names
 macro_rules! define_teletypes {
     ($($variant:ident => $path:expr, $name:expr),+ $(,)?) => {
-        /// Terminal type for a process
+        /// Terminal device associated with a process.
+        ///
+        /// Represents the controlling terminal (TTY) for a process. Parsed from `/proc/<pid>/stat`
+        /// field 7 (tty_nr) or from symbolic link resolution.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// use uu_uuproc::Teletype;
+        /// use std::convert::TryFrom;
+        ///
+        /// // Parse from tty_nr in /proc/*/stat (major/minor device number)
+        /// let tty = Teletype::try_from(34816_u64).unwrap();
+        /// assert_eq!(tty, Teletype::Pts(0));
+        ///
+        /// // Parse from path string
+        /// let tty = Teletype::try_from("/dev/pts/0").unwrap();
+        /// assert_eq!(tty.to_string(), "/dev/pts/0");
+        ///
+        /// // Unknown TTY for processes without a controlling terminal
+        /// assert_eq!(Teletype::Unknown.to_string(), "?");
+        /// ```
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub enum Teletype {
             $($variant(u64)),+,
