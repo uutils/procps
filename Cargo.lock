@@ -1455,7 +1455,7 @@ dependencies = [
  "uu_vmstat",
  "uu_w",
  "uu_watch",
- "uucore 0.5.0",
+ "uucore",
  "uutests",
  "xattr",
 ]
@@ -2215,7 +2215,7 @@ dependencies = [
  "bytesize",
  "clap",
  "sysinfo",
- "uucore 0.5.0",
+ "uucore",
  "windows",
 ]
 
@@ -2226,7 +2226,7 @@ dependencies = [
  "clap",
  "regex",
  "rustix",
- "uucore 0.5.0",
+ "uucore",
  "walkdir",
 ]
 
@@ -2236,7 +2236,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "uu_pgrep",
- "uucore 0.5.0",
+ "uucore",
 ]
 
 [[package]]
@@ -2247,7 +2247,7 @@ dependencies = [
  "nix 0.30.1",
  "regex",
  "uu_pgrep",
- "uucore 0.5.0",
+ "uucore",
 ]
 
 [[package]]
@@ -2258,7 +2258,7 @@ dependencies = [
  "nix 0.30.1",
  "regex",
  "uu_pgrep",
- "uucore 0.5.0",
+ "uucore",
  "walkdir",
 ]
 
@@ -2268,7 +2268,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "dirs",
- "uucore 0.5.0",
+ "uucore",
 ]
 
 [[package]]
@@ -2280,7 +2280,7 @@ dependencies = [
  "nix 0.30.1",
  "prettytable-rs",
  "uu_pgrep",
- "uucore 0.5.0",
+ "uucore",
 ]
 
 [[package]]
@@ -2289,7 +2289,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "sysinfo",
- "uucore 0.5.0",
+ "uucore",
 ]
 
 [[package]]
@@ -2299,7 +2299,7 @@ dependencies = [
  "clap",
  "nix 0.30.1",
  "uu_snice",
- "uucore 0.5.0",
+ "uucore",
 ]
 
 [[package]]
@@ -2307,7 +2307,7 @@ name = "uu_slabtop"
 version = "0.0.1"
 dependencies = [
  "clap",
- "uucore 0.5.0",
+ "uucore",
 ]
 
 [[package]]
@@ -2320,7 +2320,7 @@ dependencies = [
  "sysinfo",
  "thiserror 2.0.18",
  "uu_pgrep",
- "uucore 0.5.0",
+ "uucore",
 ]
 
 [[package]]
@@ -2329,7 +2329,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "sysinfo",
- "uucore 0.5.0",
+ "uucore",
  "walkdir",
 ]
 
@@ -2340,7 +2340,7 @@ dependencies = [
  "clap",
  "crossterm",
  "ratatui",
- "uucore 0.5.0",
+ "uucore",
 ]
 
 [[package]]
@@ -2357,7 +2357,7 @@ dependencies = [
  "sysinfo",
  "uu_vmstat",
  "uu_w",
- "uucore 0.5.0",
+ "uucore",
  "windows-sys 0.61.2",
 ]
 
@@ -2370,7 +2370,7 @@ dependencies = [
  "jiff",
  "terminal_size",
  "uu_slabtop",
- "uucore 0.5.0",
+ "uucore",
 ]
 
 [[package]]
@@ -2379,7 +2379,7 @@ version = "0.0.1"
 dependencies = [
  "chrono",
  "clap",
- "uucore 0.5.0",
+ "uucore",
 ]
 
 [[package]]
@@ -2387,33 +2387,7 @@ name = "uu_watch"
 version = "0.0.1"
 dependencies = [
  "clap",
- "uucore 0.5.0",
-]
-
-[[package]]
-name = "uucore"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5eddd390f3fdef74f104a948559e6de29203f60f8f563c8c9f528cd4c88ee78"
-dependencies = [
- "chrono",
- "clap",
- "dns-lookup",
- "fluent",
- "fluent-bundle",
- "fluent-syntax",
- "jiff",
- "libc",
- "nix 0.30.1",
- "os_display",
- "phf 0.13.1",
- "thiserror 2.0.18",
- "time",
- "unic-langid",
- "utmp-classic",
- "uucore_procs 0.5.0",
- "wild",
- "windows-sys 0.61.2",
+ "uucore",
 ]
 
 [[package]]
@@ -2434,18 +2408,10 @@ dependencies = [
  "thiserror 2.0.18",
  "time",
  "unic-langid",
- "uucore_procs 0.6.0",
+ "utmp-classic",
+ "uucore_procs",
  "wild",
-]
-
-[[package]]
-name = "uucore_procs"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "47148309a1f7a989d165dabbbc7f2bf156d7ff6affe7d69c1c5bfb822e663ae6"
-dependencies = [
- "proc-macro2",
- "quote",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2484,7 +2450,7 @@ dependencies = [
  "regex",
  "rlimit",
  "tempfile",
- "uucore 0.6.0",
+ "uucore",
  "xattr",
 ]
 
