@@ -13,9 +13,7 @@ use std::{process, time::Duration};
 use uucore::error::UResult;
 #[cfg(target_os = "linux")]
 use uucore::libc::{sysconf, _SC_CLK_TCK};
-use uucore::uptime::{
-    get_formatted_loadavg, get_formatted_nusers, get_formatted_time, get_uptime, UptimeError,
-};
+use uucore::uptime::{get_formatted_time, get_loadavg, get_nusers, get_uptime, UptimeError};
 #[cfg(target_os = "linux")]
 use uucore::utmpx::Utmpx;
 
@@ -208,6 +206,33 @@ pub fn format_uptime_procps(up_secs: i64) -> UResult<String> {
         format!("{up_mins} min")
     };
     Ok(format!("{day_str}{hour_min_str}"))
+}
+
+#[inline]
+pub fn format_nusers(nusers: usize) -> String {
+    match nusers {
+        0 => "0 user".to_string(),
+        1 => "1 user".to_string(),
+        _ => format!("{} users", nusers),
+    }
+}
+
+#[inline]
+pub fn get_formatted_nusers() -> String {
+    #[cfg(not(target_os = "openbsd"))]
+    return format_nusers(get_nusers());
+
+    #[cfg(target_os = "openbsd")]
+    format_nusers(get_nusers("/var/run/utmp"))
+}
+
+#[inline]
+pub fn get_formatted_loadavg() -> UResult<String> {
+    let loadavg = get_loadavg()?;
+    Ok(format!(
+        "load average: {:.2}, {:.2}, {:.2}",
+        loadavg.0, loadavg.1, loadavg.2
+    ))
 }
 
 #[inline]
@@ -406,7 +431,7 @@ mod tests {
         assert_eq!(
             format_time(pre_formatted).unwrap(),
             td.format("%a%d").to_string()
-        )
+        );
     }
 
     #[test]
@@ -431,7 +456,7 @@ mod tests {
         assert_eq!(
             fs::read_to_string(path).unwrap(),
             fetch_cmdline(pid).unwrap()
-        )
+        );
     }
 
     #[test]
@@ -441,7 +466,7 @@ mod tests {
         let f = fs::read_to_string(path).unwrap();
         let stat: Vec<&str> = f.split_whitespace().collect();
         let term_num = stat[6];
-        assert_eq!(fetch_terminal_number(pid).unwrap().to_string(), term_num)
+        assert_eq!(fetch_terminal_number(pid).unwrap().to_string(), term_num);
     }
 
     #[test]
@@ -455,7 +480,7 @@ mod tests {
         assert_eq!(
             fetch_pcpu_time(pid).unwrap(),
             (utime + stime) / get_clock_tick() as f64
-        )
+        );
     }
 
     #[test]
@@ -477,6 +502,6 @@ mod tests {
             let result = format_uptime_procps(up_secs.0).unwrap();
 
             assert_eq!(result, up_secs.1);
-        })
+        });
     }
 }

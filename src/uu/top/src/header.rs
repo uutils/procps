@@ -8,8 +8,8 @@ use crate::platform::*;
 use crate::tui::stat::{CpuValueMode, TuiStat};
 use bytesize::ByteSize;
 use uu_vmstat::{CpuLoad, CpuLoadRaw};
-use uu_w::get_formatted_uptime_procps;
-use uucore::uptime::{get_formatted_loadavg, get_formatted_nusers, get_formatted_time};
+use uu_w::{get_formatted_loadavg, get_formatted_nusers, get_formatted_uptime_procps};
+use uucore::uptime::get_formatted_time;
 
 pub(crate) struct Header {
     pub uptime: Uptime,
@@ -113,7 +113,7 @@ pub(crate) fn format_memory(memory_b: u64, unit: u64) -> f64 {
 fn user() -> String {
     #[cfg(target_os = "linux")]
     if let Ok(nusers) = get_nusers_systemd() {
-        return uucore::uptime::format_nusers(nusers);
+        return uu_w::format_nusers(nusers);
     }
 
     get_formatted_nusers()
