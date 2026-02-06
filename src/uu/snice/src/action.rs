@@ -5,8 +5,6 @@
 
 use crate::ask_user;
 use crate::priority::Priority;
-use rustix::io::Errno;
-use rustix::process::{getpriority_process, setpriority_process, Pid};
 use std::{
     fmt::{self, Display, Formatter},
     sync::OnceLock,
@@ -111,7 +109,11 @@ impl Display for ActionResult {
 /// Set priority of process.
 ///
 /// But we don't know if pid is an existing process. Returns [None] if the process doesn't exist
+#[cfg(unix)]
 fn set_priority(pid: u32, prio: &Priority, take_action: bool) -> Option<ActionResult> {
+    use rustix::io::Errno;
+    use rustix::process::{getpriority_process, setpriority_process, Pid};
+
     let pid = Pid::from_raw(i32::try_from(pid).ok()?);
     let process_priority = getpriority_process(pid);
 
@@ -145,6 +147,12 @@ fn set_priority(pid: u32, prio: &Priority, take_action: bool) -> Option<ActionRe
         Err(_) => Some(ActionResult::PermissionDenied),
         Ok(_) => Some(ActionResult::Success),
     }
+}
+
+// TODO: rustix doesn't support the process feature on Windows
+#[cfg(not(unix))]
+fn set_priority(_pid: u32, _prio: &Priority, _take_action: bool) -> Option<ActionResult> {
+    None
 }
 
 pub(crate) fn perform_action(
