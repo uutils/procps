@@ -5,6 +5,8 @@
 
 use crate::ask_user;
 use crate::priority::Priority;
+use rustix::io::Errno;
+use rustix::process::{getpriority_process, setpriority_process, Pid};
 use std::{
     fmt::{self, Display, Formatter},
     sync::OnceLock,
@@ -108,62 +110,41 @@ impl Display for ActionResult {
 
 /// Set priority of process.
 ///
-/// But we don't know if the process of pid are exist, if [None], the process doesn't exist
-#[cfg(target_os = "linux")]
+/// But we don't know if pid is an existing process. Returns [None] if the process doesn't exist
 fn set_priority(pid: u32, prio: &Priority, take_action: bool) -> Option<ActionResult> {
-    use nix::errno::Errno;
-    use uucore::libc::{getpriority, setpriority, PRIO_PROCESS};
+    let pid = Pid::from_raw(i32::try_from(pid).ok()?);
+    let process_priority = getpriority_process(pid);
 
-    // Very dirty.
-    let current_priority = {
-        // Clear errno
-        Errno::clear();
-
-        let prio = unsafe { getpriority(PRIO_PROCESS, pid) };
-        // prio == -1 might be error.
-        if prio == -1 && Errno::last() != Errno::UnknownErrno {
-            // Must clear errno.
-            Errno::clear();
-
-            // I don't know but, just considering it just caused by permission.
-            // https://manpages.debian.org/bookworm/manpages-dev/getpriority.2.en.html#ERRORS
-            return match Errno::last() {
-                Errno::ESRCH => Some(ActionResult::PermissionDenied),
-                _ => None,
-            };
+    // Expected errors:
+    // https://man7.org/linux/man-pages/man2/setpriority.2.html
+    // https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/setpriority.2.html
+    // ESRCH: no matching process
+    // EACCES: no permission to lower priority
+    // EPERM: wrong user for process
+    let current_priority = match process_priority {
+        Err(Errno::SRCH) => return None,
+        Err(_) => {
+            return Some(ActionResult::PermissionDenied);
         }
-        prio
+        Ok(priority) => priority,
     };
 
     if !take_action {
         return Some(ActionResult::Success);
     }
 
-    let prio = match prio {
+    let new_priority = match prio {
         Priority::Increase(prio) => current_priority + *prio as i32,
         Priority::Decrease(prio) => current_priority - *prio as i32,
         Priority::To(prio) => *prio as i32,
     };
 
-    // result only 0, -1
-    Errno::clear();
-    let result = unsafe { setpriority(PRIO_PROCESS, pid, prio) };
-
-    // https://manpages.debian.org/bookworm/manpages-dev/setpriority.2.en.html#ERRORS
-    if result == -1 {
-        match Errno::last() {
-            Errno::ESRCH => Some(ActionResult::PermissionDenied),
-            _ => None,
-        }
-    } else {
-        Some(ActionResult::Success)
+    let result = setpriority_process(pid, new_priority);
+    match result {
+        Err(Errno::SRCH) => None,
+        Err(_) => Some(ActionResult::PermissionDenied),
+        Ok(_) => Some(ActionResult::Success),
     }
-}
-
-// TODO: Implemented this on other platform
-#[cfg(not(target_os = "linux"))]
-fn set_priority(_pid: u32, _prio: &Priority, _take_action: bool) -> Option<ActionResult> {
-    None
 }
 
 pub(crate) fn perform_action(
