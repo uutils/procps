@@ -8,20 +8,15 @@ use std::collections::HashSet;
 use uu_pgrep::process::{walk_process, ProcessInformation, RunState, Teletype};
 use uucore::error::UResult;
 
-#[cfg(target_family = "unix")]
-use nix::errno::Errno;
-
 // TODO: Temporary add to this file, this function will add to uucore.
 #[cfg(not(target_os = "redox"))]
 #[cfg(target_family = "unix")]
 fn getsid(pid: i32) -> Option<i32> {
-    unsafe {
-        let result = uucore::libc::getsid(pid);
-        if Errno::last() == Errno::UnknownErrno {
-            Some(result)
-        } else {
-            None
-        }
+    use rustix::process::Pid;
+
+    match rustix::process::getsid(Pid::from_raw(pid)) {
+        Ok(sid) => Some(sid.as_raw_nonzero().get()),
+        Err(_) => None,
     }
 }
 
