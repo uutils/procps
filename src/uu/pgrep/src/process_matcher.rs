@@ -6,14 +6,10 @@
 // Common process matcher logic shared by pgrep, pkill and pidwait
 
 use std::hash::Hash;
-#[cfg(unix)]
-use std::os::fd::AsRawFd;
 use std::{collections::HashSet, io};
 
 use clap::{arg, Arg, ArgAction, ArgMatches};
 use regex::Regex;
-#[cfg(unix)]
-use uucore::libc::{getpgrp, getsid};
 #[cfg(unix)]
 use uucore::{
     display::Quotable,
@@ -91,24 +87,12 @@ pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
             .get_many::<u32>("group")
             .map(|ids| ids.cloned().collect()),
         pgroup: matches.get_many::<u64>("pgroup").map(|xs| {
-            xs.map(|pg| {
-                if *pg == 0 {
-                    unsafe { getpgrp() as u64 }
-                } else {
-                    *pg
-                }
-            })
-            .collect()
+            xs.map(|pg| if *pg == 0 { getpgrp() } else { *pg })
+                .collect()
         }),
         session: matches.get_many::<u64>("session").map(|xs| {
-            xs.map(|sid| {
-                if *sid == 0 {
-                    unsafe { getsid(0) as u64 }
-                } else {
-                    *sid
-                }
-            })
-            .collect()
+            xs.map(|sid| if *sid == 0 { getsid(0) } else { *sid })
+                .collect()
         }),
         cgroup: matches
             .get_many::<String>("cgroup")
@@ -442,20 +426,31 @@ pub fn grp2gid(_name: &str) -> io::Result<u32> {
     ))
 }
 
-/// # Safety
-///
 /// Dummy implementation for unsupported platforms.
-#[cfg(not(unix))]
-pub unsafe fn getpgrp() -> u32 {
-    panic!("unsupported on this platform");
+pub fn getpgrp() -> u64 {
+    #[cfg(unix)]
+    {
+        rustix::process::getpgrp().as_raw_nonzero().get() as u64
+    }
+    #[cfg(not(unix))]
+    {
+        0
+    }
 }
 
-/// # Safety
-///
 /// Dummy implementation for unsupported platforms.
-#[cfg(not(unix))]
-pub unsafe fn getsid(_pid: u32) -> u32 {
-    panic!("unsupported on this platform");
+pub fn getsid(_pid: u32) -> u64 {
+    #[cfg(unix)]
+    {
+        rustix::process::getsid(None)
+            .ok()
+            .map(|pid: rustix::process::Pid| pid.as_raw_nonzero().get() as u64)
+            .unwrap_or(0)
+    }
+    #[cfg(not(unix))]
+    {
+        0
+    }
 }
 
 fn parse_uid_or_username(uid_or_username: &str) -> io::Result<u32> {
@@ -493,26 +488,27 @@ fn test_parse_pidfile_content_valid() {
 
 #[cfg(unix)]
 fn is_locked(file: &std::fs::File) -> bool {
-    // On Linux, fcntl and flock locks are independent, so need to check both
-    let mut flock_struct = uucore::libc::flock {
-        l_type: uucore::libc::F_RDLCK as uucore::libc::c_short,
-        l_whence: uucore::libc::SEEK_SET as uucore::libc::c_short,
-        l_start: 0,
-        l_len: 0,
-        l_pid: 0,
-    };
+    use rustix::fs::FlockOperation;
+    use std::os::fd::{AsRawFd, BorrowedFd};
+
     let fd = file.as_raw_fd();
-    let result = unsafe { uucore::libc::fcntl(fd, uucore::libc::F_GETLK, &mut flock_struct) };
-    if result == 0 && flock_struct.l_type != uucore::libc::F_UNLCK as uucore::libc::c_short {
-        return true;
-    }
+    // Safety: The file descriptor is valid for the duration of this function
+    let borrowed_fd = unsafe { BorrowedFd::borrow_raw(fd) };
 
-    let result = unsafe { uucore::libc::flock(fd, uucore::libc::LOCK_SH | uucore::libc::LOCK_NB) };
-    if result == -1 && std::io::Error::last_os_error().kind() == std::io::ErrorKind::WouldBlock {
-        return true;
+    // Try to acquire a shared lock without blocking
+    match rustix::fs::flock(borrowed_fd, FlockOperation::NonBlockingLockShared) {
+        Ok(_) => {
+            let _ = rustix::fs::flock(borrowed_fd, FlockOperation::Unlock);
+            false
+        }
+        Err(e)
+            if e.kind() == io::ErrorKind::WouldBlock
+                || e.kind() == io::ErrorKind::PermissionDenied =>
+        {
+            true
+        }
+        Err(_) => false,
     }
-
-    false
 }
 
 #[cfg(not(unix))]
