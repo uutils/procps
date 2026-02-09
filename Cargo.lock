@@ -2315,8 +2315,8 @@ name = "uu_snice"
 version = "0.0.1"
 dependencies = [
  "clap",
- "nix 0.30.1",
  "prettytable-rs",
+ "rustix",
  "sysinfo",
  "thiserror 2.0.18",
  "uu_pgrep",

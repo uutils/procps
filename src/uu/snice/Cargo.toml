@@ -16,10 +16,10 @@ workspace = true
 [dependencies]
 uucore = { workspace = true, features = ["signals", "libc"] }
 clap = { workspace = true }
-nix = { workspace = true }
 prettytable-rs = { workspace = true }
 thiserror = { workspace = true }
 sysinfo = { workspace = true }
+rustix = { workspace = true }
 
 uu_pgrep = { path = "../pgrep" }
 
