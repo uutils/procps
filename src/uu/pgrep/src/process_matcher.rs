@@ -161,18 +161,19 @@ pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
         ));
     }
 
-    if !settings.full && pattern.len() > 15 {
-        let msg = format!("pattern that searches for process name longer than 15 characters will result in zero matches\n\
-                           Try `{} -f' option to match against the complete command line.", uucore::util_name());
-        return Err(USimpleError::new(1, msg));
-    }
-
     Ok(settings)
 }
 
 pub fn find_matching_pids(settings: &Settings) -> UResult<Vec<ProcessInformation>> {
     let mut pids = collect_matched_pids(settings)?;
+
     if pids.is_empty() {
+        if !settings.full && settings.regex.as_str().len() > 15 {
+            let msg = format!("pattern that searches for process name longer than 15 characters will result in zero matches\n\
+                            Try `{} -f' option to match against the complete command line.", uucore::util_name());
+            return Err(USimpleError::new(1, msg));
+        }
+
         uucore::error::set_exit_code(1);
         Ok(pids)
     } else {
