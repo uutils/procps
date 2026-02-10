@@ -2277,8 +2277,8 @@ version = "0.0.1"
 dependencies = [
  "chrono",
  "clap",
- "nix 0.30.1",
  "prettytable-rs",
+ "rustix",
  "uu_pgrep",
  "uucore",
 ]

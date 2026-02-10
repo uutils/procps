@@ -14,11 +14,11 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-uucore = { workspace = true, features = ["utmpx", "libc"] }
+uucore = { workspace = true, features = ["utmpx"] }
 clap = { workspace = true }
 chrono = { workspace = true, default-features = false, features = ["clock"] }
 prettytable-rs = { workspace = true }
-nix = { workspace = true }
+rustix = { workspace = true, features = ["fs", "process", "std", "termios"] }
 
 uu_pgrep = { path = "../pgrep" }
 
