@@ -317,20 +317,11 @@ fn pr(_pid: u32, _stat: Stat) -> Box<dyn Column> {
 
 #[cfg(not(target_os = "windows"))]
 fn get_nice(pid: u32) -> i32 {
-    use nix::errno::Errno;
-    use uucore::libc::{getpriority, PRIO_PROCESS};
+    use rustix::process::{getpriority_process, Pid};
 
     // this is nice value, not priority value
-    let result = unsafe { getpriority(PRIO_PROCESS, pid) };
-
-    let result = if Errno::last() == Errno::UnknownErrno {
-        result
-    } else {
-        Errno::clear();
-        0
-    };
-
-    result as i32
+    let pid = Pid::from_raw(pid as i32);
+    getpriority_process(pid).unwrap_or(0)
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -381,7 +372,7 @@ fn shr(pid: u32, _stat: Stat) -> Box<dyn Column> {
     let content = read_to_string(file).unwrap();
     let values = content.split_whitespace();
     if let Some(shared) = values.collect::<Vec<_>>().get(2) {
-        let page_size = unsafe { uucore::libc::sysconf(uucore::libc::_SC_PAGESIZE) };
+        let page_size = rustix::param::page_size();
         MemValue::new_boxed(shared.parse::<u64>().unwrap() * page_size as u64)
     } else {
         MemValue::new_boxed(0)

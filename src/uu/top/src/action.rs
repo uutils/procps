@@ -5,15 +5,11 @@
 
 #[cfg(target_os = "linux")]
 pub(crate) fn renice(pid: u32, nice_value: i32) -> uucore::error::UResult<()> {
+    use rustix::process::{setpriority_process, Pid};
     use uucore::error::USimpleError;
-    use uucore::libc::{setpriority, PRIO_PROCESS};
 
-    let result = unsafe { setpriority(PRIO_PROCESS, pid, nice_value) };
-    if result == -1 {
-        Err(USimpleError::new(0, "Permission Denied"))
-    } else {
-        Ok(())
-    }
+    let pid = Pid::from_raw(pid as i32);
+    setpriority_process(pid, nice_value).map_err(|_| USimpleError::new(0, "Permission Denied"))
 }
 
 #[cfg(unix)]

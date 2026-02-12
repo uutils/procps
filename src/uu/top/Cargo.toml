@@ -22,6 +22,7 @@ ratatui = { workspace = true, features = ["crossterm"] }
 sysinfo = { workspace = true }
 chrono = { workspace = true }
 bytesize = { workspace = true }
+rustix = { workspace = true }
 
 uu_vmstat = { path = "../vmstat" }
 uu_w = { path = "../w" }
