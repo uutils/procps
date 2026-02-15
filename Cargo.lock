@@ -2380,8 +2380,8 @@ name = "uu_pkill"
 version = "0.0.1"
 dependencies = [
  "clap",
- "nix 0.30.1",
  "regex",
+ "rustix",
  "uu_pgrep",
  "uucore",
  "walkdir",
