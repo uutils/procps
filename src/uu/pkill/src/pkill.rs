@@ -6,9 +6,9 @@
 // Pid utils
 use clap::{arg, crate_version, value_parser, Command};
 #[cfg(unix)]
-use nix::{
-    sys::signal::{self, Signal},
-    unistd::Pid,
+use rustix::{
+    io::Errno,
+    process::{kill_process, test_kill_process, Pid, Signal},
 };
 #[cfg(unix)]
 use std::io::Error;
@@ -38,15 +38,15 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     #[cfg(unix)]
     let sig_name = signal_name_by_value(settings.signal);
     // Signal does not support converting from EXIT
-    // Instead, nix::signal::kill expects Option::None to properly handle EXIT
+    // Instead, rustix uses test_kill_process to properly handle EXIT
     #[cfg(unix)]
     let sig: Option<Signal> = if sig_name.is_some_and(|name| name == "EXIT") {
         None
     } else {
-        let sig = (settings.signal as i32)
-            .try_into()
-            .map_err(|e| Error::from_raw_os_error(e as i32))?;
-        Some(sig)
+        Some(
+            Signal::from_named_raw(settings.signal as i32)
+                .ok_or_else(|| Error::from_raw_os_error(Errno::INVAL.raw_os_error()))?,
+        )
     };
 
     // Collect pids
@@ -82,39 +82,20 @@ fn handle_obsolete(args: &mut [String]) {
     }
 }
 
-// Not contains in libc
-#[cfg(target_os = "linux")]
-extern "C" {
-    fn sigqueue(
-        pid: uucore::libc::pid_t,
-        sig: uucore::libc::c_int,
-        val: uucore::libc::sigval,
-    ) -> uucore::libc::c_int;
-}
-
 #[cfg(unix)]
 #[allow(unused_variables)]
 fn kill(pids: &Vec<ProcessInformation>, sig: Option<Signal>, queue: Option<u32>, echo: bool) {
     for pid in pids {
         #[cfg(target_os = "linux")]
-        let result = if let Some(queue) = queue {
-            let v = unsafe {
-                sigqueue(
-                    pid.pid as i32,
-                    sig.map_or(0, |s| s as uucore::libc::c_int),
-                    uucore::libc::sigval {
-                        sival_ptr: queue as usize as *mut uucore::libc::c_void,
-                    },
-                )
-            };
-            nix::errno::Errno::result(v).map(drop)
+        let result = if queue.is_some() {
+            Err(Errno::NOTSUP)
         } else {
-            signal::kill(Pid::from_raw(pid.pid as i32), sig)
+            send_signal(pid.pid, sig)
         };
         #[cfg(not(target_os = "linux"))]
-        let result = signal::kill(Pid::from_raw(pid.pid as i32), sig);
+        let result = send_signal(pid.pid, sig);
         if let Err(e) = result {
-            show!(Error::from_raw_os_error(e as i32)
+            show!(Error::from_raw_os_error(e.raw_os_error())
                 .map_err_context(|| format!("killing pid {} failed", pid.pid)));
         } else if echo {
             println!(
@@ -123,6 +104,16 @@ fn kill(pids: &Vec<ProcessInformation>, sig: Option<Signal>, queue: Option<u32>,
                 pid.pid
             );
         }
+    }
+}
+
+#[cfg(unix)]
+fn send_signal(pid: usize, sig: Option<Signal>) -> Result<(), Errno> {
+    let pid = Pid::from_raw(pid as i32).ok_or(Errno::INVAL)?;
+    if let Some(sig) = sig {
+        kill_process(pid, sig)
+    } else {
+        test_kill_process(pid)
     }
 }
 
