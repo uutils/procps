@@ -120,7 +120,7 @@ impl Teletype {
 
     #[cfg(target_os = "linux")]
     fn from_tty_nr_impl(tty_nr: u64, drivers: &[TtyDriverEntry]) -> Self {
-        use uucore::libc::{major, minor};
+        use rustix::fs::{major, minor};
 
         if tty_nr == 0 {
             return Self::Unknown;
@@ -843,7 +843,7 @@ unknown              /dev/tty        4 1-63 console"#;
         ];
 
         for (major, minor, expected) in test_cases {
-            let tty_nr = uucore::libc::makedev(major, minor);
+            let tty_nr = rustix::fs::makedev(major, minor);
             let result = Teletype::from_tty_nr_impl(tty_nr, &parsed_entries);
             assert_eq!(result, expected);
         }
@@ -904,14 +904,14 @@ unknown              /dev/tty        4 1-63 console"#;
     #[test]
     #[cfg(target_os = "linux")]
     fn test_thread_ids() {
-        let main_tid = unsafe { uucore::libc::gettid() };
+        let main_tid = rustix::thread::gettid().as_raw_nonzero().get() as u64;
         std::thread::spawn(move || {
             let mut pid_entry = ProcessInformation::current_process_info().unwrap();
             let thread_ids = pid_entry.thread_ids();
 
             assert!(thread_ids.contains(&(main_tid as usize)));
 
-            let new_thread_tid = unsafe { uucore::libc::gettid() };
+            let new_thread_tid = rustix::thread::gettid().as_raw_nonzero().get() as u64;
             assert!(thread_ids.contains(&(new_thread_tid as usize)));
         })
         .join()
@@ -939,14 +939,24 @@ unknown              /dev/tty        4 1-63 console"#;
         let mut pid_entry = ProcessInformation::current_process_info().unwrap();
         assert_eq!(
             pid_entry.ppid().unwrap(),
-            unsafe { uucore::libc::getppid() } as u64
+            rustix::process::getppid()
+                .map(|pid| pid.as_raw_nonzero().get() as u64)
+                .unwrap_or(0)
         );
         assert_eq!(
             pid_entry.pgid().unwrap(),
-            unsafe { uucore::libc::getpgid(0) } as u64
+            rustix::process::getpgid(None)
+                .ok()
+                .map(|pid| pid.as_raw_nonzero().get() as u64)
+                .unwrap_or(0)
         );
-        assert_eq!(pid_entry.sid().unwrap(), unsafe { uucore::libc::getsid(0) }
-            as u64);
+        assert_eq!(
+            pid_entry.sid().unwrap(),
+            rustix::process::getsid(None)
+                .ok()
+                .map(|pid| pid.as_raw_nonzero().get() as u64)
+                .unwrap_or(0)
+        );
     }
 
     #[test]
