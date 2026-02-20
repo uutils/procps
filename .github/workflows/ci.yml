@@ -4,6 +4,7 @@ name: Basic CI
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
 
 jobs:
   check:
@@ -14,7 +15,6 @@ jobs:
         os: [ubuntu-latest, macOS-latest, windows-latest]
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
       - if: ${{ contains(matrix.os, 'ubuntu') }}
         run: |
           sudo apt-get update -y
@@ -29,7 +29,6 @@ jobs:
         os: [ubuntu-latest, macOS-latest, windows-latest]
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
       - if: ${{ contains(matrix.os, 'ubuntu') }}
         run: |
           sudo apt-get update -y
@@ -44,7 +43,6 @@ jobs:
         os: [ubuntu-latest, macOS-latest, windows-latest]
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
       - if: ${{ contains(matrix.os, 'ubuntu') }}
         run: |
           sudo apt-get update -y
@@ -53,14 +51,17 @@ jobs:
         shell: bash
         run: |
           ## TODO: add hugetop
+          set -e
           programs="free pgrep pidof pidwait pkill pmap ps pwdx skill slabtop snice sysctl tload top vmstat w watch"
           for program in $programs; do
             echo "Building and testing $program"
-            cargo test -p "uu_$program" || exit 1
+            cargo test -p "uu_$program"
           done
 
   coverage:
     name: Code Coverage
+    env:
+      RUSTC_BOOTSTRAP: 1
     runs-on: ${{ matrix.job.os }}
     strategy:
       fail-fast: true
@@ -77,8 +78,6 @@ jobs:
       run: |
         ## VARs setup
         outputs() { step_id="vars"; for var in "$@" ; do echo steps.${step_id}.outputs.${var}="${!var}"; echo "${var}=${!var}" >> $GITHUB_OUTPUT; done; }
-        # toolchain
-        TOOLCHAIN="nightly" ## default to "nightly" toolchain (required for certain required unstable compiler flags) ## !maint: refactor when stable channel has needed support
         # * specify gnu-type TOOLCHAIN for windows; `grcov` requires gnu-style code coverage data files
         case ${{ matrix.job.os }} in windows-*) TOOLCHAIN="$TOOLCHAIN-x86_64-pc-windows-gnu" ;; esac;
         # * use requested TOOLCHAIN if specified
@@ -90,7 +89,7 @@ jobs:
         outputs CODECOV_FLAGS
 
     - name: rust toolchain ~ install
-      uses: dtolnay/rust-toolchain@nightly
+      uses: dtolnay/rust-toolchain@stable
       with:
         components: llvm-tools-preview
     - if: ${{ contains(matrix.job.os, 'ubuntu') }}
@@ -109,9 +108,9 @@ jobs:
       id: build_grcov
       shell: bash
       run: |
-        git clone https://github.com/mozilla/grcov.git ~/grcov/
+        git clone --depth=1 https://github.com/mozilla/grcov.git ~/grcov/
         cd ~/grcov
-        cargo install --path .
+        cargo install --path . --locked
         cd -
 # Uncomment when the upstream issue
 # https://github.com/mozilla/grcov/issues/849 is fixed
