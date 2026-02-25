@@ -61,7 +61,7 @@ crossterm = "0.29.0"
 ctor = "0.6.0"
 dirs = "6.0.0"
 jiff = "0.2.15"
-nix = { version = "0.30", default-features = false, features = ["process"] }
+nix = { version = "0.31", default-features = false, features = ["process"] }
 phf = "0.13.1"
 phf_codegen = "0.13.0"
 prettytable-rs = "0.10.0"
