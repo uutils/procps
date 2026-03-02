@@ -151,8 +151,20 @@ pub fn get_match_settings(matches: &ArgMatches) -> UResult<Settings> {
 pub fn find_matching_pids(settings: &Settings) -> UResult<Vec<ProcessInformation>> {
     let mut pids = collect_matched_pids(settings)?;
 
+    let is_long_match = if settings.exact {
+        settings
+            .regex
+            .as_str()
+            .trim_matches('^')
+            .trim_matches('$')
+            .len()
+            > 15
+    } else {
+        settings.regex.as_str().len() > 15
+    };
+
     if pids.is_empty() {
-        if !settings.full && settings.regex.as_str().len() > 15 {
+        if !settings.full && is_long_match {
             let msg = format!("pattern that searches for process name longer than 15 characters will result in zero matches\n\
                             Try `{} -f' option to match against the complete command line.", uucore::util_name());
             return Err(USimpleError::new(1, msg));
