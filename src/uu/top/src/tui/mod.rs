@@ -552,11 +552,7 @@ impl Widget for Tui<'_> {
     fn render(mut self, area: Rect, buf: &mut Buffer) {
         self.stat.list_offset = min(
             self.stat.list_offset,
-            self.proc_list
-                .collected
-                .len()
-                .checked_sub(1)
-                .unwrap_or_default(),
+            self.proc_list.collected.len().saturating_sub(1),
         );
         let layout = Layout::new(
             Direction::Vertical,
