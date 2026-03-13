@@ -1535,6 +1535,7 @@ dependencies = [
  "uu_sysctl",
  "uu_tload",
  "uu_top",
+ "uu_uuproc",
  "uu_vmstat",
  "uu_w",
  "uu_watch",
@@ -2485,6 +2486,17 @@ dependencies = [
  "uu_w",
  "uucore",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "uu_uuproc"
+version = "0.0.1"
+dependencies = [
+ "libc",
+ "regex",
+ "uucore",
+ "walkdir",
+ "winapi",
 ]
 
 [[package]]
