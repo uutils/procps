@@ -654,7 +654,6 @@ fn test_pidfile_fcntl_locked() {
 
     // spawn a flock process that locks the file
     let mut flock_process = Command::new("flock")
-        .arg("--fcntl")
         .arg(temp_file.path())
         .arg("sleep")
         .arg("2")
@@ -717,4 +716,32 @@ fn test_env_key_value_match() {
 fn test_env_multiple_filters() {
     // Multiple filters use OR logic
     new_ucmd!().arg("--env=PATH,NONEXISTENT").succeeds();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_exact_long_pattern_no_match() {
+    new_ucmd!()
+        .arg("-x")
+        .arg("12345678901234")
+        .fails()
+        .code_is(1);
+}
+
+#[test]
+fn test_pattern_longer_than_15_characters() {
+    new_ucmd!()
+        .arg("1234567890123456")
+        .fails()
+        .code_is(1)
+        .stderr_contains("longer than 15 characters");
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_pool_workqueue_release() {
+    new_ucmd!()
+        .arg("pool_workqueue_release")
+        .succeeds()
+        .stdout_matches(&Regex::new(MULTIPLE_PIDS).unwrap());
 }
