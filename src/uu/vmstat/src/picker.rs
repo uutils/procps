@@ -354,7 +354,10 @@ fn get_memory_info(
     }
 
     let buffer = with_unit(memory_info.buffers.as_u64(), matches);
-    let cache = with_unit(memory_info.cached.as_u64(), matches);
+    let cache = with_unit(
+        (memory_info.cached + memory_info.s_reclaimable).as_u64(),
+        matches,
+    );
 
     vec![
         (len, format!("{swap_used}")),
