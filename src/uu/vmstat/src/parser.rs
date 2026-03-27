@@ -204,6 +204,7 @@ pub struct Meminfo {
     pub mem_available: bytesize::ByteSize,
     pub buffers: bytesize::ByteSize,
     pub cached: bytesize::ByteSize,
+    pub s_reclaimable: bytesize::ByteSize,
     pub swap_cached: bytesize::ByteSize,
     pub active: bytesize::ByteSize,
     pub inactive: bytesize::ByteSize,
@@ -226,6 +227,8 @@ impl Meminfo {
             bytesize::ByteSize::from_str(proc_map.get("MemAvailable").unwrap()).unwrap();
         let buffers = bytesize::ByteSize::from_str(proc_map.get("Buffers").unwrap()).unwrap();
         let cached = bytesize::ByteSize::from_str(proc_map.get("Cached").unwrap()).unwrap();
+        let s_reclaimable =
+            bytesize::ByteSize::from_str(proc_map.get("SReclaimable").unwrap()).unwrap();
         let swap_cached =
             bytesize::ByteSize::from_str(proc_map.get("SwapCached").unwrap()).unwrap();
         let active = bytesize::ByteSize::from_str(proc_map.get("Active").unwrap()).unwrap();
@@ -238,6 +241,7 @@ impl Meminfo {
             mem_available,
             buffers,
             cached,
+            s_reclaimable,
             swap_cached,
             active,
             inactive,
