@@ -1541,6 +1541,7 @@ dependencies = [
  "tempfile",
  "textwrap",
  "uu_free",
+ "uu_hugetop",
  "uu_pgrep",
  "uu_pidof",
  "uu_pidwait",
@@ -2361,6 +2362,15 @@ dependencies = [
  "sysinfo",
  "uucore",
  "windows",
+]
+
+[[package]]
+name = "uu_hugetop"
+version = "0.0.1"
+dependencies = [
+ "clap",
+ "tempfile",
+ "uucore",
 ]
 
 [[package]]

@@ -1,0 +1,28 @@
+[package]
+name = "uu_hugetop"
+description = "hugetop ~ (uutils) Report hugepage usage for the system and processes"
+repository = "https://github.com/uutils/procps/tree/main/src/uu/hugetop"
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+clap = { workspace = true }
+uucore = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[lib]
+path = "src/hugetop.rs"
+
+[[bin]]
+name = "hugetop"
+path = "src/main.rs"

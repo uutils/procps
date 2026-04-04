@@ -13,6 +13,7 @@ Provides command line and full screen utilities for browsing procfs, a "pseudo" 
 
 Ongoing:
 * `free`: Shows the amount of free and used memory in the system.
+* `hugetop`: Report hugepage usage of processes and the system as a whole.
 * `pgrep`: Searches for processes based on name and other attributes.
 * `pidof`: Find the process ID of a running program.
 * `pidwait`: Waits for a specific process to terminate.
@@ -29,9 +30,6 @@ Ongoing:
 * `vmstat`: Reports information about processes, memory, paging, block IO, traps, and CPU activity.
 * `w`: Shows who is logged on and what they are doing.
 * `watch`: Executes a program periodically, showing output fullscreen.
-
-TODO:
-* `hugetop`: Report hugepage usage of processes and the system as a whole.
 
 Elsewhere:
 

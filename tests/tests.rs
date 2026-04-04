@@ -23,6 +23,10 @@ mod test_pwdx;
 #[path = "by-util/test_free.rs"]
 mod test_free;
 
+#[cfg(feature = "hugetop")]
+#[path = "by-util/test_hugetop.rs"]
+mod test_hugetop;
+
 #[cfg(feature = "w")]
 #[path = "by-util/test_w.rs"]
 mod test_w;
