@@ -386,22 +386,12 @@ dependencies = [
 
 [[package]]
 name = "ctor"
-version = "0.6.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "424e0138278faeb2b401f174ad17e715c829512d74f3d1e81eb43365c2e0590e"
-dependencies = [
- "ctor-proc-macro",
- "dtor 0.1.1",
-]
-
-[[package]]
-name = "ctor"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "352d39c2f7bef1d6ad73db6f5160efcaed66d94ef8c6c573a8410c00bf909a98"
 dependencies = [
  "ctor-proc-macro",
- "dtor 0.3.0",
+ "dtor",
 ]
 
 [[package]]
@@ -569,15 +559,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4b8a88685455ed29a21542a33abd9cb6510b6b129abadabdcef0f4c55bc8f61"
 dependencies = [
  "litrs",
-]
-
-[[package]]
-name = "dtor"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "404d02eeb088a82cfd873006cb713fe411306c7d182c344905e101fb1167d301"
-dependencies = [
- "dtor-proc-macro",
 ]
 
 [[package]]
@@ -1177,6 +1158,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "nix"
+version = "0.31.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d6d0705320c1e6ba1d912b5e37cf18071b6c2e9b7fa8215a1e8a7651966f5d3"
+dependencies = [
+ "bitflags 2.10.0",
+ "cfg-if",
+ "cfg_aliases",
+ "libc",
+]
+
+[[package]]
 name = "nom"
 version = "7.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1470,15 +1463,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "439ee305def115ba05938db6eb1644ff94165c5ab5e9420d1c1bcedbba909391"
 
 [[package]]
-name = "ppv-lite86"
-version = "0.2.21"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85eae3c4ed2f50dcfe72643da4befc30deadb458a9b590d720cde2f2b1e97da9"
-dependencies = [
- "zerocopy 0.8.27",
-]
-
-[[package]]
 name = "pretty_assertions"
 version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1529,7 +1513,7 @@ dependencies = [
  "clap",
  "clap_complete",
  "clap_mangen",
- "ctor 0.8.0",
+ "ctor",
  "jiff",
  "phf 0.13.1",
  "phf_codegen 0.13.1",
@@ -1558,7 +1542,7 @@ dependencies = [
  "uu_vmstat",
  "uu_w",
  "uu_watch",
- "uucore",
+ "uucore 0.7.0",
  "uutests",
  "xattr",
 ]
@@ -1589,16 +1573,6 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.9.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6db2770f06117d490610c7488547d543617b21bfa07796d7a12f6f1bd53850d1"
-dependencies = [
- "rand_chacha",
- "rand_core 0.9.3",
-]
-
-[[package]]
-name = "rand"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc266eb313df6c5c09c1c7b1fbe2510961e5bcd3add930c1e31f7ed9da0feff8"
@@ -1609,29 +1583,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "rand_chacha"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3022b5f1df60f26e1ffddd6c66e8aa15de382ae63b3a0c1bfc0e4d3e3f325cb"
-dependencies = [
- "ppv-lite86",
- "rand_core 0.9.3",
-]
-
-[[package]]
 name = "rand_core"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
-
-[[package]]
-name = "rand_core"
-version = "0.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99d9a13982dcf210057a8a78572b2217b667c3beacbf3a0d8b454f6f82837d38"
-dependencies = [
- "getrandom 0.3.4",
-]
 
 [[package]]
 name = "rand_core"
@@ -2340,7 +2295,7 @@ dependencies = [
  "thiserror 1.0.69",
  "time",
  "utmp-classic-raw",
- "zerocopy 0.7.35",
+ "zerocopy",
 ]
 
 [[package]]
@@ -2350,7 +2305,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "22c226537a3d6e01c440c1926ca0256dbee2d19b2229ede6fc4863a6493dd831"
 dependencies = [
  "cfg-if",
- "zerocopy 0.7.35",
+ "zerocopy",
 ]
 
 [[package]]
@@ -2360,7 +2315,7 @@ dependencies = [
  "bytesize",
  "clap",
  "sysinfo",
- "uucore",
+ "uucore 0.7.0",
  "windows",
 ]
 
@@ -2370,7 +2325,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "tempfile",
- "uucore",
+ "uucore 0.7.0",
 ]
 
 [[package]]
@@ -2380,7 +2335,7 @@ dependencies = [
  "clap",
  "regex",
  "rustix",
- "uucore",
+ "uucore 0.7.0",
  "walkdir",
 ]
 
@@ -2390,7 +2345,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "uu_pgrep",
- "uucore",
+ "uucore 0.7.0",
 ]
 
 [[package]]
@@ -2401,7 +2356,7 @@ dependencies = [
  "nix 0.30.1",
  "regex",
  "uu_pgrep",
- "uucore",
+ "uucore 0.7.0",
 ]
 
 [[package]]
@@ -2412,7 +2367,7 @@ dependencies = [
  "regex",
  "rustix",
  "uu_pgrep",
- "uucore",
+ "uucore 0.7.0",
  "walkdir",
 ]
 
@@ -2422,7 +2377,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "dirs",
- "uucore",
+ "uucore 0.7.0",
 ]
 
 [[package]]
@@ -2434,7 +2389,7 @@ dependencies = [
  "prettytable-rs",
  "rustix",
  "uu_pgrep",
- "uucore",
+ "uucore 0.7.0",
 ]
 
 [[package]]
@@ -2443,7 +2398,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "sysinfo",
- "uucore",
+ "uucore 0.7.0",
 ]
 
 [[package]]
@@ -2453,7 +2408,7 @@ dependencies = [
  "clap",
  "nix 0.30.1",
  "uu_snice",
- "uucore",
+ "uucore 0.7.0",
 ]
 
 [[package]]
@@ -2461,7 +2416,7 @@ name = "uu_slabtop"
 version = "0.0.1"
 dependencies = [
  "clap",
- "uucore",
+ "uucore 0.7.0",
 ]
 
 [[package]]
@@ -2474,7 +2429,7 @@ dependencies = [
  "sysinfo",
  "thiserror 2.0.18",
  "uu_pgrep",
- "uucore",
+ "uucore 0.7.0",
 ]
 
 [[package]]
@@ -2483,7 +2438,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "sysinfo",
- "uucore",
+ "uucore 0.7.0",
  "walkdir",
 ]
 
@@ -2494,7 +2449,7 @@ dependencies = [
  "clap",
  "crossterm",
  "ratatui",
- "uucore",
+ "uucore 0.7.0",
 ]
 
 [[package]]
@@ -2512,7 +2467,7 @@ dependencies = [
  "sysinfo",
  "uu_vmstat",
  "uu_w",
- "uucore",
+ "uucore 0.7.0",
  "windows-sys 0.61.2",
 ]
 
@@ -2525,7 +2480,7 @@ dependencies = [
  "jiff",
  "terminal_size",
  "uu_slabtop",
- "uucore",
+ "uucore 0.7.0",
 ]
 
 [[package]]
@@ -2534,7 +2489,7 @@ version = "0.0.1"
 dependencies = [
  "chrono",
  "clap",
- "uucore",
+ "uucore 0.7.0",
 ]
 
 [[package]]
@@ -2542,7 +2497,7 @@ name = "uu_watch"
 version = "0.0.1"
 dependencies = [
  "clap",
- "uucore",
+ "uucore 0.7.0",
 ]
 
 [[package]]
@@ -2565,9 +2520,33 @@ dependencies = [
  "time",
  "unic-langid",
  "utmp-classic",
- "uucore_procs",
+ "uucore_procs 0.7.0",
  "wild",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "uucore"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07d779636d827cde4100f0e65ff3fd23b0b1f1195055475c6e6813d425f30c8e"
+dependencies = [
+ "clap",
+ "dns-lookup",
+ "fluent",
+ "fluent-bundle",
+ "fluent-syntax",
+ "jiff",
+ "libc",
+ "nix 0.31.2",
+ "os_display",
+ "rustc-hash",
+ "rustix",
+ "thiserror 2.0.18",
+ "time",
+ "unic-langid",
+ "uucore_procs 0.8.0",
+ "wild",
 ]
 
 [[package]]
@@ -2575,6 +2554,16 @@ name = "uucore_procs"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f63e2d5083ff0983193a33e2d57fd271c7e3e3e7df8e46e8f471865647b2cbc"
+dependencies = [
+ "proc-macro2",
+ "quote",
+]
+
+[[package]]
+name = "uucore_procs"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da865e8a648b260dbd89fca76d0801995877ab27a4e259b6dec30ba9743b86ab"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2594,19 +2583,19 @@ dependencies = [
 
 [[package]]
 name = "uutests"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25b8a1598ddd20230a5df59d642e2e5741b0b90038bde8684c984515f947fda5"
+checksum = "2d93dba8eceb0bebb686b07571b214e94be8cc739c929d0ea773c83c06d46df5"
 dependencies = [
- "ctor 0.6.3",
+ "ctor",
  "libc",
- "nix 0.30.1",
+ "nix 0.31.2",
  "pretty_assertions",
- "rand 0.9.2",
+ "rand 0.10.0",
  "regex",
  "rlimit",
  "tempfile",
- "uucore",
+ "uucore 0.8.0",
  "xattr",
 ]
 
@@ -3160,16 +3149,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b9b4fd18abc82b8136838da5d50bae7bdea537c574d8dc1a34ed098d6c166f0"
 dependencies = [
  "byteorder",
- "zerocopy-derive 0.7.35",
-]
-
-[[package]]
-name = "zerocopy"
-version = "0.8.27"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0894878a5fa3edfd6da3f88c4805f4c8558e2b996227a3d864f47fe11e38282c"
-dependencies = [
- "zerocopy-derive 0.8.27",
+ "zerocopy-derive",
 ]
 
 [[package]]
@@ -3177,17 +3157,6 @@ name = "zerocopy-derive"
 version = "0.7.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fa4f8080344d4671fb4e831a13ad1e68092748387dfc4f55e356242fae12ce3e"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.110",
-]
-
-[[package]]
-name = "zerocopy-derive"
-version = "0.8.27"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88d2b8d9c68ad2b9e4340d7832716a4d21a22a1154777ad56ea55c51a9cf3831"
 dependencies = [
  "proc-macro2",
  "quote",
