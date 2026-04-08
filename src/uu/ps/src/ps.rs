@@ -202,7 +202,10 @@ pub fn uu_app() -> Command {
             Arg::new("A")
                 .short('A')
                 .help("all processes")
-                .visible_short_alias('e')
+                .action(ArgAction::SetTrue),
+            Arg::new("e")
+                .short('e')
+                .help("Select all processes. Identical to -A")
                 .action(ArgAction::SetTrue),
             Arg::new("a")
                 .short('a')
