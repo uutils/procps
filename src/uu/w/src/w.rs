@@ -142,7 +142,8 @@ fn format_time(time: String) -> Result<String, chrono::format::ParseError> {
 #[cfg(target_os = "linux")]
 fn fetch_cmdline(pid: i32) -> Result<String, std::io::Error> {
     let cmdline_path = Path::new("/proc").join(pid.to_string()).join("cmdline");
-    fs::read_to_string(cmdline_path)
+    // See `proc_pid_cmdline(5)` man page for the format of /proc/<pid>/cmdline
+    fs::read_to_string(cmdline_path).map(|s| s.trim_end_matches('\0').replace('\0', " "))
 }
 
 #[cfg(target_os = "linux")]
@@ -452,11 +453,8 @@ mod tests {
     fn test_fetch_cmdline() {
         // uucore's utmpx returns an i32, so we cast to that to mimic it.
         let pid = process::id() as i32;
-        let path = Path::new("/proc").join(pid.to_string()).join("cmdline");
-        assert_eq!(
-            fs::read_to_string(path).unwrap(),
-            fetch_cmdline(pid).unwrap()
-        );
+        let cmdline = std::env::args().collect::<Vec<String>>().join(" ");
+        assert_eq!(cmdline, fetch_cmdline(pid).unwrap());
     }
 
     #[test]
