@@ -211,6 +211,16 @@ pub struct Meminfo {
     pub swap_total: bytesize::ByteSize,
     pub swap_free: bytesize::ByteSize,
 }
+
+#[cfg(target_os = "linux")]
+fn kb_to_kib(mut size: bytesize::ByteSize) -> bytesize::ByteSize {
+    // "kB" means KiB instead of KB
+    // Convert from 1000-based(parsed by bytesize from "kB" ended string) to 1024-based(which it actually is)
+    // See more at https://github.com/uutils/procps/issues/667
+    size.0 = size.0 / 1000 * 1024;
+    size
+}
+
 #[cfg(target_os = "linux")]
 impl Meminfo {
     pub fn current() -> Self {
@@ -221,20 +231,28 @@ impl Meminfo {
     pub fn from_proc_map(proc_map: &HashMap<String, String>) -> Self {
         use std::str::FromStr;
 
-        let mem_total = bytesize::ByteSize::from_str(proc_map.get("MemTotal").unwrap()).unwrap();
-        let mem_free = bytesize::ByteSize::from_str(proc_map.get("MemFree").unwrap()).unwrap();
+        let mem_total =
+            kb_to_kib(bytesize::ByteSize::from_str(proc_map.get("MemTotal").unwrap()).unwrap());
+        let mem_free =
+            kb_to_kib(bytesize::ByteSize::from_str(proc_map.get("MemFree").unwrap()).unwrap());
         let mem_available =
-            bytesize::ByteSize::from_str(proc_map.get("MemAvailable").unwrap()).unwrap();
-        let buffers = bytesize::ByteSize::from_str(proc_map.get("Buffers").unwrap()).unwrap();
-        let cached = bytesize::ByteSize::from_str(proc_map.get("Cached").unwrap()).unwrap();
+            kb_to_kib(bytesize::ByteSize::from_str(proc_map.get("MemAvailable").unwrap()).unwrap());
+        let buffers =
+            kb_to_kib(bytesize::ByteSize::from_str(proc_map.get("Buffers").unwrap()).unwrap());
+        let cached =
+            kb_to_kib(bytesize::ByteSize::from_str(proc_map.get("Cached").unwrap()).unwrap());
         let s_reclaimable =
-            bytesize::ByteSize::from_str(proc_map.get("SReclaimable").unwrap()).unwrap();
+            kb_to_kib(bytesize::ByteSize::from_str(proc_map.get("SReclaimable").unwrap()).unwrap());
         let swap_cached =
-            bytesize::ByteSize::from_str(proc_map.get("SwapCached").unwrap()).unwrap();
-        let active = bytesize::ByteSize::from_str(proc_map.get("Active").unwrap()).unwrap();
-        let inactive = bytesize::ByteSize::from_str(proc_map.get("Inactive").unwrap()).unwrap();
-        let swap_total = bytesize::ByteSize::from_str(proc_map.get("SwapTotal").unwrap()).unwrap();
-        let swap_free = bytesize::ByteSize::from_str(proc_map.get("SwapFree").unwrap()).unwrap();
+            kb_to_kib(bytesize::ByteSize::from_str(proc_map.get("SwapCached").unwrap()).unwrap());
+        let active =
+            kb_to_kib(bytesize::ByteSize::from_str(proc_map.get("Active").unwrap()).unwrap());
+        let inactive =
+            kb_to_kib(bytesize::ByteSize::from_str(proc_map.get("Inactive").unwrap()).unwrap());
+        let swap_total =
+            kb_to_kib(bytesize::ByteSize::from_str(proc_map.get("SwapTotal").unwrap()).unwrap());
+        let swap_free =
+            kb_to_kib(bytesize::ByteSize::from_str(proc_map.get("SwapFree").unwrap()).unwrap());
         Self {
             mem_total,
             mem_free,
@@ -258,7 +276,7 @@ pub struct DiskStatParseError;
 #[cfg(target_os = "linux")]
 impl Display for DiskStatParseError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt("Failed to parse diskstat line", f)
+        Debug::fmt("Failed to parse diskstat line", f)
     }
 }
 
