@@ -13,5 +13,5 @@ pub(crate) fn sort(input: &mut [ProcessInformation], _matches: &ArgMatches) {
 
 /// Sort by pid. (Default)
 fn sort_by_pid(input: &mut [ProcessInformation]) {
-    input.sort_by(|a, b| a.pid.cmp(&b.pid));
+    input.sort_by_key(|a| a.pid);
 }
