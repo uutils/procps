@@ -405,9 +405,9 @@ fn process_flag_o_n(
             .collect::<Vec<_>>();
 
         if settings.newest {
-            filtered.sort_by(|a, b| b.pid.cmp(&a.pid));
+            filtered.sort_by_key(|b| std::cmp::Reverse(b.pid));
         } else {
-            filtered.sort_by(|a, b| a.pid.cmp(&b.pid));
+            filtered.sort_by_key(|a| a.pid);
         }
 
         vec![filtered.first().cloned().unwrap().clone()]
