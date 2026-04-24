@@ -96,6 +96,7 @@ textwrap = { workspace = true }
 uucore = { workspace = true }
 
 #
+uuproc = { version = "0.0.1", package = "uu_uuproc", path = "src/uu/uuproc" }
 free = { optional = true, version = "0.0.1", package = "uu_free", path = "src/uu/free" }
 hugetop = { optional = true, version = "0.0.1", package = "uu_hugetop", path = "src/uu/hugetop" }
 pgrep = { optional = true, version = "0.0.1", package = "uu_pgrep", path = "src/uu/pgrep" }
