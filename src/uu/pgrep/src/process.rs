@@ -750,17 +750,16 @@ impl Hash for ProcessInformation {
 
 /// Parsing `/proc/self/stat` file.
 ///
-/// TODO: If possible, test and use regex to replace this algorithm.
+/// Uses regex to parse the stat line.
 fn stat_split(stat: &str) -> Vec<String> {
-    let stat = String::from(stat);
+    static STAT_REGEX: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"(?s)^(\d+)\s+\((.*)\)\s+(.+)$").unwrap());
 
-    if let (Some(left), Some(right)) = (stat.find('('), stat.rfind(')')) {
+    if let Some(captures) = STAT_REGEX.captures(stat) {
         let mut split_stat = vec![];
-
-        split_stat.push(stat[..left - 1].to_string());
-        split_stat.push(stat[left + 1..right].to_string());
-        split_stat.extend(stat[right + 2..].split_whitespace().map(String::from));
-
+        split_stat.push(captures[1].to_string()); // pid
+        split_stat.push(captures[2].to_string()); // comm
+        split_stat.extend(captures[3].split_whitespace().map(String::from)); // rest
         split_stat
     } else {
         stat.split_whitespace().map(String::from).collect()
@@ -931,6 +930,21 @@ unknown              /dev/tty        4 1-63 console"#;
 
         let case = "83875 (sleep (2) .sh) S 75750 83875 75750 34824 83875 4194304 173 0 0 0 0 0 0 0 20 0 1 0 18366278 23187456 821 18446744073709551615 94424231874560 94424232638561 140734866834816 0 0 0 65536 4 65538 1 0 0 17 6 0 0 0 0 0 94424232876752 94424232924772 94424259932160 140734866837287 140734866837313 140734866837313 140734866841576 0";
         assert!(stat_split(case)[1] == "sleep (2) .sh");
+
+        let case = "1 (init) S 0 1 1 0 -1 4219136 128 0 0 0 0 0 0 0 20 0 1 0 1 0 0 18446744073709551615 0 0 0 0 0 0 0 2147483647 0 0 0 0 17 1 0 0 0 0 0 0 0 0 0 0 0 0 0";
+        assert!(stat_split(case)[1] == "init");
+
+        let case = "12345 (process with spaces) R 12344 12345 12344 0 -1 4194304 100 0 0 0 0 0 0 0 20 0 1 0 1000 2000 300 18446744073709551615 0 0 0 0 0 0 0 2147483647 0 0 0 0 17 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
+        assert!(stat_split(case)[1] == "process with spaces");
+
+        let case = "6281 (pool-spawner) S 1 6197 6197 0 -1 4194368 3 0 0 0 0 0 0 0 20 0 4 0 1958 321277952 1628 18446744073709551615 1 1 0 0 0 0 0 4096 0 0 0 0 -1 6 0 0 0 0 0 0 0 0 0 0 0 0 0";
+        assert!(stat_split(case)[1] == "pool-spawner");
+
+        let case = "67890 (cmd(with)parens) S 67889 67890 67889 0 -1 4194304 50 0 0 0 0 0 0 0 20 0 1 0 500 1000 150 18446744073709551615 0 0 0 0 0 0 0 2147483647 0 0 0 0 17 2 0 0 0 0 0 0 0 0 0 0 0 0 0";
+        assert!(stat_split(case)[1] == "cmd(with)parens");
+
+        let case = "1 (systemd) S 0 1 1 0 -1 4194560 46522 1836917 167 1569 522 316 4564 2724 20 0 1 0 23 26501120 3944 18446744073709551615 1 1 0 0 0 0 671173123 4096 1260 0 0 0 17 1 0 0 0 0 0 0 0 0 0 0 0 0 0\n";
+        assert!(stat_split(case)[1] == "systemd");
     }
 
     #[test]
