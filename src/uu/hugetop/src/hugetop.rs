@@ -57,7 +57,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     let limit = matches.get_one::<usize>("lines").copied();
     let numa = matches.get_flag("numa");
-    let human = matches.get_flag("human");
+    let human = true;
     let once = matches.get_flag("once");
     let delay = *matches.get_one::<u64>("delay").unwrap_or(&0);
 
@@ -176,7 +176,7 @@ fn print_procs(human: bool, limit: Option<usize>) {
     }
 }
 
-fn print_node(node: &str, pools: &[HugePagePool], human: bool) {
+fn format_node_line(node: &str, pools: &[HugePagePool], human: bool) -> String {
     let mut line = String::new();
     line.push_str(node);
     line.push(':');
@@ -198,7 +198,11 @@ fn print_node(node: &str, pools: &[HugePagePool], human: bool) {
         ));
     }
 
-    println!("{}", line);
+    line
+}
+
+fn print_node(node: &str, pools: &[HugePagePool], human: bool) {
+    println!("{}", format_node_line(node, pools, human));
 }
 
 fn format_kb(kb: u64, human: bool) -> String {
@@ -462,5 +466,110 @@ mod tests {
         assert_eq!(pools[0].size_kb, 2048);
         assert_eq!(pools[0].total_pages, 10);
         assert_eq!(pools[0].free_pages, 3);
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn format_kb_defaults_to_human_readable() {
+        assert_eq!(format_kb(64, true), "64Ki");
+        assert_eq!(format_kb(1536, true), "1.5Mi");
+        assert_eq!(format_kb(1048576, true), "1.0Gi");
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn format_kb_non_human_readable() {
+        assert_eq!(format_kb(64, false), "64");
+        assert_eq!(format_kb(1536, false), "1536");
+        assert_eq!(format_kb(1048576, false), "1048576");
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn format_node_line_in_human_readable_mode() {
+        let pools = vec![HugePagePool {
+            size_kb: 2048,
+            total_pages: 10,
+            free_pages: 3,
+            reserved_pages: 2,
+            surplus_pages: 1,
+        }];
+
+        assert_eq!(
+            format_node_line("node(s)", &pools, true),
+            "node(s): 2.0Mi - 3/10"
+        );
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn format_node_line_non_human_mode() {
+        let pools = vec![HugePagePool {
+            size_kb: 2048,
+            total_pages: 10,
+            free_pages: 3,
+            reserved_pages: 2,
+            surplus_pages: 1,
+        }];
+
+        assert_eq!(
+            format_node_line("node(s)", &pools, false),
+            "node(s): 2048kB - 3/10"
+        );
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn format_node_line_multiple_pools() {
+        let pools = vec![
+            HugePagePool {
+                size_kb: 2048,
+                total_pages: 10,
+                free_pages: 3,
+                reserved_pages: 2,
+                surplus_pages: 1,
+            },
+            HugePagePool {
+                size_kb: 1048576,
+                total_pages: 2,
+                free_pages: 1,
+                reserved_pages: 0,
+                surplus_pages: 0,
+            },
+        ];
+
+        assert_eq!(
+            format_node_line("node(s)", &pools, true),
+            "node(s): 2.0Mi - 3/10, 1.0Gi - 1/2"
+        );
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn humanized_si_units() {
+        // si=true uses powers of 1000, suffix without "i"
+        assert_eq!(humanized(0, true), "0B");
+        assert_eq!(humanized(1, true), "1.0K"); // 1024 bytes → 1.0K
+        assert_eq!(humanized(10, true), "10K"); // integer when value >= 10
+        assert_eq!(humanized(1, false), "1.0Ki"); // binary: 1024 bytes → 1.0Ki
+        assert_eq!(humanized(1024, true), "1.0M"); // 1024*1024 bytes → 1.0M
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn humanized_small_values() {
+        // level==0: bytes < 100, return raw bytes with "B" suffix
+        assert_eq!(humanized(0, false), "0B");
+        assert_eq!(humanized(0, true), "0B");
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn humanized_integer_rounding() {
+        // When value >= 10.0, use integer format (no decimal)
+        // 10240 kiB → 10 MiB (10.0 >= 10 → integer)
+        assert_eq!(humanized(10240, false), "10Mi");
+        // 10485760 kiB → 10 GiB
+        assert_eq!(humanized(10485760, false), "10Gi");
     }
 }
