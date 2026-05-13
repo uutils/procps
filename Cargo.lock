@@ -2345,6 +2345,7 @@ dependencies = [
 name = "uu_hugetop"
 version = "0.0.1"
 dependencies = [
+ "chrono",
  "clap",
  "tempfile",
  "uucore 0.7.0",
