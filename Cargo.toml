@@ -136,6 +136,9 @@ xattr = { workspace = true }
 [target.'cfg(any(target_os = "linux", target_os = "android"))'.dev-dependencies]
 rlimit = "0.11.0"
 
+[target.'cfg(target_os = "linux")'.dependencies]
+rustix = { workspace = true }
+
 [build-dependencies]
 phf_codegen = { workspace = true }
 
