@@ -57,7 +57,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     let limit = matches.get_one::<usize>("lines").copied();
     let numa = matches.get_flag("numa");
-    let human = matches.get_flag("human");
+    let human = matches.get_flag("human") || true;
     let once = matches.get_flag("once");
     let delay = *matches.get_one::<u64>("delay").unwrap_or(&0);
 
