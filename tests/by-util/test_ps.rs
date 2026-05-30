@@ -13,9 +13,24 @@ use uucore::process::geteuid;
 #[test]
 #[cfg(target_os = "linux")]
 fn test_select_all_processes() {
-    for arg in ["-A", "-e"] {
-        // TODO ensure the output format is correct
-        new_ucmd!().arg(arg).succeeds();
+    let expected_headers = ["PID", "TTY", "TIME", "CMD"];
+
+    let args_sets = vec![vec!["-A"], vec!["-e"], vec!["-A", "-e"]];
+    for args in args_sets {
+        let result = new_ucmd!().args(&args).succeeds();
+        let lines: Vec<&str> = result.stdout_str().lines().collect();
+
+        assert!(
+            lines.len() >= 2,
+            "expected at least a header and one process row"
+        );
+
+        let headers: Vec<&str> = lines[0].split_whitespace().collect();
+        assert_eq!(
+            headers, expected_headers,
+            "unexpected header for args: {:?}",
+            args
+        );
     }
 }
 

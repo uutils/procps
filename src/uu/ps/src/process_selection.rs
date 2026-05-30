@@ -71,7 +71,7 @@ pub struct ProcessSelectionSettings {
 impl ProcessSelectionSettings {
     pub fn from_matches(matches: &ArgMatches) -> Self {
         Self {
-            select_all: matches.get_flag("A"),
+            select_all: matches.get_flag("A") || matches.get_flag("e"),
             select_non_session_leaders_with_tty: matches.get_flag("a"),
             select_non_session_leaders: matches.get_flag("d"),
             dont_require_tty: matches.get_flag("x"),

@@ -3,12 +3,13 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use chrono::{DateTime, Local};
 use clap::{value_parser, Arg, Command};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 use std::thread::sleep;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 use uucore::error::UResult;
 
 const DEFAULT_HUGEPAGES_ROOT: &str = "/sys/kernel/mm/hugepages";
@@ -122,12 +123,8 @@ pub fn uu_app() -> Command {
 }
 
 fn print_summary(numa: bool, human: bool) {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or_default();
-
-    println!("hugetop - {}", now);
+    let now: DateTime<Local> = Local::now();
+    println!("hugetop - {}", now.format("%a %b %e %T %Y"));
 
     let pools = match read_node_hugepage_pools() {
         Ok(nodes) if numa => {

@@ -316,10 +316,8 @@ pub fn parse_smaps(contents: &str) -> Result<SmapTable, Error> {
                 let val = val.strip_suffix(" kB").unwrap_or(val);
                 let val = get_smap_item_value(val)?;
                 match key {
-                    pmap_field_name::SIZE => {
-                        if smap_entry.map_line.size_in_kb != val {
-                            return Err(Error::from(ErrorKind::InvalidData));
-                        }
+                    pmap_field_name::SIZE if smap_entry.map_line.size_in_kb != val => {
+                        return Err(Error::from(ErrorKind::InvalidData));
                     }
                     pmap_field_name::KERNEL_PAGE_SIZE => {
                         smap_entry.kernel_page_size_in_kb = val;
