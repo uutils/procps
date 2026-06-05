@@ -14,11 +14,20 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-nix = { workspace = true }
 uucore = { workspace = true, features = ["entries"] }
 clap = { workspace = true }
 regex = { workspace = true }
+
 uu_pgrep = { path = "../pgrep" }
+
+[target.'cfg(unix)'.dependencies]
+rustix = { workspace = true, features = ["event", "std"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = [
+	"Win32_Foundation",
+	"Win32_System_Threading",
+] }
 
 [lib]
 path = "src/pidwait.rs"
