@@ -2448,7 +2448,7 @@ name = "uu_skill"
 version = "0.0.1"
 dependencies = [
  "clap",
- "nix 0.30.1",
+ "nix 0.31.3",
  "uu_snice",
  "uucore 0.7.0",
 ]
@@ -2502,7 +2502,7 @@ dependencies = [
  "chrono",
  "clap",
  "crossterm",
- "nix 0.30.1",
+ "nix 0.31.3",
  "pkg-config",
  "ratatui",
  "rustix",
