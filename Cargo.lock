@@ -1628,6 +1628,7 @@ dependencies = [
  "rand 0.10.1",
  "regex",
  "rlimit",
+ "rustix",
  "sysinfo",
  "tempfile",
  "textwrap",
@@ -2458,6 +2459,7 @@ name = "uu_pidof"
 version = "0.0.1"
 dependencies = [
  "clap",
+ "rustix",
  "uu_pgrep",
  "uucore 0.7.0",
 ]
