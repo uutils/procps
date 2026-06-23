@@ -65,8 +65,8 @@ ctor = "1.0.0"
 dirs = "6.0.0"
 jiff = "0.2.15"
 nix = { version = "0.30", default-features = false, features = ["process"] }
-phf = "0.13.1"
-phf_codegen = "0.13.0"
+phf = "0.14.0"
+phf_codegen = "0.14.0"
 prettytable-rs = "0.10.0"
 rand = { version = "0.10.0" }
 ratatui = "0.30.0"
