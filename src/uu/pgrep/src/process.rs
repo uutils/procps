@@ -491,7 +491,7 @@ impl ProcessInformation {
 
     pub fn current_process_info() -> Result<ProcessInformation, io::Error> {
         #[cfg(target_os = "linux")]
-        let pid = uucore::process::getpid();
+        let pid = rustix::process::getpid().as_raw_pid();
         #[cfg(not(target_os = "linux"))]
         let pid = 0; // dummy
 
@@ -798,9 +798,9 @@ pub fn walk_threads() -> impl Iterator<Item = ProcessInformation> {
 mod tests {
     use super::*;
     #[cfg(target_os = "linux")]
-    use std::collections::HashSet;
+    use rustix::process::getpid;
     #[cfg(target_os = "linux")]
-    use uucore::process::getpid;
+    use std::collections::HashSet;
 
     #[test]
     #[cfg(target_os = "linux")]
@@ -870,7 +870,7 @@ unknown              /dev/tty        4 1-63 console"#;
     #[test]
     #[cfg(target_os = "linux")]
     fn test_walk_pid() {
-        let find = walk_process().find(|it| it.pid == getpid() as usize);
+        let find = walk_process().find(|it| it.pid == getpid().as_raw_pid() as usize);
 
         assert!(find.is_some());
     }
@@ -963,10 +963,16 @@ unknown              /dev/tty        4 1-63 console"#;
     #[cfg(target_os = "linux")]
     fn test_uid_gid() {
         let mut pid_entry = ProcessInformation::current_process_info().unwrap();
-        assert_eq!(pid_entry.uid().unwrap(), uucore::process::getuid());
-        assert_eq!(pid_entry.euid().unwrap(), uucore::process::geteuid());
-        assert_eq!(pid_entry.gid().unwrap(), uucore::process::getgid());
-        assert_eq!(pid_entry.egid().unwrap(), uucore::process::getegid());
+        assert_eq!(pid_entry.uid().unwrap(), rustix::process::getuid().as_raw());
+        assert_eq!(
+            pid_entry.euid().unwrap(),
+            rustix::process::geteuid().as_raw()
+        );
+        assert_eq!(pid_entry.gid().unwrap(), rustix::process::getgid().as_raw());
+        assert_eq!(
+            pid_entry.egid().unwrap(),
+            rustix::process::getegid().as_raw()
+        );
     }
 
     #[test]

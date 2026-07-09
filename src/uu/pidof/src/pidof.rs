@@ -6,10 +6,10 @@
 use std::path::PathBuf;
 
 use clap::{crate_version, Arg, ArgAction, ArgMatches, Command};
+#[cfg(unix)]
+use rustix::process::geteuid;
 use uu_pgrep::process::{walk_process, ProcessInformation};
 use uucore::error::UResult;
-#[cfg(unix)]
-use uucore::process::geteuid;
 
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
@@ -95,7 +95,7 @@ fn collect_matched_pids(matches: &ArgMatches) -> Vec<usize> {
 
     // Original pidof silently ignores the check-root option if the user is not root.
     #[cfg(unix)]
-    let check_root = matches.get_flag("check-root") && geteuid() == 0;
+    let check_root = matches.get_flag("check-root") && geteuid().as_raw() == 0;
     #[cfg(not(unix))]
     let check_root = false;
     let our_root = ProcessInformation::current_process_info()
