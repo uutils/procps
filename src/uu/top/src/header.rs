@@ -68,7 +68,7 @@ impl Task {
         let mut stopped_process = 0;
         let mut zombie_process = 0;
 
-        for (_, process) in process.iter() {
+        for process in process.values() {
             match process.status() {
                 sysinfo::ProcessStatus::Run => running_process += 1,
                 sysinfo::ProcessStatus::Sleep => sleeping_process += 1,
