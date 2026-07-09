@@ -352,10 +352,8 @@ impl Namespace {
             ("user", &mut ns.user),
             ("uts", &mut ns.uts),
         ] {
-            match f(name, &ns_dir) {
-                Ok(st) => *slot = Some(st.stx_ino),
-                Err(e) => return Err(e.into()),
-            }
+            let st = f(name, &ns_dir)?;
+            *slot = Some(st.stx_ino);
         }
         Ok(ns)
     }
