@@ -43,11 +43,12 @@ fn fetch_terminal_jcpu() -> Result<HashMap<u64, f64>, std::io::Error> {
         .filter_map(|pid_dir_str| pid_dir_str.parse::<i32>().ok());
     let mut pid_hashmap = HashMap::new();
     for pid in pid_dirs {
-        // Fetch terminal number for current pid
-        let terminal_number = fetch_terminal_number(pid)?;
-        // Get current total CPU time for current pid
-        let pcpu_time = fetch_pcpu_time(pid)?;
-        // Update HashMap with found terminal number and add pcpu time for current pid
+        let Ok(terminal_number) = fetch_terminal_number(pid) else {
+            continue;
+        };
+        let Ok(pcpu_time) = fetch_pcpu_time(pid) else {
+            continue;
+        };
         *pid_hashmap.entry(terminal_number).or_insert(0.0) += pcpu_time;
     }
     Ok(pid_hashmap)
@@ -82,13 +83,15 @@ fn fetch_pcpu_time(pid: i32) -> Result<f64, std::io::Error> {
 }
 
 #[cfg(target_os = "linux")]
-fn fetch_idle_time(tty: String) -> Result<Duration, std::io::Error> {
+fn fetch_idle_time(tty: String) -> Duration {
     let path = Path::new("/dev/").join(tty);
-    let stat = fs::metadata(path)?;
+    let Ok(stat) = fs::metadata(path) else {
+        return Duration::ZERO;
+    };
     if let Ok(time) = stat.accessed() {
-        Ok(SystemTime::now().duration_since(time).unwrap_or_default())
+        SystemTime::now().duration_since(time).unwrap_or_default()
     } else {
-        Ok(Duration::ZERO)
+        Duration::ZERO
     }
 }
 
@@ -166,7 +169,7 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
                 user: entry.user(),
                 terminal: entry.tty_device(),
                 login_time: format_time(entry.login_time().to_string()).unwrap_or_default(),
-                idle_time: fetch_idle_time(entry.tty_device())?,
+                idle_time: fetch_idle_time(entry.tty_device()),
                 jcpu: format!("{jcpu:.2}"),
                 pcpu: fetch_pcpu_time(entry.pid()).unwrap_or_default().to_string(),
                 command: fetch_cmdline(entry.pid()).unwrap_or_default(),
@@ -411,10 +414,18 @@ pub fn uu_app() -> Command {
 #[cfg(target_os = "linux")]
 mod tests {
     use crate::{
-        fetch_cmdline, fetch_pcpu_time, fetch_terminal_number, format_time, format_time_elapsed,
-        format_uptime_procps, get_clock_tick,
+        fetch_cmdline, fetch_idle_time, fetch_pcpu_time, fetch_terminal_number, format_time,
+        format_time_elapsed, format_uptime_procps, get_clock_tick,
     };
     use std::{fs, path::Path, process, time::Duration};
+
+    #[test]
+    fn test_fetch_idle_time_missing_tty() {
+        assert_eq!(
+            fetch_idle_time(String::from("no-such-tty-device")),
+            Duration::ZERO
+        );
+    }
 
     #[test]
     fn test_format_time() {
