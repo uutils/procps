@@ -14,8 +14,8 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-uucore = { workspace = true, features = ["process"] }
 clap = { workspace = true }
+uucore = { workspace = true }
 uu_pgrep = { path = "../pgrep" }
 
 [target.'cfg(unix)'.dependencies]
