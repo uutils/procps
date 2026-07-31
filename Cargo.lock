@@ -174,9 +174,9 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "bytesize"
-version = "2.4.2"
+version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d7c8918969267b2932ffd5655509bbbea0833823058c378876953217f5fc50e"
+checksum = "351a3e803ee3c6eaeee6b00076b767514b37c32a73d326c3ec7abddb7d6c3493"
 
 [[package]]
 name = "castaway"
