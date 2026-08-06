@@ -125,7 +125,6 @@ tempfile = { workspace = true }
 uucore = { workspace = true, features = [
     "entries",
     "libc",
-    "process",
     "signals",
 ] }
 uutests = { workspace = true }
