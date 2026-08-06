@@ -20,7 +20,6 @@ crossterm = { workspace = true }
 nix = { workspace = true }
 ratatui = { workspace = true, features = ["crossterm"] }
 sysinfo = { workspace = true }
-chrono = { workspace = true }
 bytesize = { workspace = true }
 rustix = { workspace = true }
 
