@@ -2571,7 +2571,6 @@ dependencies = [
 name = "uu_ps"
 version = "0.0.1"
 dependencies = [
- "chrono",
  "clap",
  "prettytable-rs",
  "rustix",
@@ -2644,7 +2643,6 @@ name = "uu_top"
 version = "0.0.1"
 dependencies = [
  "bytesize",
- "chrono",
  "clap",
  "crossterm",
  "nix 0.30.1",
