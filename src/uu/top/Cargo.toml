@@ -14,14 +14,14 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-uucore = { workspace = true, features = ["utmpx", "uptime", "signals", "libc"] }
+bytesize = { workspace = true }
 clap = { workspace = true }
 crossterm = { workspace = true }
 nix = { workspace = true }
 ratatui = { workspace = true, features = ["crossterm"] }
-sysinfo = { workspace = true }
-bytesize = { workspace = true }
 rustix = { workspace = true }
+sysinfo = { workspace = true }
+uucore = { workspace = true, features = ["utmpx", "uptime", "signals", "libc"] }
 
 uu_vmstat = { path = "../vmstat" }
 uu_w = { path = "../w" }
