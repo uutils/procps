@@ -3,10 +3,10 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-#[cfg(target_os = "linux")]
-use chrono::{Datelike, Local};
 use clap::crate_version;
 use clap::{Arg, ArgAction, Command};
+#[cfg(target_os = "linux")]
+use jiff::Zoned;
 #[cfg(target_os = "linux")]
 use std::{collections::HashMap, fs, path::Path, time::SystemTime};
 use std::{process, time::Duration};
@@ -92,50 +92,48 @@ fn fetch_idle_time(tty: String) -> Result<Duration, std::io::Error> {
     }
 }
 
-fn format_time_elapsed(time: Duration, old_style: bool) -> Result<String, chrono::OutOfRangeError> {
-    let t = chrono::Duration::from_std(time)?;
-    if t.num_days() >= 2 {
-        Ok(format!("{}days", t.num_days()))
-    } else if t.num_hours() >= 1 {
+fn format_time_elapsed(time: Duration, old_style: bool) -> Result<String, jiff::Error> {
+    let secs = time.as_secs();
+    let days = secs / 86_400;
+    let hours = secs / 3_600;
+    let minutes = secs / 60;
+    if days >= 2 {
+        Ok(format!("{days}days"))
+    } else if hours >= 1 {
         Ok(format!(
-            "{}:{:02}{}",
-            t.num_hours(),
-            t.num_minutes() % 60,
+            "{hours}:{:02}{}",
+            minutes % 60,
             if old_style { "" } else { "m" }
         ))
-    } else if t.num_minutes() >= 1 {
+    } else if minutes >= 1 {
         Ok(format!(
             "{}:{:02}{}",
-            t.num_minutes() % 60,
-            t.num_seconds() % 60,
+            minutes % 60,
+            secs % 60,
             if old_style { "m" } else { "" }
         ))
     } else if old_style {
         Ok(String::new())
     } else {
-        Ok(format!(
-            "{}.{:02}s",
-            t.num_seconds() % 60,
-            (t.num_milliseconds() % 1000) / 10
-        ))
+        let millis_hundredths = (time.as_millis() % 1000) / 10;
+        Ok(format!("{}.{:02}s", secs % 60, millis_hundredths))
     }
 }
 
 #[cfg(target_os = "linux")]
-fn format_time(time: String) -> Result<String, chrono::format::ParseError> {
+fn format_time(time: String) -> Result<String, jiff::Error> {
     let mut t: String = time;
     // Trim the seconds off of timezone offset, as chrono can't parse the time with it present
     if let Some(time_offset) = t.rfind(':') {
         t = t.drain(..time_offset).collect();
     }
     // If login time day is not current day, format like Sat16, or Fri06
-    let current_dt = Local::now().fixed_offset();
-    let dt = chrono::DateTime::parse_from_str(&t, "%Y-%m-%d %H:%M:%S%.f %:z")?;
-
+    let current_dt = Zoned::now();
+    let dt = Zoned::strptime("%Y-%m-%d %H:%M:%S%.f %:z", &t)?;
     if current_dt.day() == dt.day() {
-        Ok(dt.format("%H:%M").to_string())
+        Ok(dt.strftime("%H:%M").to_string())
     } else {
-        Ok(dt.format("%a%d").to_string())
+        Ok(dt.strftime("%a%d").to_string())
     }
 }
 
@@ -414,24 +412,24 @@ mod tests {
         fetch_cmdline, fetch_pcpu_time, fetch_terminal_number, format_time, format_time_elapsed,
         format_uptime_procps, get_clock_tick,
     };
+    use jiff::{SignedDuration, Zoned};
     use std::{fs, path::Path, process, time::Duration};
 
     #[test]
     fn test_format_time() {
-        let unix_epoc = chrono::Local::now()
-            .format("%Y-%m-%d %H:%M:%S%.6f %::z")
+        let unix_epoc = Zoned::now()
+            .strftime("%Y-%m-%d %H:%M:%S%.6f %::z")
             .to_string();
         let unix_formatted = format_time(unix_epoc).unwrap();
         assert!(unix_formatted.contains(':') && unix_formatted.chars().count() == 5);
         // Test a date that is 5 days ago
-        let td = chrono::Local::now().fixed_offset()
-            - chrono::TimeDelta::new(60 * 60 * 24 * 5, 0).unwrap();
+        let td = Zoned::now() - SignedDuration::from_secs(60 * 60 * 24 * 5);
         // Pre-format time, so it's similar to how utmpx returns it
-        let pre_formatted = format!("{}", td.format("%Y-%m-%d %H:%M:%S%.6f %::z"));
+        let pre_formatted = format!("{}", td.strftime("%Y-%m-%d %H:%M:%S%.6f %::z"));
 
         assert_eq!(
             format_time(pre_formatted).unwrap(),
-            td.format("%a%d").to_string()
+            td.strftime("%a%d").to_string()
         );
     }
 
