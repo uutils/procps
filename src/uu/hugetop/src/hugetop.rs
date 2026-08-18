@@ -74,7 +74,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 }
 
 fn run(numa: bool, human: bool, limit: Option<usize>) -> UResult<()> {
-    print_summary(numa, human);
+    print_summary(numa);
     print_headings();
     print_procs(human, limit);
     Ok(())
@@ -122,14 +122,14 @@ pub fn uu_app() -> Command {
         )
 }
 
-fn print_summary(numa: bool, human: bool) {
+fn print_summary(numa: bool) {
     let now: DateTime<Local> = Local::now();
     println!("hugetop - {}", now.format("%a %b %e %T %Y"));
 
     let pools = match read_node_hugepage_pools() {
         Ok(nodes) if numa => {
             for (node, pools) in &nodes {
-                print_node(node, pools, human);
+                print_node(node, pools);
             }
             return;
         }
@@ -143,9 +143,9 @@ fn print_summary(numa: bool, human: bool) {
             println!("(no hugepage pools found)");
             return;
         }
-        print_node("node(s)", &pools, human);
+        print_node("node(s)", &pools);
     } else {
-        print_node("node(s)", &pools, human);
+        print_node("node(s)", &pools);
     }
 }
 
@@ -176,7 +176,7 @@ fn print_procs(human: bool, limit: Option<usize>) {
     }
 }
 
-fn print_node(node: &str, pools: &[HugePagePool], human: bool) {
+fn format_node_line(node: &str, pools: &[HugePagePool]) -> String {
     let mut line = String::new();
     line.push_str(node);
     line.push(':');
@@ -186,11 +186,7 @@ fn print_node(node: &str, pools: &[HugePagePool], human: bool) {
             line.push(',');
         }
 
-        let size = if human {
-            humanized(pool.size_kb, false)
-        } else {
-            format!("{}kB", pool.size_kb)
-        };
+        let size = humanized(pool.size_kb, false);
 
         line.push_str(&format!(
             " {} - {}/{}",
@@ -198,7 +194,11 @@ fn print_node(node: &str, pools: &[HugePagePool], human: bool) {
         ));
     }
 
-    println!("{}", line);
+    line
+}
+
+fn print_node(node: &str, pools: &[HugePagePool]) {
+    println!("{}", format_node_line(node, pools));
 }
 
 fn format_kb(kb: u64, human: bool) -> String {
@@ -462,5 +462,90 @@ mod tests {
         assert_eq!(pools[0].size_kb, 2048);
         assert_eq!(pools[0].total_pages, 10);
         assert_eq!(pools[0].free_pages, 3);
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn format_kb_defaults_to_human_readable() {
+        assert_eq!(format_kb(64, true), "64Ki");
+        assert_eq!(format_kb(1536, true), "1.5Mi");
+        assert_eq!(format_kb(1048576, true), "1.0Gi");
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn format_kb_non_human_readable() {
+        assert_eq!(format_kb(64, false), "64");
+        assert_eq!(format_kb(1536, false), "1536");
+        assert_eq!(format_kb(1048576, false), "1048576");
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn format_node_line_uses_human_readable_sizes() {
+        let pools = vec![HugePagePool {
+            size_kb: 2048,
+            total_pages: 10,
+            free_pages: 3,
+            reserved_pages: 2,
+            surplus_pages: 1,
+        }];
+
+        assert_eq!(format_node_line("node(s)", &pools), "node(s): 2.0Mi - 3/10");
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn format_node_line_multiple_pools() {
+        let pools = vec![
+            HugePagePool {
+                size_kb: 2048,
+                total_pages: 10,
+                free_pages: 3,
+                reserved_pages: 2,
+                surplus_pages: 1,
+            },
+            HugePagePool {
+                size_kb: 1048576,
+                total_pages: 2,
+                free_pages: 1,
+                reserved_pages: 0,
+                surplus_pages: 0,
+            },
+        ];
+
+        assert_eq!(
+            format_node_line("node(s)", &pools),
+            "node(s): 2.0Mi - 3/10, 1.0Gi - 1/2"
+        );
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn humanized_si_units() {
+        // si=true uses powers of 1000, suffix without "i"
+        assert_eq!(humanized(0, true), "0B");
+        assert_eq!(humanized(1, true), "1.0K"); // 1024 bytes → 1.0K
+        assert_eq!(humanized(10, true), "10K"); // integer when value >= 10
+        assert_eq!(humanized(1, false), "1.0Ki"); // binary: 1024 bytes → 1.0Ki
+        assert_eq!(humanized(1024, true), "1.0M"); // 1024*1024 bytes → 1.0M
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn humanized_small_values() {
+        // level==0: bytes < 100, return raw bytes with "B" suffix
+        assert_eq!(humanized(0, false), "0B");
+        assert_eq!(humanized(0, true), "0B");
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn humanized_integer_rounding() {
+        // When value >= 10.0, use integer format (no decimal)
+        // 10240 kiB → 10 MiB (10.0 >= 10 → integer)
+        assert_eq!(humanized(10240, false), "10Mi");
+        // 10485760 kiB → 10 GiB
+        assert_eq!(humanized(10485760, false), "10Gi");
     }
 }
