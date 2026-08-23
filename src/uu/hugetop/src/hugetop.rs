@@ -3,8 +3,8 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
-use chrono::{DateTime, Local};
 use clap::{value_parser, Arg, Command};
+use jiff::Timestamp;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
@@ -123,8 +123,8 @@ pub fn uu_app() -> Command {
 }
 
 fn print_summary(numa: bool, human: bool) {
-    let now: DateTime<Local> = Local::now();
-    println!("hugetop - {}", now.format("%a %b %e %T %Y"));
+    let now = Timestamp::now();
+    println!("hugetop - {}", now.strftime("%a %b %e %T %Y"));
 
     let pools = match read_node_hugepage_pools() {
         Ok(nodes) if numa => {
