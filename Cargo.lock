@@ -62,7 +62,7 @@ version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40c48f72fd53cd289104fc64099abca73db4166ad86ea0b4341abe65af83dadc"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys",
 ]
 
 [[package]]
@@ -73,7 +73,7 @@ checksum = "291e6a250ff86cd4a820112fb8898808a366d8f9f58ce16d1f538353ad55747d"
 dependencies = [
  "anstyle",
  "once_cell_polyfill",
- "windows-sys 0.61.2",
+ "windows-sys",
 ]
 
 [[package]]
@@ -558,7 +558,7 @@ dependencies = [
  "libc",
  "option-ext",
  "redox_users 0.5.2",
- "windows-sys 0.61.2",
+ "windows-sys",
 ]
 
 [[package]]
@@ -595,18 +595,6 @@ dependencies = [
 
 [[package]]
 name = "dns-lookup"
-version = "3.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e39034cee21a2f5bbb66ba0e3689819c4bb5d00382a282006e802a7ffa6c41d"
-dependencies = [
- "cfg-if",
- "libc",
- "socket2",
- "windows-sys 0.60.2",
-]
-
-[[package]]
-name = "dns-lookup"
 version = "4.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6120e7e5dcd1c90098e349def389e2797377cdbe6b465ad8fdd115c0c99d5cf2"
@@ -614,7 +602,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "socket2",
- "windows-sys 0.61.2",
+ "windows-sys",
 ]
 
 [[package]]
@@ -651,7 +639,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys",
 ]
 
 [[package]]
@@ -959,7 +947,7 @@ checksum = "3640c1c38b8e4e43584d8df18be5fc6b0aa314ce6ebf51b53313d4306cca8e46"
 dependencies = [
  "hermit-abi",
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys",
 ]
 
 [[package]]
@@ -1194,7 +1182,7 @@ dependencies = [
  "libc",
  "log",
  "wasi",
- "windows-sys 0.61.2",
+ "windows-sys",
 ]
 
 [[package]]
@@ -1674,7 +1662,7 @@ dependencies = [
  "uu_vmstat",
  "uu_w",
  "uu_watch",
- "uucore 0.7.0",
+ "uucore",
  "uutests",
  "xattr",
 ]
@@ -1933,7 +1921,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys",
 ]
 
 [[package]]
@@ -2084,7 +2072,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys",
 ]
 
 [[package]]
@@ -2178,7 +2166,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys",
 ]
 
 [[package]]
@@ -2202,7 +2190,7 @@ dependencies = [
  "parking_lot",
  "rustix",
  "signal-hook",
- "windows-sys 0.61.2",
+ "windows-sys",
 ]
 
 [[package]]
@@ -2212,7 +2200,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "230a1b821ccbd75b185820a1f1ff7b14d21da1e442e22c0863ea5f08771a8874"
 dependencies = [
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys",
 ]
 
 [[package]]
@@ -2490,7 +2478,7 @@ dependencies = [
  "bytesize",
  "clap",
  "sysinfo",
- "uucore 0.7.0",
+ "uucore",
  "windows",
 ]
 
@@ -2501,7 +2489,7 @@ dependencies = [
  "clap",
  "jiff",
  "tempfile",
- "uucore 0.7.0",
+ "uucore",
 ]
 
 [[package]]
@@ -2511,7 +2499,7 @@ dependencies = [
  "clap",
  "regex",
  "rustix",
- "uucore 0.7.0",
+ "uucore",
  "walkdir",
 ]
 
@@ -2522,7 +2510,7 @@ dependencies = [
  "clap",
  "rustix",
  "uu_pgrep",
- "uucore 0.7.0",
+ "uucore",
 ]
 
 [[package]]
@@ -2533,8 +2521,8 @@ dependencies = [
  "regex",
  "rustix",
  "uu_pgrep",
- "uucore 0.7.0",
- "windows-sys 0.61.2",
+ "uucore",
+ "windows-sys",
 ]
 
 [[package]]
@@ -2545,7 +2533,7 @@ dependencies = [
  "regex",
  "rustix",
  "uu_pgrep",
- "uucore 0.7.0",
+ "uucore",
  "walkdir",
 ]
 
@@ -2555,7 +2543,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "dirs",
- "uucore 0.7.0",
+ "uucore",
 ]
 
 [[package]]
@@ -2566,7 +2554,7 @@ dependencies = [
  "prettytable-rs",
  "rustix",
  "uu_pgrep",
- "uucore 0.7.0",
+ "uucore",
 ]
 
 [[package]]
@@ -2575,7 +2563,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "sysinfo",
- "uucore 0.7.0",
+ "uucore",
 ]
 
 [[package]]
@@ -2585,7 +2573,7 @@ dependencies = [
  "clap",
  "nix 0.30.1",
  "uu_snice",
- "uucore 0.7.0",
+ "uucore",
 ]
 
 [[package]]
@@ -2593,7 +2581,7 @@ name = "uu_slabtop"
 version = "0.0.1"
 dependencies = [
  "clap",
- "uucore 0.7.0",
+ "uucore",
 ]
 
 [[package]]
@@ -2606,7 +2594,7 @@ dependencies = [
  "sysinfo",
  "thiserror 2.0.20",
  "uu_pgrep",
- "uucore 0.7.0",
+ "uucore",
 ]
 
 [[package]]
@@ -2615,7 +2603,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "sysinfo",
- "uucore 0.7.0",
+ "uucore",
  "walkdir",
 ]
 
@@ -2626,7 +2614,7 @@ dependencies = [
  "clap",
  "crossterm",
  "ratatui",
- "uucore 0.7.0",
+ "uucore",
 ]
 
 [[package]]
@@ -2643,8 +2631,8 @@ dependencies = [
  "sysinfo",
  "uu_vmstat",
  "uu_w",
- "uucore 0.7.0",
- "windows-sys 0.61.2",
+ "uucore",
+ "windows-sys",
 ]
 
 [[package]]
@@ -2656,7 +2644,7 @@ dependencies = [
  "jiff",
  "terminal_size",
  "uu_slabtop",
- "uucore 0.7.0",
+ "uucore",
 ]
 
 [[package]]
@@ -2665,7 +2653,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "jiff",
- "uucore 0.7.0",
+ "uucore",
 ]
 
 [[package]]
@@ -2673,32 +2661,7 @@ name = "uu_watch"
 version = "0.0.1"
 dependencies = [
  "clap",
- "uucore 0.7.0",
-]
-
-[[package]]
-name = "uucore"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8038531f506a34ab4612b93f97d5f40759768cd34a83fd2af041b84fcbde474"
-dependencies = [
- "clap",
- "dns-lookup 3.0.1",
- "fluent",
- "fluent-bundle",
- "fluent-syntax",
- "jiff",
- "libc",
- "nix 0.30.1",
- "os_display",
- "rustc-hash",
- "thiserror 2.0.20",
- "time",
- "unic-langid",
- "utmp-classic",
- "uucore_procs 0.7.0",
- "wild",
- "windows-sys 0.61.2",
+ "uucore",
 ]
 
 [[package]]
@@ -2708,7 +2671,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9962a5082023875505c7b74a6ef8b5b5d50081b7b09b998973f6da7b9514eed8"
 dependencies = [
  "clap",
- "dns-lookup 4.0.1",
+ "dns-lookup",
  "fluent",
  "fluent-syntax",
  "jiff",
@@ -2721,19 +2684,10 @@ dependencies = [
  "time",
  "unic-langid",
  "unicode-width 0.2.2",
- "uucore_procs 0.11.0",
+ "utmp-classic",
+ "uucore_procs",
  "wild",
- "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "uucore_procs"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f63e2d5083ff0983193a33e2d57fd271c7e3e3e7df8e46e8f471865647b2cbc"
-dependencies = [
- "proc-macro2",
- "quote",
+ "windows-sys",
 ]
 
 [[package]]
@@ -2772,7 +2726,7 @@ dependencies = [
  "regex",
  "rlimit",
  "tempfile",
- "uucore 0.11.0",
+ "uucore",
  "xattr",
 ]
 
@@ -2964,7 +2918,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys",
 ]
 
 [[package]]
@@ -3076,37 +3030,11 @@ dependencies = [
 
 [[package]]
 name = "windows-sys"
-version = "0.60.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2f500e4d28234f72040990ec9d39e3a6b950f9f22d3dba18416c35882612bcb"
-dependencies = [
- "windows-targets",
-]
-
-[[package]]
-name = "windows-sys"
 version = "0.61.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc"
 dependencies = [
  "windows-link",
-]
-
-[[package]]
-name = "windows-targets"
-version = "0.53.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4945f9f551b88e0d65f3db0bc25c33b8acea4d9e41163edf90dcd0b19f9069f3"
-dependencies = [
- "windows-link",
- "windows_aarch64_gnullvm",
- "windows_aarch64_msvc",
- "windows_i686_gnu",
- "windows_i686_gnullvm",
- "windows_i686_msvc",
- "windows_x86_64_gnu",
- "windows_x86_64_gnullvm",
- "windows_x86_64_msvc",
 ]
 
 [[package]]
@@ -3117,54 +3045,6 @@ checksum = "3949bd5b99cafdf1c7ca86b43ca564028dfe27d66958f2470940f73d86d75b37"
 dependencies = [
  "windows-link",
 ]
-
-[[package]]
-name = "windows_aarch64_gnullvm"
-version = "0.53.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9d8416fa8b42f5c947f8482c43e7d89e73a173cead56d044f6a56104a6d1b53"
-
-[[package]]
-name = "windows_aarch64_msvc"
-version = "0.53.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9d782e804c2f632e395708e99a94275910eb9100b2114651e04744e9b125006"
-
-[[package]]
-name = "windows_i686_gnu"
-version = "0.53.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "960e6da069d81e09becb0ca57a65220ddff016ff2d6af6a223cf372a506593a3"
-
-[[package]]
-name = "windows_i686_gnullvm"
-version = "0.53.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa7359d10048f68ab8b09fa71c3daccfb0e9b559aed648a8f95469c27057180c"
-
-[[package]]
-name = "windows_i686_msvc"
-version = "0.53.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e7ac75179f18232fe9c285163565a57ef8d3c89254a30685b57d83a38d326c2"
-
-[[package]]
-name = "windows_x86_64_gnu"
-version = "0.53.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c3842cdd74a865a8066ab39c8a7a473c0778a3f29370b5fd6b4b9aa7df4a499"
-
-[[package]]
-name = "windows_x86_64_gnullvm"
-version = "0.53.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ffa179e2d07eee8ad8f57493436566c7cc30ac536a3379fdf008f47f6bb7ae1"
-
-[[package]]
-name = "windows_x86_64_msvc"
-version = "0.53.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6bbff5f0aada427a1e5a6da5f1f98158182f26556f345ac9e04d36d0ebed650"
 
 [[package]]
 name = "wit-bindgen"
