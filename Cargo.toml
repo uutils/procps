@@ -67,6 +67,7 @@ jiff = "0.2.15"
 nix = { version = "0.31", default-features = false, features = ["process"] }
 phf = "0.14.0"
 phf_codegen = "0.14.0"
+pretty_assertions = "1.4.0"
 prettytable-rs = "0.10.0"
 rand = { version = "0.10.0" }
 ratatui = "0.30.0"
@@ -118,7 +119,7 @@ watch = { optional = true, version = "0.0.1", package = "uu_watch", path = "src/
 [dev-dependencies]
 chrono = { workspace = true }
 ctor = { workspace = true }
-pretty_assertions = "1.4.0"
+pretty_assertions = { workspace = true }
 rand = { workspace = true }
 regex = { workspace = true }
 tempfile = { workspace = true }
