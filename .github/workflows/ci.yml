@@ -15,6 +15,8 @@ jobs:
         os: [ubuntu-latest, macOS-latest, windows-latest]
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - if: ${{ contains(matrix.os, 'ubuntu') }}
         run: |
           sudo apt-get update -y
@@ -29,6 +31,8 @@ jobs:
         os: [ubuntu-latest, macOS-latest, windows-latest]
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - if: ${{ contains(matrix.os, 'ubuntu') }}
         run: |
           sudo apt-get update -y
@@ -43,6 +47,8 @@ jobs:
         os: [ubuntu-latest, macOS-latest, windows-latest]
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - if: ${{ contains(matrix.os, 'ubuntu') }}
         run: |
           sudo apt-get update -y
@@ -71,6 +77,8 @@ jobs:
           - { os: windows-latest , features: windows }
     steps:
     - uses: actions/checkout@v7
+      with:
+        persist-credentials: false
     - name: Initialize workflow variables
       id: vars
       shell: bash
