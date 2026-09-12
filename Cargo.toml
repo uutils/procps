@@ -64,7 +64,7 @@ crossterm = "0.29.0"
 ctor = "1.0.0"
 dirs = "7.0.0"
 jiff = "0.2.15"
-nix = { version = "0.30", default-features = false, features = ["process"] }
+nix = { version = "0.31", default-features = false, features = ["process"] }
 phf = "0.14.0"
 phf_codegen = "0.14.0"
 prettytable-rs = "0.10.0"
@@ -77,7 +77,7 @@ tempfile = "3.10.1"
 terminal_size = "0.4.2"
 textwrap = { version = "0.16.1", features = ["terminal_size"] }
 thiserror = "2.0.4"
-uucore = "0.7.0"
+uucore = "0.11.0"
 uutests = "0.11.0"
 walkdir = "2.5.0"
 windows = { version = "0.62.0" }
