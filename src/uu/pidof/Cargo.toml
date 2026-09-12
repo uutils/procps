@@ -16,6 +16,7 @@ workspace = true
 [dependencies]
 clap = { workspace = true }
 uucore = { workspace = true }
+
 uu_pgrep = { path = "../pgrep" }
 
 [target.'cfg(unix)'.dependencies]
