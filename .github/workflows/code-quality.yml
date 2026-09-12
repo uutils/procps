@@ -8,12 +8,12 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 env:
   # * style job configuration
   STYLE_FAIL_ON_FAULT: true ## (bool) fail the build if a style job contains a fault (error or warning); may be overridden on a per-job basis
-
-permissions:
-  contents: read # to fetch code (actions/checkout)
 
 # End the current execution if there is a new changeset in the PR.
 concurrency:

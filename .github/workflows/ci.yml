@@ -1,6 +1,9 @@
+name: Basic CI
+
 on: [push, pull_request]
 
-name: Basic CI
+permissions:
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
