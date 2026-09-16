@@ -8,7 +8,7 @@ use regex::Regex;
 use uutests::new_ucmd;
 
 #[cfg(target_os = "linux")]
-use uucore::process::geteuid;
+use rustix::process::geteuid;
 
 #[test]
 #[cfg(target_os = "linux")]
@@ -402,7 +402,7 @@ fn test_combined_selection_criteria() {
             "--pid",
             "1",
             "--user",
-            &geteuid().to_string(),
+            &geteuid().as_raw().to_string(),
             "--no-headers",
             "-o",
             "pid",

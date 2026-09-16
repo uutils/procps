@@ -16,7 +16,7 @@ workspace = true
 [dependencies]
 uucore = { workspace = true, features = ["utmpx", "uptime", "libc"] }
 clap = { workspace = true }
-chrono = { workspace = true, default-features = false, features = ["clock"] }
+jiff = { workspace = true }
 
 [lib]
 path = "src/w.rs"

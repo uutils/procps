@@ -62,11 +62,12 @@ clap_complete = "4.5.2"
 clap_mangen = "0.3.0"
 crossterm = "0.29.0"
 ctor = "1.0.0"
-dirs = "6.0.0"
+dirs = "7.0.0"
 jiff = "0.2.15"
-nix = { version = "0.30", default-features = false, features = ["process"] }
-phf = "0.13.1"
-phf_codegen = "0.13.0"
+nix = { version = "0.31", default-features = false, features = ["process"] }
+phf = "0.14.0"
+phf_codegen = "0.14.0"
+pretty_assertions = "1.4.0"
 prettytable-rs = "0.10.0"
 rand = { version = "0.10.0" }
 ratatui = "0.30.0"
@@ -77,8 +78,8 @@ tempfile = "3.10.1"
 terminal_size = "0.4.2"
 textwrap = { version = "0.16.1", features = ["terminal_size"] }
 thiserror = "2.0.4"
-uucore = "0.7.0"
-uutests = "0.9.0"
+uucore = "0.11.0"
+uutests = "0.11.0"
 walkdir = "2.5.0"
 windows = { version = "0.62.0" }
 windows-sys = { version = "0.61.0", default-features = false }
@@ -118,14 +119,13 @@ watch = { optional = true, version = "0.0.1", package = "uu_watch", path = "src/
 [dev-dependencies]
 chrono = { workspace = true }
 ctor = { workspace = true }
-pretty_assertions = "1.4.0"
+pretty_assertions = { workspace = true }
 rand = { workspace = true }
 regex = { workspace = true }
 tempfile = { workspace = true }
 uucore = { workspace = true, features = [
     "entries",
     "libc",
-    "process",
     "signals",
 ] }
 uutests = { workspace = true }
@@ -135,6 +135,9 @@ xattr = { workspace = true }
 
 [target.'cfg(any(target_os = "linux", target_os = "android"))'.dev-dependencies]
 rlimit = "0.11.0"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+rustix = { workspace = true }
 
 [build-dependencies]
 phf_codegen = { workspace = true }

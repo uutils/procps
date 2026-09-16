@@ -437,7 +437,7 @@ fn test_invalid_group_name() {
 fn test_current_user() {
     new_ucmd!()
         .arg("-U")
-        .arg(uucore::process::getuid().to_string())
+        .arg(rustix::process::getuid().as_raw().to_string())
         .succeeds();
 }
 

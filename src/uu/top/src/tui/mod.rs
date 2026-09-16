@@ -528,7 +528,7 @@ impl<'a> Tui<'a> {
             let constraints = [Constraint::Length(1), Constraint::Min(1)];
             let layout = Layout::new(Direction::Vertical, constraints).split(area);
             Line::from(Span::styled(
-                format!("{:<width$}", &info_bar.title, width = area.width as usize),
+                format!("{:<width$}", info_bar.title, width = area.width as usize),
                 Style::default().bg_secondary(self.stat.colorful),
             ))
             .render(layout[0], buf);
