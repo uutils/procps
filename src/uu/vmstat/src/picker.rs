@@ -81,6 +81,11 @@ pub fn get_pickers(matches: &ArgMatches) -> Vec<Picker> {
 #[cfg(target_os = "linux")]
 pub fn get_stats() -> Vec<(String, u64)> {
     let proc_data = ProcData::new();
+    get_stats_from(&proc_data)
+}
+
+#[cfg(target_os = "linux")]
+fn get_stats_from(proc_data: &ProcData) -> Vec<(String, u64)> {
     let memory_info = Meminfo::from_proc_map(&proc_data.meminfo);
     let cpu_load = CpuLoadRaw::from_proc_map(&proc_data.stat);
 
@@ -125,10 +130,7 @@ pub fn get_stats() -> Vec<(String, u64)> {
             "K free swap".to_string(),
             memory_info.swap_free.0 / bytesize::KB,
         ),
-        (
-            "non-nice user cpu ticks".to_string(),
-            cpu_load.user - cpu_load.nice,
-        ),
+        ("non-nice user cpu ticks".to_string(), cpu_load.user),
         ("nice user cpu ticks".to_string(), cpu_load.nice),
         ("system cpu ticks".to_string(), cpu_load.system),
         ("idle cpu ticks".to_string(), cpu_load.idle),
@@ -203,6 +205,52 @@ pub fn get_stats() -> Vec<(String, u64)> {
             ProcData::get_one(&proc_data.stat, "processes"),
         ),
     ]
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn stats_user_ticks_use_raw_user() {
+        for (user, nice) in [(100, 20), (10, 20)] {
+            let meminfo = [
+                "MemTotal",
+                "MemFree",
+                "MemAvailable",
+                "Buffers",
+                "Cached",
+                "SReclaimable",
+                "SwapCached",
+                "Active",
+                "Inactive",
+                "SwapTotal",
+                "SwapFree",
+            ]
+            .into_iter()
+            .map(|name| (name.to_string(), "1024 kB".to_string()))
+            .collect();
+            let stat = HashMap::from([
+                ("cpu".to_string(), format!("{user} {nice} 0 0 0 0 0 0 0 0")),
+                ("intr".to_string(), "0".to_string()),
+                ("ctxt".to_string(), "0".to_string()),
+                ("btime".to_string(), "0".to_string()),
+                ("processes".to_string(), "0".to_string()),
+            ]);
+            let proc_data = ProcData {
+                uptime: (0.0, 0.0),
+                stat,
+                meminfo,
+                vmstat: HashMap::new(),
+                diskstat: Vec::new(),
+            };
+
+            let stats: HashMap<_, _> = get_stats_from(&proc_data).into_iter().collect();
+            assert_eq!(stats["non-nice user cpu ticks"], user);
+            assert_eq!(stats["nice user cpu ticks"], nice);
+        }
+    }
 }
 
 #[cfg(target_os = "linux")]
