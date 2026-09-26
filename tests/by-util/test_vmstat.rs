@@ -100,5 +100,8 @@ fn test_disk() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_disk_sum() {
-    new_ucmd!().arg("-D").succeeds();
+    new_ucmd!()
+        .arg("-D")
+        .succeeds()
+        .stdout_contains("inprogress IO");
 }

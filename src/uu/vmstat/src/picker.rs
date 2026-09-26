@@ -254,7 +254,7 @@ pub fn get_disk_sum() -> UResult<Vec<(String, u64)>> {
         ("merged writes".to_string(), merged_writes),
         ("written sectors".to_string(), written_sectors),
         ("milli writing".to_string(), milli_writing),
-        ("in progress IO".to_string(), inprogress_io),
+        ("inprogress IO".to_string(), inprogress_io),
         ("milli spent IO".to_string(), milli_spent_io),
         ("milli weighted IO".to_string(), milli_weighted_io),
     ])
