@@ -2701,6 +2701,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "uuproc"
+version = "0.0.1"
+dependencies = [
+ "regex",
+ "rustix",
+ "walkdir",
+]
+
+[[package]]
 name = "uutests"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
