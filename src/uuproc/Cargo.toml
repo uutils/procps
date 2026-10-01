@@ -1,0 +1,19 @@
+[package]
+name = "uuproc"
+description = "uutils ~ 'procps' process infomation library (cross-platform)"
+repository = "https://github.com/uutils/procps/tree/main/src/uuproc"
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+regex.workspace = true
+rustix.workspace = true
+walkdir.workspace = true
+
+[lints]
+workspace = true

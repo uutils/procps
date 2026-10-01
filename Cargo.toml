@@ -19,7 +19,7 @@ license.workspace = true
 version.workspace = true
 
 [workspace]
-members = ["src/uu/*"]
+members = ["src/uu/*", "src/uuproc"]
 
 [workspace.package]
 authors = ["uutils developers"]
