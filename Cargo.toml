@@ -1,5 +1,5 @@
 [workspace]
-members = ["src/uu/hugetop"]
+members = ["src/uu/hugetop", "src/uuproc"]
 # procps (uutils)
 # * see the repository LICENSE, README, and CONTRIBUTING files for more information
 
