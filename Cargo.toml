@@ -1,18 +1,7 @@
-[workspace]
-members = ["src/uu/hugetop"]
 # procps (uutils)
 # * see the repository LICENSE, README, and CONTRIBUTING files for more information
 
 # spell-checker:ignore (libs) mangen
-
-[workspace.package]
-authors = ["uutils developers"]
-categories = ["command-line-utilities"]
-edition = "2021"
-homepage = "https://github.com/uutils/procps"
-keywords = ["procps", "uutils", "cross-platform", "cli", "utility"]
-license = "MIT"
-version = "0.0.1"
 
 [package]
 name = "procps"
@@ -28,6 +17,18 @@ homepage.workspace = true
 keywords.workspace = true
 license.workspace = true
 version.workspace = true
+
+[workspace]
+members = ["src/uu/*"]
+
+[workspace.package]
+authors = ["uutils developers"]
+categories = ["command-line-utilities"]
+edition = "2021"
+homepage = "https://github.com/uutils/procps"
+keywords = ["procps", "uutils", "cross-platform", "cli", "utility"]
+license = "MIT"
+version = "0.0.1"
 
 [features]
 default = ["feat_common_core"]
