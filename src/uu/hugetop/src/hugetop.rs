@@ -10,6 +10,7 @@ use std::fs;
 use std::path::Path;
 use std::thread::sleep;
 use std::time::Duration;
+use uu_free::humanized;
 use uucore::error::UResult;
 
 const DEFAULT_HUGEPAGES_ROOT: &str = "/sys/kernel/mm/hugepages";
@@ -207,36 +208,6 @@ fn format_kb(kb: u64, human: bool) -> String {
     } else {
         format!("{}", kb)
     }
-}
-
-fn humanized(kib: u64, si: bool) -> String {
-    let b = kib * 1024;
-    let units = ['B', 'K', 'M', 'G', 'T', 'P'];
-    let mut level = 0;
-    let mut divisor = 1u64;
-
-    while level < units.len() - 1 && divisor * 100 <= b {
-        divisor *= if si { 1000 } else { 1024 };
-        level += 1;
-    }
-
-    if level == 0 {
-        return format!("{}{}", b, units[level]);
-    }
-
-    let value = (b as f64) / (divisor as f64);
-    let formatted_value = if (value * 10.0).round() < 100.0 {
-        format!("{:.1}", (value * 10.0).round() / 10.0)
-    } else {
-        (value as u64).to_string()
-    };
-
-    format!(
-        "{}{}{}",
-        formatted_value,
-        units[level].to_owned(),
-        if si { "" } else { "i" }
-    )
 }
 
 fn read_node_hugepage_pools() -> UResult<Vec<(String, Vec<HugePagePool>)>> {
