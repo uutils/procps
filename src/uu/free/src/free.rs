@@ -457,7 +457,7 @@ fn humanized(kib: u64, si: bool) -> String {
     let units = ['B', 'K', 'M', 'G', 'T', 'P'];
     let mut level = 0;
     let mut divisor = 1;
-    while level < units.len() - 1 && divisor * 100 <= b {
+    while level < units.len() - 1 && divisor * 1000 <= b {
         divisor *= if si { 1000 } else { 1024 };
         level += 1;
     }
@@ -541,6 +541,10 @@ mod test {
         let test_cases = [
             (0, false, "0B"),
             (0, true, "0B"),
+            (99, false, "99Ki"),
+            (100, false, "100Ki"),
+            (999, false, "999Ki"),
+            (1000, false, "1.0Mi"),
             (1023, false, "1.0Mi"),
             (1024, true, "1.0M"),
             (1024, false, "1.0Mi"),
@@ -550,6 +554,10 @@ mod test {
             (8500, false, "8.3Mi"),
             (10138, false, "9.9Mi"),
             (10230, false, "9Mi"),
+            (976562, true, "999M"),
+            (976563, true, "1.0G"),
+            (1023999, false, "999Mi"),
+            (1024000, false, "1.0Gi"),
         ];
         for &(kib, si, expected) in &test_cases {
             assert_eq!(humanized(kib, si), expected);
