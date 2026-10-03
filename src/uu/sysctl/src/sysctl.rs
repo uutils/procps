@@ -16,16 +16,21 @@ mod linux {
     const PROC_SYS_ROOT: &str = "/proc/sys";
 
     pub fn get_all_sysctl_variables() -> Vec<String> {
+        get_sysctl_variables(Path::new(PROC_SYS_ROOT))
+    }
+
+    fn get_sysctl_variables(root: &Path) -> Vec<String> {
         let mut ret = vec![];
-        for entry in WalkDir::new(PROC_SYS_ROOT) {
+        for entry in WalkDir::new(root) {
             match entry {
                 Ok(e) => {
                     if e.file_type().is_file() {
-                        let var = e
+                        if let Some(s) = e
                             .path()
                             .strip_prefix(PROC_SYS_ROOT)
-                            .expect("Always should be ancestor of of sysctl root");
-                        if let Some(s) = var.as_os_str().to_str() {
+                            .ok()
+                            .and_then(Path::to_str)
+                        {
                             ret.push(s.to_owned());
                         }
                     }
@@ -36,6 +41,19 @@ mod linux {
             }
         }
         ret
+    }
+
+    pub fn print_directory_names(var: &str) -> bool {
+        let path = variable_path(var);
+        // Operands like /proc/sys/kernel arrive here as ".proc.sys.kernel". procps-ng fails on
+        // them, and variable_path would drop PROC_SYS_ROOT because the path is absolute.
+        if var.starts_with('.') || !path.is_dir() {
+            return false;
+        }
+        for name in get_sysctl_variables(&path) {
+            println!("{}", normalize_var(&name));
+        }
+        true
     }
 
     pub fn normalize_var(var: &str) -> String {
@@ -123,6 +141,13 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     };
 
     for var_or_assignment in vars {
+        if names
+            && !var_or_assignment.is_empty()
+            && !var_or_assignment.contains('=')
+            && print_directory_names(&normalize_var(&var_or_assignment))
+        {
+            continue;
+        }
         match handle_one_arg(&var_or_assignment, matches.get_flag("quiet")) {
             Ok(None) => (),
             Ok(Some((var, value))) => {
