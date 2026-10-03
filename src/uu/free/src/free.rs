@@ -452,7 +452,7 @@ fn construct_committed_str(mem_info: &MemInfo, n2s: &dyn Fn(u64) -> String) -> S
 
 // Here's the `-h` `--human` flag processing logic
 // See: https://github.com/uutils/procps/pull/431
-fn humanized(kib: u64, si: bool) -> String {
+pub fn humanized(kib: u64, si: bool) -> String {
     let b = ByteSize::kib(kib).0;
     let units = ['B', 'K', 'M', 'G', 'T', 'P'];
     let mut level = 0;

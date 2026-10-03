@@ -19,19 +19,19 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
         .unwrap_or(Some(&'o'))
         .unwrap_or(&'o');
 
+    let human = matches.get_flag("human");
+
     let slabinfo = SlabInfo::new()?.sort(*sort_flag, false);
 
-    println!("{slabinfo:?}");
-
     if matches.get_flag("once") {
-        output_header(&slabinfo);
+        output_header(&slabinfo, human);
         println!();
-        output_list(&slabinfo);
+        output_list(&slabinfo, human);
     } else {
         // TODO: implement TUI
-        output_header(&slabinfo);
+        output_header(&slabinfo, human);
         println!();
-        output_list(&slabinfo);
+        output_list(&slabinfo, human);
     }
 
     Ok(())
@@ -52,7 +52,7 @@ fn percentage(numerator: u64, denominator: u64) -> f64 {
     (numerator / denominator) * 100.0
 }
 
-fn output_header(slabinfo: &SlabInfo) {
+fn output_header(slabinfo: &SlabInfo, human: bool) {
     println!(
         r" Active / Total Objects (% used)    : {} / {} ({:.1}%)",
         slabinfo.total_active_objs(),
@@ -76,9 +76,17 @@ fn output_header(slabinfo: &SlabInfo) {
     );
 
     println!(
-        r" Active / Total Size (% used)       : {:.2}K / {:.2}K ({:.1}%)",
-        to_kb(slabinfo.total_active_size()),
-        to_kb(slabinfo.total_size()),
+        r" Active / Total Size (% used)       : {} / {} ({:.1}%)",
+        if human {
+            uu_free::humanized(slabinfo.total_active_size() / 1024, false)
+        } else {
+            (slabinfo.total_active_size() / 1024).to_string()
+        },
+        if human {
+            uu_free::humanized(slabinfo.total_size() / 1024, false)
+        } else {
+            (slabinfo.total_size() / 1024).to_string()
+        },
         percentage(slabinfo.total_active_size(), slabinfo.total_size())
     );
 
@@ -90,7 +98,7 @@ fn output_header(slabinfo: &SlabInfo) {
     );
 }
 
-fn output_list(info: &SlabInfo) {
+fn output_list(info: &SlabInfo, human: bool) {
     let title = format!(
         "{:>6} {:>6} {:>4} {:>8} {:>6} {:>8} {:>10} {:<}",
         "OBJS", "ACTIVE", "USE", "OBJ SIZE", "SLABS", "OBJ/SLAB", "CACHE SIZE", "NAME"
@@ -109,10 +117,16 @@ fn output_list(info: &SlabInfo) {
         let obj_per_slab = info.fetch(name, "objperslab").unwrap_or_default();
 
         let cache_size = (objsize * (objs as f64)) as u64;
+        let cache_size_str = if human {
+            uu_free::humanized(cache_size, false)
+        } else {
+            cache_size.to_string()
+        };
+
         let objsize = format!("{objsize:.2}");
 
         let content = format!(
-            "{objs:>6} {active:>6} {used:>4} {objsize:>7}K {slabs:>6} {obj_per_slab:>8} {cache_size:>10} {name:<}"
+            "{objs:>6} {active:>6} {used:>4} {objsize:>7}K {slabs:>6} {obj_per_slab:>8} {cache_size_str:>10} {name:<}"
         );
 
         println!("{content}");
@@ -142,6 +156,7 @@ pub fn uu_app() -> Command {
         .args([
             // arg!(-d --delay <secs>  "delay updates"),
             arg!(-o --once          "only display once, then exit").action(ArgAction::SetTrue),
+            arg!(--human            "show human-readable output").action(ArgAction::SetTrue),
             arg!(-s --sort  <char>  "specify sort criteria by character (see below)"),
         ])
         .after_help(AFTER_HELP)

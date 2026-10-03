@@ -2569,6 +2569,7 @@ name = "uu_slabtop"
 version = "0.0.1"
 dependencies = [
  "clap",
+ "uu_free",
  "uucore",
 ]
 
