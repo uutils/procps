@@ -56,6 +56,22 @@ mod linux {
         std::fs::write(variable_path(var), value)
     }
 
+    pub fn format_variable(var: &str, value: &str, names: bool, values: bool) -> String {
+        if names {
+            return format!("{var}\n");
+        }
+        value
+            .split('\n')
+            .map(|line| {
+                if values {
+                    format!("{line}\n")
+                } else {
+                    format!("{var} = {line}\n")
+                }
+            })
+            .collect()
+    }
+
     pub fn handle_one_arg(
         var_or_assignment: &str,
         quiet: bool,
@@ -86,6 +102,7 @@ use linux::*;
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
     let names = matches.get_flag("names");
+    let values = matches.get_flag("values");
 
     let vars = if matches.get_flag("all") {
         get_all_sysctl_variables()
@@ -108,16 +125,8 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     for var_or_assignment in vars {
         match handle_one_arg(&var_or_assignment, matches.get_flag("quiet")) {
             Ok(None) => (),
-            Ok(Some((var, value_to_print))) => {
-                for line in value_to_print.split('\n') {
-                    if names {
-                        println!("{var}");
-                    } else if matches.get_flag("values") {
-                        println!("{line}");
-                    } else {
-                        println!("{var} = {line}");
-                    }
-                }
+            Ok(Some((var, value))) => {
+                print!("{}", format_variable(&var, &value, names, values));
             }
             Err(e) => {
                 if !matches.get_flag("ignore") {
@@ -198,4 +207,25 @@ pub fn uu_app() -> Command {
                 .short('x')
                 .help("Does nothing, for BSD compatibility"),
         )
+}
+
+#[cfg(test)]
+#[cfg(target_os = "linux")]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_multiline_value() {
+        let value = "line 1\nline 2";
+        assert_eq!(format_variable("a.b", value, true, false), "a.b\n");
+        assert_eq!(format_variable("a.b", value, true, true), "a.b\n");
+        assert_eq!(
+            format_variable("a.b", value, false, true),
+            "line 1\nline 2\n"
+        );
+        assert_eq!(
+            format_variable("a.b", value, false, false),
+            "a.b = line 1\na.b = line 2\n"
+        );
+    }
 }
