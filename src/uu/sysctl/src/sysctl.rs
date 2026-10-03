@@ -85,10 +85,20 @@ use linux::*;
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
+    let names = matches.get_flag("names");
 
     let vars = if matches.get_flag("all") {
         get_all_sysctl_variables()
     } else if let Some(vars) = matches.get_many::<String>("variables") {
+        if names && matches.get_flag("quiet") {
+            return Err(uucore::error::USimpleError::new(
+                1,
+                format!(
+                    "options -N and -q cannot coexist\nTry `{} --help' for more information.",
+                    uucore::util_name()
+                ),
+            ));
+        }
         vars.cloned().collect()
     } else {
         uu_app().print_help()?;
@@ -100,7 +110,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
             Ok(None) => (),
             Ok(Some((var, value_to_print))) => {
                 for line in value_to_print.split('\n') {
-                    if matches.get_flag("names") {
+                    if names {
                         println!("{var}");
                     } else if matches.get_flag("values") {
                         println!("{line}");
