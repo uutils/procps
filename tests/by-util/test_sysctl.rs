@@ -81,6 +81,25 @@ mod linux {
             .stdout_is("kernel.ostype = Linux\n")
             .stderr_is("");
     }
+
+    #[test]
+    fn test_get_directory_names() {
+        for options in [vec!["-N"], vec!["--names"], vec!["-n", "-N"]] {
+            new_ucmd!()
+                .args(&options)
+                .arg("kernel")
+                .succeeds()
+                .stdout_contains_line("kernel.ostype")
+                .stdout_contains_line("kernel.random.boot_id")
+                .stdout_does_not_contain(" = ")
+                .no_stderr();
+        }
+        new_ucmd!()
+            .args(&["-N", "/proc/sys/kernel"])
+            .fails()
+            .code_is(1)
+            .no_stdout();
+    }
 }
 
 #[cfg(not(target_os = "linux"))]
