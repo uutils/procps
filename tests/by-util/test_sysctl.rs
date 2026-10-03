@@ -55,6 +55,22 @@ mod linux {
     }
 
     #[test]
+    fn test_names_with_quiet() {
+        new_ucmd!()
+            .args(&["-N", "-q", "kernel.ostype"])
+            .fails()
+            .code_is(1)
+            .no_stdout()
+            .stderr_is("sysctl: options -N and -q cannot coexist\nTry `sysctl --help' for more information.\n");
+        // With -a, -N and -q together still list every name, as procps-ng does.
+        new_ucmd!()
+            .args(&["-a", "-N", "-q"])
+            .run()
+            .stdout_contains_line("kernel.ostype")
+            .stderr_does_not_contain("cannot coexist");
+    }
+
+    #[test]
     fn test_ignoring_errors() {
         new_ucmd!()
             .arg("-e")
