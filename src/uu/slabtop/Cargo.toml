@@ -17,6 +17,8 @@ workspace = true
 uucore = { workspace = true }
 clap = { workspace = true }
 
+uu_free = { path = "../free" }
+
 [lib]
 path = "src/slabtop.rs"
 
