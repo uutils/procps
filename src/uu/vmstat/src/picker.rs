@@ -92,43 +92,43 @@ fn get_stats_from(proc_data: &ProcData) -> Vec<(String, u64)> {
     vec![
         (
             "K total memory".to_string(),
-            memory_info.mem_total.0 / bytesize::KB,
+            memory_info.mem_total.0 / bytesize::KIB,
         ),
         (
             "K used memory".to_string(),
-            (memory_info.mem_total - memory_info.mem_available).0 / bytesize::KB,
+            (memory_info.mem_total - memory_info.mem_available).0 / bytesize::KIB,
         ),
         (
             "K active memory".to_string(),
-            memory_info.active.0 / bytesize::KB,
+            memory_info.active.0 / bytesize::KIB,
         ),
         (
             "K inactive memory".to_string(),
-            memory_info.inactive.0 / bytesize::KB,
+            memory_info.inactive.0 / bytesize::KIB,
         ),
         (
             "K free memory".to_string(),
-            memory_info.mem_free.0 / bytesize::KB,
+            memory_info.mem_free.0 / bytesize::KIB,
         ),
         (
             "K buffer memory".to_string(),
-            memory_info.buffers.0 / bytesize::KB,
+            memory_info.buffers.0 / bytesize::KIB,
         ),
         (
             "K swap cache".to_string(),
-            memory_info.cached.0 / bytesize::KB,
+            (memory_info.cached + memory_info.s_reclaimable).0 / bytesize::KIB,
         ),
         (
             "K total swap".to_string(),
-            memory_info.swap_total.0 / bytesize::KB,
+            memory_info.swap_total.0 / bytesize::KIB,
         ),
         (
             "K used swap".to_string(),
-            (memory_info.swap_total - memory_info.swap_free).0 / bytesize::KB,
+            (memory_info.swap_total - memory_info.swap_free).0 / bytesize::KIB,
         ),
         (
             "K free swap".to_string(),
-            memory_info.swap_free.0 / bytesize::KB,
+            memory_info.swap_free.0 / bytesize::KIB,
         ),
         ("non-nice user cpu ticks".to_string(), cpu_load.user),
         ("nice user cpu ticks".to_string(), cpu_load.nice),
@@ -249,6 +249,56 @@ mod tests {
             let stats: HashMap<_, _> = get_stats_from(&proc_data).into_iter().collect();
             assert_eq!(stats["non-nice user cpu ticks"], user);
             assert_eq!(stats["nice user cpu ticks"], nice);
+        }
+    }
+
+    #[test]
+    fn stats_memory_lines() {
+        let meminfo = [
+            ("MemTotal", 16_000_000),
+            ("MemFree", 3_000_000),
+            ("MemAvailable", 11_000_000),
+            ("Buffers", 400_000),
+            ("Cached", 4_000_000),
+            ("SReclaimable", 2_000_000),
+            ("SwapCached", 0),
+            ("Active", 7_000_000),
+            ("Inactive", 8_000_000),
+            ("SwapTotal", 1_000_000),
+            ("SwapFree", 900_000),
+        ]
+        .into_iter()
+        .map(|(name, kib)| (name.to_string(), format!("{kib} kB")))
+        .collect();
+        let stat = HashMap::from([
+            ("cpu".to_string(), "0 0 0 0 0 0 0 0 0 0".to_string()),
+            ("intr".to_string(), "0".to_string()),
+            ("ctxt".to_string(), "0".to_string()),
+            ("btime".to_string(), "0".to_string()),
+            ("processes".to_string(), "0".to_string()),
+        ]);
+        let proc_data = ProcData {
+            uptime: (0.0, 0.0),
+            stat,
+            meminfo,
+            vmstat: HashMap::new(),
+            diskstat: Vec::new(),
+        };
+
+        let stats: HashMap<_, _> = get_stats_from(&proc_data).into_iter().collect();
+        for (name, kib) in [
+            ("K total memory", 16_000_000),
+            ("K used memory", 5_000_000),
+            ("K active memory", 7_000_000),
+            ("K inactive memory", 8_000_000),
+            ("K free memory", 3_000_000),
+            ("K buffer memory", 400_000),
+            ("K swap cache", 6_000_000),
+            ("K total swap", 1_000_000),
+            ("K used swap", 100_000),
+            ("K free swap", 900_000),
+        ] {
+            assert_eq!(stats[name], kib, "{name}");
         }
     }
 }
