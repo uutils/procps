@@ -5,7 +5,7 @@
 
 use std::cell::RefCell;
 
-use uu_pgrep::process::{ProcessInformation, Teletype};
+use uuproc::process::{ProcessInformation, Teletype};
 #[cfg(unix)]
 use uucore::entries::{gid2grp, uid2usr};
 

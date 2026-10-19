@@ -2544,8 +2544,8 @@ dependencies = [
  "clap",
  "prettytable-rs",
  "rustix",
- "uu_pgrep",
  "uucore",
+ "uuproc",
 ]
 
 [[package]]

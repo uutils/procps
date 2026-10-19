@@ -5,7 +5,7 @@
 
 use clap::ArgMatches;
 use std::collections::HashSet;
-use uu_pgrep::process::{walk_process, ProcessInformation, RunState, Teletype};
+use uuproc::process::{ProcessInformation, RunState, Teletype, walk_process};
 use uucore::error::UResult;
 
 // TODO: Temporary add to this file, this function will add to uucore.

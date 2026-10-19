@@ -17,9 +17,9 @@ workspace = true
 clap = { workspace = true }
 prettytable-rs = { workspace = true }
 rustix = { workspace = true, features = ["fs", "process", "std", "termios"] }
-uucore = { workspace = true, features = ["utmpx"] }
+uucore = { workspace = true, features = ["entries", "utmpx"] }
 
-uu_pgrep = { path = "../pgrep" }
+uuproc = { workspace = true }
 
 [lib]
 path = "src/ps.rs"
