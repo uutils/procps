@@ -2510,6 +2510,7 @@ dependencies = [
  "rustix",
  "uu_pgrep",
  "uucore",
+ "uuproc",
  "windows-sys",
 ]
 
