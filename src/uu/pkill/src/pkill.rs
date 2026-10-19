@@ -13,7 +13,7 @@ use rustix::{
 #[cfg(unix)]
 use std::io::Error;
 #[cfg(unix)]
-use uu_pgrep::process::ProcessInformation;
+use uuproc::process::ProcessInformation;
 use uu_pgrep::process_matcher;
 use uucore::error::UResult;
 #[cfg(unix)]
