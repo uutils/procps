@@ -1,4 +1,3 @@
-#[cfg(target_os = "linux")]
 use std::io;
 
 /// See https://www.man7.org/linux/man-pages/man7/namespaces.7.html

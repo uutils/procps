@@ -167,12 +167,11 @@ impl TryFrom<PathBuf> for Teletype {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "linux"))]
 mod tests {
     use super::*;
 
     #[test]
-    #[cfg(target_os = "linux")]
     fn test_tty_resolution() {
         let test_content = r#"/dev/tty             /dev/tty        5       0 system:/dev/tty
 /dev/console         /dev/console    5       1 system:console
