@@ -7,6 +7,5 @@
 //! kept so existing consumers keep compiling during the migration.
 
 pub use uuproc::process::{
-    CgroupMembership, Namespace, ProcessInformation, RunState, Teletype, walk_process,
-    walk_threads,
+    walk_process, walk_threads, CgroupMembership, Namespace, ProcessInformation, RunState, Teletype,
 };

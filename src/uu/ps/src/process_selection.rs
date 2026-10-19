@@ -5,8 +5,8 @@
 
 use clap::ArgMatches;
 use std::collections::HashSet;
-use uuproc::process::{ProcessInformation, RunState, Teletype, walk_process};
 use uucore::error::UResult;
+use uuproc::process::{walk_process, ProcessInformation, RunState, Teletype};
 
 // TODO: Temporary add to this file, this function will add to uucore.
 #[cfg(not(target_os = "redox"))]

@@ -8,8 +8,8 @@ use std::path::PathBuf;
 use clap::{crate_version, Arg, ArgAction, ArgMatches, Command};
 #[cfg(unix)]
 use rustix::process::geteuid;
-use uuproc::process::{walk_process, ProcessInformation};
 use uucore::error::UResult;
+use uuproc::process::{walk_process, ProcessInformation};
 
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
