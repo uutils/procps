@@ -2584,8 +2584,8 @@ dependencies = [
  "rustix",
  "sysinfo",
  "thiserror 2.0.21",
- "uu_pgrep",
  "uucore",
+ "uuproc",
 ]
 
 [[package]]

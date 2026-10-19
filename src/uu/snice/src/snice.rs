@@ -13,7 +13,7 @@ use process_matcher::*;
 use std::collections::HashSet;
 use std::io::Write;
 use sysinfo::Pid;
-use uu_pgrep::process::ProcessInformation;
+use uuproc::process::ProcessInformation;
 use uucore::error::{UResult, USimpleError};
 #[cfg(target_family = "unix")]
 use uucore::signals::ALL_SIGNALS;
