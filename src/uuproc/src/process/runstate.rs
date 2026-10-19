@@ -74,3 +74,19 @@ impl TryFrom<&str> for RunState {
         )
     }
 }
+
+impl TryFrom<String> for RunState {
+    type Error = io::Error;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::try_from(value.as_str())
+    }
+}
+
+impl TryFrom<&String> for RunState {
+    type Error = io::Error;
+
+    fn try_from(value: &String) -> Result<Self, Self::Error> {
+        Self::try_from(value.as_str())
+    }
+}

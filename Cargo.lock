@@ -2488,6 +2488,7 @@ dependencies = [
  "regex",
  "rustix",
  "uucore",
+ "uuproc",
  "walkdir",
 ]
 
