@@ -1,6 +1,5 @@
-use crate::ns::Namespace;
-use crate::process::runstate::RunState;
-use crate::{cgroups::CgroupMembership, teletype::Teletype};
+pub use crate::ns::Namespace;
+pub use crate::{cgroups::CgroupMembership, teletype::Teletype};
 
 use walkdir::{DirEntry, WalkDir};
 
@@ -8,6 +7,9 @@ use std::{collections::HashMap, fs, hash::Hash, io, path::PathBuf, sync::OnceLoc
 
 mod runstate;
 mod walk;
+
+pub use runstate::RunState;
+pub use walk::{walk_process, walk_threads};
 
 /// Process ID and its information
 #[derive(Debug, Clone, Default)]
