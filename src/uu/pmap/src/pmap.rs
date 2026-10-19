@@ -99,7 +99,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     if let Some(range) = matches.get_one::<String>(options::RANGE) {
         match range.matches(',').count() {
             0 => {
-                let address = u64::from_str_radix(range, 16).map_err(|_| {
+                let address = parse_address(range).map_err(|_| {
                     USimpleError::new(1, format!("failed to parse argument: '{range}'"))
                 })?;
                 pmap_config.range_low = address;
@@ -112,14 +112,14 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 pmap_config.range_low = if low.is_empty() {
                     0
                 } else {
-                    u64::from_str_radix(low, 16).map_err(|_| {
+                    parse_address(low).map_err(|_| {
                         USimpleError::new(1, format!("failed to parse argument: '{range}'"))
                     })?
                 };
                 pmap_config.range_high = if high.is_empty() {
                     u64::MAX
                 } else {
-                    u64::from_str_radix(high, 16).map_err(|_| {
+                    parse_address(high).map_err(|_| {
                         USimpleError::new(1, format!("failed to parse argument: '{range}'"))
                     })?
                 };
@@ -431,6 +431,16 @@ fn output_device_format(pid: &str, pmap_config: &PmapConfig) -> Result<(), Error
     }
 
     Ok(())
+}
+
+/// Parse an address for --range: hexadecimal, with or without a 0x prefix,
+/// as procps-ng takes it.
+fn parse_address(address: &str) -> Result<u64, std::num::ParseIntError> {
+    let digits = address
+        .strip_prefix("0x")
+        .or_else(|| address.strip_prefix("0X"))
+        .unwrap_or(address);
+    u64::from_str_radix(digits, 16)
 }
 
 pub fn uu_app() -> Command {
