@@ -375,6 +375,11 @@ fn test_range_arg() {
             "ffffffffffffffff,",
             ",ffffffffffffffff",
             "ffffffffffffffff,ffffffffffffffff",
+            // 0x prefix
+            "0xc00fee",
+            "0Xc00fee",
+            "0xc00,0xfee",
+            ",0xffffffffffffffff",
         ] {
             new_ucmd!().arg(&pid_s).arg(opt).arg(arg).succeeds();
         }
@@ -397,6 +402,10 @@ fn test_range_arg() {
             "someinvalidtext,",
             ",someinvalidtext",
             "someinvalidtext,someinvalidtext",
+            // 0x prefix without digits
+            "0x",
+            "0x,",
+            "0x0xc00fee",
             // too large value (> u64)
             "f0000000000000000",
             "f0000000000000000,f0000000000000000",
