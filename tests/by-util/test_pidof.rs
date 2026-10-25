@@ -85,6 +85,35 @@ fn test_omit_pid() {
 
 #[test]
 #[cfg(target_os = "linux")]
+fn test_omit_pid_ppid() {
+    // pidof runs as a child of this test, so %PPID names this process.
+    let argv0 = std::env::args().next().unwrap();
+    let our_name = std::path::Path::new(argv0.as_str())
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let our_pid = std::process::id().to_string();
+
+    new_ucmd!()
+        .arg(&our_name)
+        .succeeds()
+        .stdout_contains(&our_pid);
+    let result = new_ucmd!().args(&["-o", "%PPID", &our_name]).run();
+    result.no_stderr();
+    assert!(
+        !result
+            .stdout_str()
+            .split_whitespace()
+            .any(|pid| pid == our_pid),
+        "{} contains {our_pid}",
+        result.stdout_str()
+    );
+}
+
+#[test]
+#[cfg(target_os = "linux")]
 fn test_separator() {
     use regex::Regex;
 
