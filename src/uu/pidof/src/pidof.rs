@@ -185,7 +185,7 @@ pub fn uu_app() -> Command {
                 .help("Omit results with a given PID")
                 .value_delimiter(',')
                 .action(ArgAction::Append)
-                .value_parser(clap::value_parser!(usize))
+                .value_parser(parse_omit_pid)
                 .value_name("PID"),
         )
         .arg(
@@ -221,4 +221,14 @@ pub fn uu_app() -> Command {
                 .help("Return PIDs of shells running scripts with a matching name")
                 .action(ArgAction::SetTrue),
         )
+}
+
+/// Parse an `-o` value: a PID, or `%PPID` for the parent of pidof (the
+/// calling shell or script).
+fn parse_omit_pid(value: &str) -> Result<usize, String> {
+    #[cfg(unix)]
+    if value == "%PPID" {
+        return Ok(std::os::unix::process::parent_id() as usize);
+    }
+    value.parse::<usize>().map_err(|e| e.to_string())
 }
