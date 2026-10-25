@@ -99,9 +99,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     if let Some(range) = matches.get_one::<String>(options::RANGE) {
         match range.matches(',').count() {
             0 => {
-                let address = parse_address(range).map_err(|_| {
-                    USimpleError::new(1, format!("failed to parse argument: '{range}'"))
-                })?;
+                let address = parse_address(range, range)?;
                 pmap_config.range_low = address;
                 pmap_config.range_high = address;
             }
@@ -112,16 +110,12 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                 pmap_config.range_low = if low.is_empty() {
                     0
                 } else {
-                    parse_address(low).map_err(|_| {
-                        USimpleError::new(1, format!("failed to parse argument: '{range}'"))
-                    })?
+                    parse_address(low, range)?
                 };
                 pmap_config.range_high = if high.is_empty() {
                     u64::MAX
                 } else {
-                    parse_address(high).map_err(|_| {
-                        USimpleError::new(1, format!("failed to parse argument: '{range}'"))
-                    })?
+                    parse_address(high, range)?
                 };
             }
             _ => {
@@ -434,13 +428,14 @@ fn output_device_format(pid: &str, pmap_config: &PmapConfig) -> Result<(), Error
 }
 
 /// Parse an address for --range: hexadecimal, with or without a 0x prefix,
-/// as procps-ng takes it.
-fn parse_address(address: &str) -> Result<u64, std::num::ParseIntError> {
+/// as procps-ng takes it. `range` is the whole argument, for the error.
+fn parse_address(address: &str, range: &str) -> UResult<u64> {
     let digits = address
         .strip_prefix("0x")
         .or_else(|| address.strip_prefix("0X"))
         .unwrap_or(address);
     u64::from_str_radix(digits, 16)
+        .map_err(|_| USimpleError::new(1, format!("failed to parse argument: '{range}'")))
 }
 
 pub fn uu_app() -> Command {
