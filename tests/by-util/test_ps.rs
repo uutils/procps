@@ -417,3 +417,23 @@ fn test_combined_selection_criteria() {
     assert!(pids.contains(&1));
     assert!(pids.len() > 1);
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_unimplemented_field_keeps_columns_aligned() {
+    // wchan has no value yet; pid must still be printed in its own column
+    let out = new_ucmd!()
+        .args(&["-p", "1", "--no-headers", "-o", "wchan,pid"])
+        .succeeds()
+        .stdout_move_str();
+    assert_eq!(out.split_whitespace().collect::<Vec<_>>(), ["-", "1"]);
+
+    let out = new_ucmd!()
+        .args(&["-p", "1", "-l"])
+        .succeeds()
+        .stdout_move_str();
+    let mut lines = out.lines();
+    let headers = lines.next().unwrap().split_whitespace().count();
+    let values = lines.next().unwrap().split_whitespace().count();
+    assert_eq!(headers, values);
+}

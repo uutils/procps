@@ -50,7 +50,8 @@ pub(crate) fn collect_pickers(
             "time" | "cputime" => pickers.push(helper(time)),
             "ucmd" | "comm" => pickers.push(helper(ucmd)),
             "cmd" | "command" | "args" => pickers.push(helper(cmd)),
-            _ => {}
+            // Not implemented yet: keep the column so later values stay under their headers
+            _ => pickers.push(helper(|_| "-".to_string())),
         }
     }
 
