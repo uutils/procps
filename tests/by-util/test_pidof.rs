@@ -87,29 +87,26 @@ fn test_omit_pid() {
 #[cfg(target_os = "linux")]
 fn test_omit_pid_ppid() {
     // pidof runs as a child of this test, so %PPID names this process.
-    let argv0 = std::env::args().next().unwrap();
-    let our_name = std::path::Path::new(argv0.as_str())
-        .file_name()
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_owned();
+    let exe = std::env::current_exe().unwrap();
+    let our_name = exe.file_name().unwrap().to_str().unwrap();
     let our_pid = std::process::id().to_string();
 
     new_ucmd!()
-        .arg(&our_name)
+        .arg(our_name)
         .succeeds()
         .stdout_contains(&our_pid);
-    let result = new_ucmd!().args(&["-o", "%PPID", &our_name]).run();
-    result.no_stderr();
-    assert!(
-        !result
-            .stdout_str()
-            .split_whitespace()
-            .any(|pid| pid == our_pid),
-        "{} contains {our_pid}",
-        result.stdout_str()
-    );
+    for omit in ["%PPID", "1,%PPID"] {
+        let result = new_ucmd!().args(&["-o", omit, our_name]).run();
+        result.no_stderr();
+        assert!(
+            !result
+                .stdout_str()
+                .split_whitespace()
+                .any(|pid| pid == our_pid),
+            "-o {omit}: {} contains {our_pid}",
+            result.stdout_str()
+        );
+    }
 }
 
 #[test]
