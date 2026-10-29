@@ -88,48 +88,31 @@ pub fn get_stats() -> Vec<(String, u64)> {
 fn get_stats_from(proc_data: &ProcData) -> Vec<(String, u64)> {
     let memory_info = Meminfo::from_proc_map(&proc_data.meminfo);
     let cpu_load = CpuLoadRaw::from_proc_map(&proc_data.stat);
+    let to_kib = |size: bytesize::ByteSize| size.0 / bytesize::KIB;
 
     vec![
-        (
-            "K total memory".to_string(),
-            memory_info.mem_total.0 / bytesize::KB,
-        ),
+        ("K total memory".to_string(), to_kib(memory_info.mem_total)),
         (
             "K used memory".to_string(),
-            (memory_info.mem_total - memory_info.mem_available).0 / bytesize::KB,
+            to_kib(memory_info.mem_total - memory_info.mem_available),
         ),
-        (
-            "K active memory".to_string(),
-            memory_info.active.0 / bytesize::KB,
-        ),
+        ("K active memory".to_string(), to_kib(memory_info.active)),
         (
             "K inactive memory".to_string(),
-            memory_info.inactive.0 / bytesize::KB,
+            to_kib(memory_info.inactive),
         ),
-        (
-            "K free memory".to_string(),
-            memory_info.mem_free.0 / bytesize::KB,
-        ),
-        (
-            "K buffer memory".to_string(),
-            memory_info.buffers.0 / bytesize::KB,
-        ),
+        ("K free memory".to_string(), to_kib(memory_info.mem_free)),
+        ("K buffer memory".to_string(), to_kib(memory_info.buffers)),
         (
             "K swap cache".to_string(),
-            memory_info.cached.0 / bytesize::KB,
+            to_kib(memory_info.cached + memory_info.s_reclaimable),
         ),
-        (
-            "K total swap".to_string(),
-            memory_info.swap_total.0 / bytesize::KB,
-        ),
+        ("K total swap".to_string(), to_kib(memory_info.swap_total)),
         (
             "K used swap".to_string(),
-            (memory_info.swap_total - memory_info.swap_free).0 / bytesize::KB,
+            to_kib(memory_info.swap_total - memory_info.swap_free),
         ),
-        (
-            "K free swap".to_string(),
-            memory_info.swap_free.0 / bytesize::KB,
-        ),
+        ("K free swap".to_string(), to_kib(memory_info.swap_free)),
         ("non-nice user cpu ticks".to_string(), cpu_load.user),
         ("nice user cpu ticks".to_string(), cpu_load.nice),
         ("system cpu ticks".to_string(), cpu_load.system),
@@ -212,6 +195,27 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
 
+    fn build_proc_data(meminfo: &[(&str, u64)], cpu: &str) -> ProcData {
+        let meminfo = meminfo
+            .iter()
+            .map(|(name, kib)| (name.to_string(), format!("{kib} kB")))
+            .collect();
+        let stat = HashMap::from([
+            ("cpu".to_string(), cpu.to_string()),
+            ("intr".to_string(), "0".to_string()),
+            ("ctxt".to_string(), "0".to_string()),
+            ("btime".to_string(), "0".to_string()),
+            ("processes".to_string(), "0".to_string()),
+        ]);
+        ProcData {
+            uptime: (0.0, 0.0),
+            stat,
+            meminfo,
+            vmstat: HashMap::new(),
+            diskstat: Vec::new(),
+        }
+    }
+
     #[test]
     fn stats_user_ticks_use_raw_user() {
         for (user, nice) in [(100, 20), (10, 20)] {
@@ -228,27 +232,48 @@ mod tests {
                 "SwapTotal",
                 "SwapFree",
             ]
-            .into_iter()
-            .map(|name| (name.to_string(), "1024 kB".to_string()))
-            .collect();
-            let stat = HashMap::from([
-                ("cpu".to_string(), format!("{user} {nice} 0 0 0 0 0 0 0 0")),
-                ("intr".to_string(), "0".to_string()),
-                ("ctxt".to_string(), "0".to_string()),
-                ("btime".to_string(), "0".to_string()),
-                ("processes".to_string(), "0".to_string()),
-            ]);
-            let proc_data = ProcData {
-                uptime: (0.0, 0.0),
-                stat,
-                meminfo,
-                vmstat: HashMap::new(),
-                diskstat: Vec::new(),
-            };
+            .map(|name| (name, 1024));
+            let proc_data = build_proc_data(&meminfo, &format!("{user} {nice} 0 0 0 0 0 0 0 0"));
 
             let stats: HashMap<_, _> = get_stats_from(&proc_data).into_iter().collect();
             assert_eq!(stats["non-nice user cpu ticks"], user);
             assert_eq!(stats["nice user cpu ticks"], nice);
+        }
+    }
+
+    #[test]
+    fn stats_memory_lines() {
+        let proc_data = build_proc_data(
+            &[
+                ("MemTotal", 16_000_000),
+                ("MemFree", 3_000_000),
+                ("MemAvailable", 11_000_000),
+                ("Buffers", 400_000),
+                ("Cached", 4_000_000),
+                ("SReclaimable", 2_000_000),
+                ("SwapCached", 0),
+                ("Active", 7_000_000),
+                ("Inactive", 8_000_000),
+                ("SwapTotal", 1_000_000),
+                ("SwapFree", 900_000),
+            ],
+            "0 0 0 0 0 0 0 0 0 0",
+        );
+
+        let stats: HashMap<_, _> = get_stats_from(&proc_data).into_iter().collect();
+        for (name, kib) in [
+            ("K total memory", 16_000_000),
+            ("K used memory", 5_000_000),
+            ("K active memory", 7_000_000),
+            ("K inactive memory", 8_000_000),
+            ("K free memory", 3_000_000),
+            ("K buffer memory", 400_000),
+            ("K swap cache", 6_000_000),
+            ("K total swap", 1_000_000),
+            ("K used swap", 100_000),
+            ("K free swap", 900_000),
+        ] {
+            assert_eq!(stats[name], kib, "{name}");
         }
     }
 }
