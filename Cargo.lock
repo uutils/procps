@@ -2474,9 +2474,11 @@ dependencies = [
 name = "uu_hugetop"
 version = "0.0.1"
 dependencies = [
+ "bytesize",
  "clap",
  "jiff",
  "tempfile",
+ "uu_free",
  "uucore",
 ]
 
