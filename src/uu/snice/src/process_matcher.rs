@@ -6,8 +6,8 @@
 use crate::action::SelectedTarget;
 use crate::SignalDisplay;
 use clap::{arg, value_parser, Arg, ArgMatches};
-use uu_pgrep::process::Teletype;
 use uucore::error::UResult;
+use uuproc::process::Teletype;
 
 #[derive(Debug)]
 pub struct Settings {
