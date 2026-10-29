@@ -43,11 +43,12 @@ fn fetch_terminal_jcpu() -> Result<HashMap<u64, f64>, std::io::Error> {
         .filter_map(|pid_dir_str| pid_dir_str.parse::<i32>().ok());
     let mut pid_hashmap = HashMap::new();
     for pid in pid_dirs {
-        // Fetch terminal number for current pid
-        let terminal_number = fetch_terminal_number(pid)?;
-        // Get current total CPU time for current pid
-        let pcpu_time = fetch_pcpu_time(pid)?;
-        // Update HashMap with found terminal number and add pcpu time for current pid
+        let Ok(terminal_number) = fetch_terminal_number(pid) else {
+            continue;
+        };
+        let Ok(pcpu_time) = fetch_pcpu_time(pid) else {
+            continue;
+        };
         *pid_hashmap.entry(terminal_number).or_insert(0.0) += pcpu_time;
     }
     Ok(pid_hashmap)
@@ -82,13 +83,15 @@ fn fetch_pcpu_time(pid: i32) -> Result<f64, std::io::Error> {
 }
 
 #[cfg(target_os = "linux")]
-fn fetch_idle_time(tty: String) -> Result<Duration, std::io::Error> {
+fn fetch_idle_time(tty: String) -> Duration {
     let path = Path::new("/dev/").join(tty);
-    let stat = fs::metadata(path)?;
+    let Ok(stat) = fs::metadata(path) else {
+        return Duration::ZERO;
+    };
     if let Ok(time) = stat.accessed() {
-        Ok(SystemTime::now().duration_since(time).unwrap_or_default())
+        SystemTime::now().duration_since(time).unwrap_or_default()
     } else {
-        Ok(Duration::ZERO)
+        Duration::ZERO
     }
 }
 
@@ -146,10 +149,21 @@ fn fetch_cmdline(pid: i32) -> Result<String, std::io::Error> {
 
 #[cfg(target_os = "linux")]
 fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
+    fetch_user_info_from(None::<&Path>)
+}
+
+#[cfg(target_os = "linux")]
+fn fetch_user_info_from(
+    utmp_path: Option<impl AsRef<Path>>,
+) -> Result<Vec<UserInfo>, std::io::Error> {
     let terminal_jcpu_hm = fetch_terminal_jcpu()?;
 
     let mut user_info_list = Vec::new();
-    for entry in Utmpx::iter_all_records() {
+    let records = match utmp_path {
+        Some(path) => Utmpx::iter_all_records_from(path),
+        None => Utmpx::iter_all_records(),
+    };
+    for entry in records {
         if entry.is_user_process() {
             let mut jcpu: f64 = 0.0;
 
@@ -164,7 +178,7 @@ fn fetch_user_info() -> Result<Vec<UserInfo>, std::io::Error> {
                 user: entry.user(),
                 terminal: entry.tty_device(),
                 login_time: format_time(entry.login_time().to_string()).unwrap_or_default(),
-                idle_time: fetch_idle_time(entry.tty_device())?,
+                idle_time: fetch_idle_time(entry.tty_device()),
                 jcpu: format!("{jcpu:.2}"),
                 pcpu: fetch_pcpu_time(entry.pid()).unwrap_or_default().to_string(),
                 command: fetch_cmdline(entry.pid()).unwrap_or_default(),
@@ -409,11 +423,68 @@ pub fn uu_app() -> Command {
 #[cfg(target_os = "linux")]
 mod tests {
     use crate::{
-        fetch_cmdline, fetch_pcpu_time, fetch_terminal_number, format_time, format_time_elapsed,
-        format_uptime_procps, get_clock_tick,
+        fetch_cmdline, fetch_idle_time, fetch_pcpu_time, fetch_terminal_number,
+        fetch_user_info_from, format_time, format_time_elapsed, format_uptime_procps,
+        get_clock_tick,
     };
     use jiff::{SignedDuration, Zoned};
     use std::{fs, path::Path, process, time::Duration};
+
+    #[test]
+    fn test_fetch_idle_time_missing_tty() {
+        assert_eq!(
+            fetch_idle_time(String::from("no-such-tty-device")),
+            Duration::ZERO
+        );
+    }
+
+    // Build a glibc utmp record (x86_64 layout) for a user session whose tty
+    // does not exist under /dev, matching the #718 failure mode.
+    #[cfg(all(target_env = "gnu", target_arch = "x86_64"))]
+    fn fake_user_utmp(user: &str, tty: &str, pid: i32) -> Vec<u8> {
+        const USER_PROCESS: i16 = 7;
+        let mut buf = Vec::with_capacity(384);
+        buf.extend_from_slice(&USER_PROCESS.to_ne_bytes());
+        buf.extend_from_slice(&[0; 2]); // padding
+        buf.extend_from_slice(&pid.to_ne_bytes());
+        let mut line = [0u8; 32];
+        line[..tty.len()].copy_from_slice(tty.as_bytes());
+        buf.extend_from_slice(&line);
+        buf.extend_from_slice(&[0; 4]); // ut_id
+        let mut name = [0u8; 32];
+        name[..user.len()].copy_from_slice(user.as_bytes());
+        buf.extend_from_slice(&name);
+        buf.extend_from_slice(&[0; 256]); // ut_host
+        buf.extend_from_slice(&[0; 4]); // ut_exit
+        buf.extend_from_slice(&0_i32.to_ne_bytes()); // ut_session
+        buf.extend_from_slice(&1_700_000_000_i32.to_ne_bytes()); // ut_tv.tv_sec
+        buf.extend_from_slice(&0_i32.to_ne_bytes()); // ut_tv.tv_usec
+        buf.extend_from_slice(&[0; 16]); // ut_addr_v6
+        buf.extend_from_slice(&[0; 20]); // reserved
+        assert_eq!(buf.len(), 384);
+        buf
+    }
+
+    #[test]
+    #[cfg(all(target_env = "gnu", target_arch = "x86_64"))]
+    fn test_fetch_user_info_missing_tty() {
+        let dir = std::env::temp_dir().join(format!("uu_w_utmp_{}", process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let utmp_path = dir.join("utmp");
+        fs::write(
+            &utmp_path,
+            fake_user_utmp("testuser", "no-such-tty-ci", process::id() as i32),
+        )
+        .unwrap();
+
+        let users = fetch_user_info_from(Some(&utmp_path)).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(users.len(), 1);
+        assert_eq!(users[0].user, "testuser");
+        assert_eq!(users[0].terminal, "no-such-tty-ci");
+        assert_eq!(users[0].idle_time, Duration::ZERO);
+    }
 
     #[test]
     fn test_format_time() {
