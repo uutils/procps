@@ -43,17 +43,15 @@ mod linux {
         ret
     }
 
-    pub fn print_directory_names(var: &str) -> bool {
+    /// Returns the variables under `var` when it names a directory, like `kernel.random`.
+    pub fn directory_variables(var: &str) -> Option<Vec<String>> {
         let path = variable_path(var);
         // Operands like /proc/sys/kernel arrive here as ".proc.sys.kernel". procps-ng fails on
         // them, and variable_path would drop PROC_SYS_ROOT because the path is absolute.
         if var.starts_with('.') || !path.is_dir() {
-            return false;
+            return None;
         }
-        for name in get_sysctl_variables(&path) {
-            println!("{}", normalize_var(&name));
-        }
-        true
+        Some(get_sysctl_variables(&path))
     }
 
     pub fn normalize_var(var: &str) -> String {
@@ -120,7 +118,6 @@ use linux::*;
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
     let names = matches.get_flag("names");
-    let values = matches.get_flag("values");
 
     let vars = if matches.get_flag("all") {
         get_all_sysctl_variables()
@@ -141,27 +138,39 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     };
 
     for var_or_assignment in vars {
-        if names
-            && !var_or_assignment.is_empty()
-            && !var_or_assignment.contains('=')
-            && print_directory_names(&normalize_var(&var_or_assignment))
-        {
-            continue;
-        }
-        match handle_one_arg(&var_or_assignment, matches.get_flag("quiet")) {
-            Ok(None) => (),
-            Ok(Some((var, value))) => {
-                print!("{}", format_variable(&var, &value, names, values));
-            }
-            Err(e) => {
-                if !matches.get_flag("ignore") {
-                    uucore::show!(e);
+        if !var_or_assignment.is_empty() && !var_or_assignment.contains('=') {
+            if let Some(dir_vars) = directory_variables(&normalize_var(&var_or_assignment)) {
+                for var in dir_vars {
+                    if names {
+                        println!("{}", normalize_var(&var));
+                    } else {
+                        print_one_arg(&var, &matches);
+                    }
                 }
+                continue;
             }
         }
+        print_one_arg(&var_or_assignment, &matches);
     }
 
     Ok(())
+}
+
+#[cfg(target_os = "linux")]
+fn print_one_arg(var_or_assignment: &str, matches: &clap::ArgMatches) {
+    match handle_one_arg(var_or_assignment, matches.get_flag("quiet")) {
+        Ok(None) => (),
+        Ok(Some((var, value))) => {
+            let names = matches.get_flag("names");
+            let values = matches.get_flag("values");
+            print!("{}", format_variable(&var, &value, names, values));
+        }
+        Err(e) => {
+            if !matches.get_flag("ignore") {
+                uucore::show!(e);
+            }
+        }
+    }
 }
 
 #[cfg(not(target_os = "linux"))]

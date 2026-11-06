@@ -83,6 +83,24 @@ mod linux {
     }
 
     #[test]
+    fn test_get_directory() {
+        let poolsize = std::fs::read_to_string("/proc/sys/kernel/random/poolsize").unwrap();
+        let poolsize = poolsize.trim_end();
+        new_ucmd!()
+            .arg("kernel.random")
+            .succeeds()
+            .stdout_contains_line(format!("kernel.random.poolsize = {poolsize}"))
+            .stdout_contains("kernel.random.boot_id = ")
+            .no_stderr();
+        new_ucmd!()
+            .args(&["-n", "kernel/random"])
+            .succeeds()
+            .stdout_contains_line(poolsize)
+            .stdout_does_not_contain("kernel.random")
+            .no_stderr();
+    }
+
+    #[test]
     fn test_get_directory_names() {
         for options in [vec!["-N"], vec!["--names"], vec!["-n", "-N"]] {
             new_ucmd!()
