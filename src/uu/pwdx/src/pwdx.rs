@@ -16,7 +16,9 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let sys = System::new_all();
 
     for pid_str in pids {
-        let pid = match pid_str.parse::<usize>() {
+        // A pid can also be given as /proc/PID, like in procps-ng.
+        let number = pid_str.strip_prefix("/proc/").unwrap_or(pid_str);
+        let pid = match number.parse::<usize>() {
             // PIDs start at 1, hence 0 is invalid
             Ok(0) | Err(_) => {
                 return Err(USimpleError::new(
@@ -29,15 +31,15 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
         match sys.process(Pid::from(pid)) {
             Some(process) => match process.cwd() {
-                Some(cwd) => println!("{pid}: {}", cwd.display()),
+                Some(cwd) => println!("{pid_str}: {}", cwd.display()),
                 None => {
                     set_exit_code(1);
-                    eprintln!("{pid}: Permission denied");
+                    eprintln!("{pid_str}: Permission denied");
                 }
             },
             None => {
                 set_exit_code(1);
-                eprintln!("{pid}: No such process");
+                eprintln!("{pid_str}: No such process");
             }
         }
     }

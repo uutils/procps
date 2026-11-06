@@ -105,6 +105,32 @@ fn test_invalid_and_valid_pid() {
 }
 
 #[test]
+fn test_proc_path_pid() {
+    let pid = process::id();
+
+    new_ucmd!()
+        .arg(format!("/proc/{pid}"))
+        .succeeds()
+        .stdout_matches(&Regex::new(&format!("^/proc/{pid}: .+\n$")).unwrap());
+
+    new_ucmd!()
+        .arg("/proc/999999")
+        .fails()
+        .code_is(1)
+        .no_stdout()
+        .stderr_is("/proc/999999: No such process\n");
+
+    for invalid_pid in ["/proc/0", "/proc/", "/proc/self"] {
+        new_ucmd!()
+            .arg(invalid_pid)
+            .fails()
+            .code_is(1)
+            .no_stdout()
+            .stderr_contains(format!("invalid process id: {invalid_pid}"));
+    }
+}
+
+#[test]
 fn test_invalid_arg() {
     new_ucmd!().arg("--definitely-invalid").fails().code_is(1);
 }
