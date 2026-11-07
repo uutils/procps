@@ -19,6 +19,7 @@ clap = { workspace = true }
 regex = { workspace = true }
 
 uu_pgrep = { path = "../pgrep" }
+uuproc = { workspace = true }
 
 [target.'cfg(unix)'.dependencies]
 rustix = { workspace = true, features = ["event", "std"] }

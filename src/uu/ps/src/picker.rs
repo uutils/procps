@@ -5,9 +5,9 @@
 
 use std::cell::RefCell;
 
-use uu_pgrep::process::{ProcessInformation, Teletype};
 #[cfg(unix)]
 use uucore::entries::{gid2grp, uid2usr};
+use uuproc::process::{ProcessInformation, Teletype};
 
 #[cfg(not(unix))]
 fn uid2usr(id: u32) -> Result<String, std::io::Error> {

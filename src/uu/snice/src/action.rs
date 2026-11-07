@@ -10,7 +10,7 @@ use std::{
     sync::OnceLock,
 };
 use sysinfo::{System, Users};
-use uu_pgrep::process::Teletype;
+use uuproc::process::Teletype;
 
 pub(crate) fn process_snapshot() -> &'static sysinfo::System {
     static SNAPSHOT: OnceLock<System> = OnceLock::new();
@@ -52,7 +52,7 @@ impl SelectedTarget {
 
     #[cfg(target_os = "linux")]
     fn from_tty(tty: &Teletype) -> Vec<u32> {
-        use uu_pgrep::process::ProcessInformation;
+        use uuproc::process::ProcessInformation;
 
         process_snapshot()
             .processes()

@@ -4,7 +4,7 @@
 // file that was distributed with this source code.
 
 use clap::ArgMatches;
-use uu_pgrep::process::ProcessInformation;
+use uuproc::process::ProcessInformation;
 
 // TODO: Implementing sorting flags.
 pub(crate) fn sort(input: &mut [ProcessInformation], _matches: &ArgMatches) {

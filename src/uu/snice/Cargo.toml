@@ -21,7 +21,7 @@ thiserror = { workspace = true }
 sysinfo = { workspace = true }
 rustix = { workspace = true }
 
-uu_pgrep = { path = "../pgrep" }
+uuproc = { workspace = true }
 
 [lib]
 path = "src/snice.rs"
