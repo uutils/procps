@@ -74,3 +74,20 @@ fn test_once_as_root() {
         }
     }
 }
+
+#[cfg(target_os = "linux")]
+#[test]
+fn test_human_once_as_root() {
+    let ts = TestScenario::new(util_name!());
+    let humanized_keywords = ["0B", "Ki", "Mi", "Gi", "Ti", "Pi"];
+
+    for arg in ["-o", "--once"] {
+        if let Ok(result) = run_ucmd_as_root(&ts, &[arg, "--human"]) {
+            result
+                .success()
+                .stdout_str_check(|stdout| humanized_keywords.iter().any(|k| stdout.contains(k)));
+        } else {
+            print!("Test skipped; requires root user");
+        }
+    }
+}
