@@ -11,7 +11,6 @@ use std::{collections::HashSet, io};
 use clap::{arg, Arg, ArgAction, ArgMatches};
 use regex::Regex;
 #[cfg(unix)]
-use uucore::uptime::get_uptime;
 use uucore::{
     display::Quotable,
     entries::{grp2gid, usr2uid},
@@ -19,6 +18,7 @@ use uucore::{
 };
 
 use uucore::error::{UResult, USimpleError};
+use uucore::uptime::get_uptime;
 
 use crate::process::{walk_process, walk_threads, Namespace, ProcessInformation, Teletype};
 
