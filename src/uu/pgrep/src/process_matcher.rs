@@ -11,6 +11,7 @@ use std::{collections::HashSet, io};
 use clap::{arg, Arg, ArgAction, ArgMatches};
 use regex::Regex;
 #[cfg(unix)]
+use uucore::uptime::get_uptime;
 use uucore::{
     display::Quotable,
     entries::{grp2gid, usr2uid},
@@ -242,21 +243,17 @@ fn get_namespaces(_pid: usize, _list: Option<Vec<&str>>) -> UResult<Namespace> {
     Ok(Namespace::new())
 }
 
-/// Return the time since boot in clock ticks, the unit of a process's start
-/// time in /proc/<pid>/stat.
-#[cfg(target_os = "linux")]
-fn ticks_since_boot() -> u64 {
-    let uptime = std::fs::read_to_string("/proc/uptime")
-        .ok()
-        .and_then(|s| s.split_whitespace().next()?.parse::<f64>().ok())
-        .unwrap_or(0.0);
-    (uptime * clock_ticks_per_second() as f64) as u64
-}
-
-#[cfg(target_os = "linux")]
+/// The unit of a process's start time in /proc/<pid>/stat.
+#[cfg(unix)]
 fn clock_ticks_per_second() -> u64 {
     // SAFETY: sysconf has no preconditions.
     unsafe { uucore::libc::sysconf(uucore::libc::_SC_CLK_TCK) as u64 }
+}
+
+// No process is listed on these platforms, so no start time gets compared.
+#[cfg(not(unix))]
+fn clock_ticks_per_second() -> u64 {
+    1
 }
 
 /// Collect pids with filter construct from command line arguments
@@ -278,13 +275,14 @@ fn collect_matched_pids(settings: &Settings) -> UResult<Vec<ProcessInformation>>
         };
 
         // --older compares a process's age with the given seconds.
-        #[cfg(target_os = "linux")]
-        let older_than_ticks = settings.older.map(|secs| {
-            (
-                ticks_since_boot(),
-                secs.saturating_mul(clock_ticks_per_second()),
-            )
-        });
+        let older_than_ticks = settings
+            .older
+            .map(|secs| -> UResult<(u64, u64)> {
+                let ticks = clock_ticks_per_second();
+                let uptime = (get_uptime(None)? as u64).saturating_mul(ticks);
+                Ok((uptime, secs.saturating_mul(ticks)))
+            })
+            .transpose()?;
 
         let pid_from_pidfile = settings
             .pidfile
@@ -325,13 +323,10 @@ fn collect_matched_pids(settings: &Settings) -> UResult<Vec<ProcessInformation>>
 
             let tty_matched = any_matches(&settings.terminal, pid.tty());
 
-            #[cfg(target_os = "linux")]
             let older_matched = match older_than_ticks {
                 Some((now, min_age)) => now.saturating_sub(pid.start_time().unwrap()) >= min_age,
                 None => true,
             };
-            #[cfg(not(target_os = "linux"))]
-            let older_matched = true;
 
             let parent_matched = any_matches(&settings.parent, pid.ppid().unwrap());
             let pgroup_matched = any_matches(&settings.pgroup, pid.pgid().unwrap());
