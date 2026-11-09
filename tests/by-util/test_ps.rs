@@ -433,7 +433,9 @@ fn test_unimplemented_field_keeps_columns_aligned() {
         .succeeds()
         .stdout_move_str();
     let mut lines = out.lines();
-    let headers = lines.next().unwrap().split_whitespace().count();
-    let values = lines.next().unwrap().split_whitespace().count();
-    assert_eq!(headers, values);
+    let headers: Vec<_> = lines.next().unwrap().split_whitespace().collect();
+    let values: Vec<_> = lines.next().unwrap().split_whitespace().collect();
+    assert_eq!(headers.len(), values.len());
+    let pid = headers.iter().position(|h| *h == "PID").unwrap();
+    assert_eq!(values[pid], "1");
 }
