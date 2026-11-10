@@ -21,6 +21,7 @@ regex = { workspace = true }
 rustix = { workspace = true, features = ["process"] }
 
 uu_pgrep = { path = "../pgrep" }
+uuproc = { workspace = true }
 
 [lib]
 path = "src/pkill.rs"

@@ -12,8 +12,6 @@ use rustix::{
 };
 #[cfg(unix)]
 use std::io::Error;
-#[cfg(unix)]
-use uu_pgrep::process::ProcessInformation;
 use uu_pgrep::process_matcher;
 use uucore::error::UResult;
 #[cfg(unix)]
@@ -22,6 +20,8 @@ use uucore::{
     show,
     signals::{signal_by_name_or_value, signal_name_by_value},
 };
+#[cfg(unix)]
+use uuproc::process::ProcessInformation;
 
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {

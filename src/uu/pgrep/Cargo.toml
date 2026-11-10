@@ -18,6 +18,7 @@ clap = { workspace = true }
 regex = { workspace = true }
 rustix = { workspace = true, features = ["fs", "process", "thread"] }
 uucore = { workspace = true, features = ["entries", "signals"] }
+uuproc = { workspace = true }
 walkdir = { workspace = true }
 
 [lib]

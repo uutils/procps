@@ -2456,6 +2456,7 @@ dependencies = [
  "regex",
  "rustix",
  "uucore",
+ "uuproc",
  "walkdir",
 ]
 
@@ -2465,8 +2466,8 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "rustix",
- "uu_pgrep",
  "uucore",
+ "uuproc",
 ]
 
 [[package]]
@@ -2478,6 +2479,7 @@ dependencies = [
  "rustix",
  "uu_pgrep",
  "uucore",
+ "uuproc",
  "windows-sys",
 ]
 
@@ -2490,6 +2492,7 @@ dependencies = [
  "rustix",
  "uu_pgrep",
  "uucore",
+ "uuproc",
  "walkdir",
 ]
 
@@ -2509,8 +2512,8 @@ dependencies = [
  "clap",
  "prettytable-rs",
  "rustix",
- "uu_pgrep",
  "uucore",
+ "uuproc",
 ]
 
 [[package]]
@@ -2549,8 +2552,8 @@ dependencies = [
  "rustix",
  "sysinfo",
  "thiserror 2.0.21",
- "uu_pgrep",
  "uucore",
+ "uuproc",
 ]
 
 [[package]]
@@ -2666,6 +2669,15 @@ dependencies = [
  "getrandom 0.4.3",
  "js-sys",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "uuproc"
+version = "0.0.1"
+dependencies = [
+ "regex",
+ "rustix",
+ "walkdir",
 ]
 
 [[package]]
