@@ -234,11 +234,13 @@ pub fn uu_app() -> Command {
         .arg(
             Arg::new("noop_o")
                 .short('o')
+                .action(ArgAction::SetTrue)
                 .help("Does nothing, for BSD compatibility"),
         )
         .arg(
             Arg::new("noop_x")
                 .short('x')
+                .action(ArgAction::SetTrue)
                 .help("Does nothing, for BSD compatibility"),
         )
 }
