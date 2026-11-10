@@ -118,6 +118,28 @@ mod linux {
             .code_is(1)
             .no_stdout();
     }
+
+    // procps-ng treats -o and -x as no-op flags (BSD compatibility), not options
+    // that take a value. Without SetTrue, clap would consume the next operand.
+    #[test]
+    fn test_noop_flags_do_not_take_a_value() {
+        new_ucmd!()
+            .args(&["-o", "kernel.ostype"])
+            .succeeds()
+            .stdout_is("kernel.ostype = Linux\n");
+        new_ucmd!()
+            .args(&["-x", "kernel.ostype"])
+            .succeeds()
+            .stdout_is("kernel.ostype = Linux\n");
+        new_ucmd!()
+            .args(&["-o", "-n", "kernel.ostype"])
+            .succeeds()
+            .stdout_is("Linux\n");
+        new_ucmd!()
+            .args(&["-ox", "kernel.ostype"])
+            .succeeds()
+            .stdout_is("kernel.ostype = Linux\n");
+    }
 }
 
 #[cfg(not(target_os = "linux"))]
