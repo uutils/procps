@@ -33,6 +33,9 @@ mod options {
 
 #[uucore::main]
 pub fn uumain(args: impl uucore::Args) -> UResult<()> {
+    // procps-ng accepts -XX as a distinct short option. clap cannot represent a
+    // two-character short flag next to -X, so map the GNU spelling to --XX.
+    let args = args.map(|arg| if arg == "-XX" { "--XX".into() } else { arg });
     let matches = uu_app().try_get_matches_from(args)?;
 
     if matches.get_flag(options::CREATE_RC) {

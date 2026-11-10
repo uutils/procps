@@ -199,14 +199,15 @@ fn test_more_extended() {
 fn test_most_extended() {
     let pid = process::id();
 
-    let arg = "--XX";
-    let result = new_ucmd!()
-        .arg(arg)
-        .arg(pid.to_string())
-        .succeeds()
-        .stdout_move_str();
+    for arg in ["--XX", "-XX"] {
+        let result = new_ucmd!()
+            .arg(arg)
+            .arg(pid.to_string())
+            .succeeds()
+            .stdout_move_str();
 
-    assert_most_extended_format(pid, &result, false, false);
+        assert_most_extended_format(pid, &result, false, false);
+    }
 }
 
 #[test]
