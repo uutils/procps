@@ -905,8 +905,9 @@ unknown              /dev/tty        4 1-63 console"#;
         let main_tid = rustix::thread::gettid().as_raw_nonzero().get() as usize;
         std::thread::spawn(move || {
             let new_thread_tid = rustix::thread::gettid().as_raw_nonzero().get() as usize;
-            // /proc/<pid>/task can lag a newly started thread, and a single
-            // WalkDir snapshot may miss it (https://github.com/uutils/procps/issues/471).
+            // This thread is already running, but readdir on /proc/<pid>/task
+            // can skip entries while other test threads exit concurrently, so a
+            // single snapshot may miss a tid (https://github.com/uutils/procps/issues/471).
             let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
             loop {
                 let mut pid_entry = ProcessInformation::current_process_info().unwrap();
