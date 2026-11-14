@@ -147,11 +147,8 @@ pub fn ask_user(pid: u32) -> bool {
         return false;
     }
     let input = input.trim();
-    if input.eq_ignore_ascii_case("y") || input.eq_ignore_ascii_case("yes") {
-        return true;
-    }
 
-    false
+    input.eq_ignore_ascii_case("y") || input.eq_ignore_ascii_case("yes")
 }
 
 #[allow(unused)]
