@@ -113,7 +113,10 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
 
     let mut table = Table::new();
     table.set_format(*FORMAT_CLEAN);
-    if !matches.get_flag("no-headers") {
+    // As in procps-ng, the header line is left out when every header is
+    // empty, e.g. `ps -o pid= -o comm=`.
+    let all_headers_empty = code_mapping.iter().all(|(_, header)| header.is_empty());
+    if !matches.get_flag("no-headers") && !all_headers_empty {
         let header = code_mapping
             .iter()
             .map(|(_, header)| header)
