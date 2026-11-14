@@ -14,9 +14,12 @@ version.workspace = true
 workspace = true
 
 [dependencies]
+bytesize = { workspace = true }
 clap = { workspace = true }
 jiff = { workspace = true }
 uucore = { workspace = true }
+
+uu_free = { path = "../free" }
 
 [dev-dependencies]
 tempfile = { workspace = true }
