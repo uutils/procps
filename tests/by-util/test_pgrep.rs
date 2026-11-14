@@ -133,6 +133,24 @@ fn test_older_non_matching_pattern() {
 
 #[test]
 #[cfg(target_os = "linux")]
+fn test_older_compares_process_age() {
+    // A process started just now is younger than a minute.
+    let mut child = Command::new("sleep").arg("10").spawn().unwrap();
+    let pid = child.id().to_string();
+
+    let result = new_ucmd!()
+        .args(&["--older", "0", "-x", "sleep"])
+        .succeeds();
+    assert!(result.stdout_str().lines().any(|line| line == pid));
+    let result = new_ucmd!().args(&["--older", "60", "-x", "sleep"]).run();
+    assert!(!result.stdout_str().lines().any(|line| line == pid));
+
+    child.kill().unwrap();
+    child.wait().unwrap();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
 fn test_full() {
     for arg in ["-f", "--full"] {
         new_ucmd!().arg("sh").arg(arg).succeeds();
