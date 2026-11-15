@@ -218,7 +218,7 @@ fn test_all_empty_headers_print_no_header_line() {
 
     // One named header keeps the header line.
     new_ucmd!()
-        .args(&["-o", "pid=,ppid", "-p", "1"])
+        .args(&["-o", "pid=", "-o", "ppid", "-p", "1"])
         .succeeds()
         .stdout_matches(&Regex::new(r"\A +PPID *\n *1 +0 *\n\z").unwrap());
 }
