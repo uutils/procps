@@ -133,6 +133,29 @@ fn test_older_non_matching_pattern() {
 
 #[test]
 #[cfg(target_os = "linux")]
+fn test_older_compares_process_age() {
+    let mut child = Command::new("sleep").arg("10").spawn().unwrap();
+    let pid = child.id().to_string();
+    let parent = std::process::id().to_string();
+    std::thread::sleep(std::time::Duration::from_millis(1500));
+
+    // A process 1.5 seconds old is older than 1 second, but not 5 seconds.
+    // Other tests may have sleep children too, so only look for this one.
+    let result = new_ucmd!()
+        .args(&["--older", "1", "--parent", &parent, "-x", "sleep"])
+        .succeeds();
+    assert!(result.stdout_str().lines().any(|line| line == pid));
+    let result = new_ucmd!()
+        .args(&["--older", "5", "--parent", &parent, "-x", "sleep"])
+        .run();
+    assert!(!result.stdout_str().lines().any(|line| line == pid));
+
+    child.kill().unwrap();
+    child.wait().unwrap();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
 fn test_full() {
     for arg in ["-f", "--full"] {
         new_ucmd!().arg("sh").arg(arg).succeeds();
