@@ -69,7 +69,10 @@ pub fn get_pickers(matches: &ArgMatches) -> Vec<Picker> {
         pickers.push(concat_helper(
             (
                 "-----timestamp-----".into(),
-                format!("{:>19}", jiff::Zoned::now().strftime("%Z").to_string()),
+                format!(
+                    "{:>19}",
+                    jiff::ZonedDateTime::now().strftime("%Z").to_string()
+                ),
             ),
             get_timestamp,
         ));
@@ -522,6 +525,8 @@ fn get_timestamp(
 ) -> Vec<(usize, String)> {
     vec![(
         10,
-        jiff::Zoned::now().strftime("%Y-%m-%d %H:%M:%S").to_string(),
+        jiff::ZonedDateTime::now()
+            .strftime("%Y-%m-%d %H:%M:%S")
+            .to_string(),
     )]
 }

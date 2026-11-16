@@ -6,7 +6,7 @@
 use clap::crate_version;
 use clap::{Arg, ArgAction, Command};
 #[cfg(target_os = "linux")]
-use jiff::Zoned;
+use jiff::ZonedDateTime;
 #[cfg(target_os = "linux")]
 use std::{collections::HashMap, fs, path::Path, time::SystemTime};
 use std::{process, time::Duration};
@@ -128,8 +128,8 @@ fn format_time(time: String) -> Result<String, jiff::Error> {
         t = t.drain(..time_offset).collect();
     }
     // If login time day is not current day, format like Sat16, or Fri06
-    let current_dt = Zoned::now();
-    let dt = Zoned::strptime("%Y-%m-%d %H:%M:%S%.f %:z", &t)?;
+    let current_dt = ZonedDateTime::now();
+    let dt = ZonedDateTime::strptime("%Y-%m-%d %H:%M:%S%.f %:z", &t)?;
     if current_dt.day() == dt.day() {
         Ok(dt.strftime("%H:%M").to_string())
     } else {
@@ -412,18 +412,18 @@ mod tests {
         fetch_cmdline, fetch_pcpu_time, fetch_terminal_number, format_time, format_time_elapsed,
         format_uptime_procps, get_clock_tick,
     };
-    use jiff::{SignedDuration, Zoned};
+    use jiff::{SignedDuration, ZonedDateTime};
     use std::{fs, path::Path, process, time::Duration};
 
     #[test]
     fn test_format_time() {
-        let unix_epoc = Zoned::now()
+        let unix_epoc = ZonedDateTime::now()
             .strftime("%Y-%m-%d %H:%M:%S%.6f %::z")
             .to_string();
         let unix_formatted = format_time(unix_epoc).unwrap();
         assert!(unix_formatted.contains(':') && unix_formatted.chars().count() == 5);
         // Test a date that is 5 days ago
-        let td = Zoned::now() - SignedDuration::from_secs(60 * 60 * 24 * 5);
+        let td = ZonedDateTime::now() - SignedDuration::from_secs(60 * 60 * 24 * 5);
         // Pre-format time, so it's similar to how utmpx returns it
         let pre_formatted = format!("{}", td.strftime("%Y-%m-%d %H:%M:%S%.6f %::z"));
 
