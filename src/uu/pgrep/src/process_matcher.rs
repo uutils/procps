@@ -18,7 +18,6 @@ use uucore::{
 };
 
 use uucore::error::{UResult, USimpleError};
-use uucore::uptime::get_uptime;
 
 use crate::process::{walk_process, walk_threads, Namespace, ProcessInformation, Teletype};
 
@@ -256,6 +255,19 @@ fn clock_ticks_per_second() -> u64 {
     1
 }
 
+/// Return the time since boot in clock ticks.
+///
+/// `uucore::uptime::get_uptime` drops the fraction of a second, which makes a
+/// process look up to a second younger than it is. Read /proc/uptime with its
+/// fraction instead, as procps-ng does.
+fn uptime_ticks() -> UResult<u64> {
+    let uptime = std::fs::read_to_string("/proc/uptime")
+        .ok()
+        .and_then(|s| s.split_whitespace().next()?.parse::<f64>().ok())
+        .ok_or_else(|| USimpleError::new(1, "could not read the system uptime"))?;
+    Ok((uptime * clock_ticks_per_second() as f64) as u64)
+}
+
 /// Collect pids with filter construct from command line arguments
 fn collect_matched_pids(settings: &Settings) -> UResult<Vec<ProcessInformation>> {
     // Filtration general parameters
@@ -278,9 +290,10 @@ fn collect_matched_pids(settings: &Settings) -> UResult<Vec<ProcessInformation>>
         let older_than_ticks = settings
             .older
             .map(|secs| -> UResult<(u64, u64)> {
-                let ticks = clock_ticks_per_second();
-                let uptime = (get_uptime(None)? as u64).saturating_mul(ticks);
-                Ok((uptime, secs.saturating_mul(ticks)))
+                Ok((
+                    uptime_ticks()?,
+                    secs.saturating_mul(clock_ticks_per_second()),
+                ))
             })
             .transpose()?;
 
