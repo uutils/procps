@@ -122,14 +122,9 @@ fn format_time_elapsed(time: Duration, old_style: bool) -> Result<String, jiff::
 
 #[cfg(target_os = "linux")]
 fn format_time(time: String) -> Result<String, jiff::Error> {
-    let mut t: String = time;
-    // Trim the seconds off of timezone offset, as chrono can't parse the time with it present
-    if let Some(time_offset) = t.rfind(':') {
-        t = t.drain(..time_offset).collect();
-    }
     // If login time day is not current day, format like Sat16, or Fri06
     let current_dt = ZonedDateTime::now();
-    let dt = ZonedDateTime::strptime("%Y-%m-%d %H:%M:%S%.f %:z", &t)?;
+    let dt = ZonedDateTime::strptime("%Y-%m-%d %H:%M:%S%.f %:z", &time)?;
     if current_dt.day() == dt.day() {
         Ok(dt.strftime("%H:%M").to_string())
     } else {
