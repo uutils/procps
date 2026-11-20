@@ -57,7 +57,6 @@ feat_common_core = [
 
 [workspace.dependencies]
 bytesize = "2.0.0"
-chrono = { version = "0.4.38", default-features = false, features = ["clock"] }
 clap = { version = "4.5.4", features = ["wrap_help", "cargo", "env"] }
 clap_complete = "4.5.2"
 clap_mangen = "0.3.0"
@@ -118,7 +117,6 @@ w = { optional = true, version = "0.0.1", package = "uu_w", path = "src/uu/w" }
 watch = { optional = true, version = "0.0.1", package = "uu_watch", path = "src/uu/watch" }
 
 [dev-dependencies]
-chrono = { workspace = true }
 ctor = { workspace = true }
 pretty_assertions = { workspace = true }
 rand = { workspace = true }
