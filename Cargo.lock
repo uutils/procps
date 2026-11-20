@@ -862,6 +862,72 @@ dependencies = [
 ]
 
 [[package]]
+name = "icu_collections"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2984d1cd16c883d7935b9e07e44071dca8d917fd52ecc02c04d5fa0b5a3f191c"
+dependencies = [
+ "displaydoc",
+ "potential_utf",
+ "utf8_iter",
+ "yoke",
+ "zerofrom",
+ "zerovec",
+]
+
+[[package]]
+name = "icu_locale"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d5a396343c7208121dc86e35623d3dfe19814a7613cfd14964994cdc9c9a2e26"
+dependencies = [
+ "icu_collections",
+ "icu_locale_core",
+ "icu_locale_data",
+ "icu_provider",
+ "potential_utf",
+ "tinystr",
+ "zerovec",
+]
+
+[[package]]
+name = "icu_locale_core"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92219b62b3e2b4d88ac5119f8904c10f8f61bf7e95b640d25ba3075e6cac2c29"
+dependencies = [
+ "displaydoc",
+ "litemap",
+ "serde",
+ "tinystr",
+ "writeable",
+ "zerovec",
+]
+
+[[package]]
+name = "icu_locale_data"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d5fdcc9ac77c6d74ff5cf6e65ef3181d6af32003b16fce3a77fb451d2f695993"
+
+[[package]]
+name = "icu_provider"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "139c4cf31c8b5f33d7e199446eff9c1e02decfc2f0eec2c8d71f65befa45b421"
+dependencies = [
+ "displaydoc",
+ "icu_locale_core",
+ "serde",
+ "stable_deref_trait",
+ "writeable",
+ "yoke",
+ "zerofrom",
+ "zerotrie",
+ "zerovec",
+]
+
+[[package]]
 name = "ident_case"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1080,9 +1146,9 @@ checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "libc"
-version = "0.2.189"
+version = "0.2.191"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
+checksum = "65cd87c9a6d60536580b316ad985726104730a5151c99845f2490428ef91240a"
 
 [[package]]
 name = "libm"
@@ -1125,6 +1191,12 @@ name = "linux-raw-sys"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53"
+
+[[package]]
+name = "litemap"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47d9d19d1d6efa0109d2f65ff4c85cddd50bd572e5a00127ab10987290bcefae"
 
 [[package]]
 name = "litrs"
@@ -1594,6 +1666,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "potential_utf"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0103b1cef7ec0cf76490e969665504990193874ea05c85ff9bab8b911d0a0564"
+dependencies = [
+ "serde_core",
+ "writeable",
+ "zerovec",
+]
+
+[[package]]
 name = "powerfmt"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1670,7 +1753,7 @@ dependencies = [
  "uu_vmstat",
  "uu_w",
  "uu_watch",
- "uucore",
+ "uucore 0.12.0",
  "uutests",
  "xattr",
 ]
@@ -2084,6 +2167,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "stable_deref_trait"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
+
+[[package]]
 name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2147,6 +2236,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "synstructure"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "901704edd0dfe137f1987838ee4f259e4e063c31371bdb423f7ae38ec6f77f02"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.3",
 ]
 
 [[package]]
@@ -2450,10 +2550,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4ac048d71ede7ee76d585517add45da530660ef4390e49b098733c6e897f254"
 
 [[package]]
+name = "utf8_iter"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af3bd9d3e571c26fcce9d033b87ea5ab061b8d2ffe9b7a5675d810d68f03edf0"
+dependencies = [
+ "utf_types",
+]
+
+[[package]]
 name = "utf8parse"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
+
+[[package]]
+name = "utf_types"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a3b425286980a367278453f3b6d28cdcb134b574e5a35824a6ff5eebad50bb6"
 
 [[package]]
 name = "utmp-classic"
@@ -2486,7 +2601,7 @@ dependencies = [
  "bytesize",
  "clap",
  "sysinfo",
- "uucore",
+ "uucore 0.12.0",
  "windows",
 ]
 
@@ -2497,7 +2612,7 @@ dependencies = [
  "clap",
  "jiff 1.0.1",
  "tempfile",
- "uucore",
+ "uucore 0.12.0",
 ]
 
 [[package]]
@@ -2507,7 +2622,7 @@ dependencies = [
  "clap",
  "regex",
  "rustix",
- "uucore",
+ "uucore 0.12.0",
  "walkdir",
 ]
 
@@ -2518,7 +2633,7 @@ dependencies = [
  "clap",
  "rustix",
  "uu_pgrep",
- "uucore",
+ "uucore 0.12.0",
 ]
 
 [[package]]
@@ -2529,7 +2644,7 @@ dependencies = [
  "regex",
  "rustix",
  "uu_pgrep",
- "uucore",
+ "uucore 0.12.0",
  "windows-sys",
 ]
 
@@ -2541,7 +2656,7 @@ dependencies = [
  "regex",
  "rustix",
  "uu_pgrep",
- "uucore",
+ "uucore 0.12.0",
  "walkdir",
 ]
 
@@ -2551,7 +2666,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "dirs",
- "uucore",
+ "uucore 0.12.0",
 ]
 
 [[package]]
@@ -2562,7 +2677,7 @@ dependencies = [
  "prettytable-rs",
  "rustix",
  "uu_pgrep",
- "uucore",
+ "uucore 0.12.0",
 ]
 
 [[package]]
@@ -2571,7 +2686,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "sysinfo",
- "uucore",
+ "uucore 0.12.0",
 ]
 
 [[package]]
@@ -2581,7 +2696,7 @@ dependencies = [
  "clap",
  "nix 0.31.3",
  "uu_snice",
- "uucore",
+ "uucore 0.12.0",
 ]
 
 [[package]]
@@ -2589,7 +2704,7 @@ name = "uu_slabtop"
 version = "0.0.1"
 dependencies = [
  "clap",
- "uucore",
+ "uucore 0.12.0",
 ]
 
 [[package]]
@@ -2602,7 +2717,7 @@ dependencies = [
  "sysinfo",
  "thiserror 2.0.21",
  "uu_pgrep",
- "uucore",
+ "uucore 0.12.0",
 ]
 
 [[package]]
@@ -2611,7 +2726,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "sysinfo",
- "uucore",
+ "uucore 0.12.0",
  "walkdir",
 ]
 
@@ -2622,7 +2737,7 @@ dependencies = [
  "clap",
  "crossterm",
  "ratatui",
- "uucore",
+ "uucore 0.12.0",
 ]
 
 [[package]]
@@ -2639,7 +2754,7 @@ dependencies = [
  "sysinfo",
  "uu_vmstat",
  "uu_w",
- "uucore",
+ "uucore 0.12.0",
  "windows-sys",
 ]
 
@@ -2652,7 +2767,7 @@ dependencies = [
  "jiff 1.0.1",
  "terminal_size",
  "uu_slabtop",
- "uucore",
+ "uucore 0.12.0",
 ]
 
 [[package]]
@@ -2661,7 +2776,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "jiff 1.0.1",
- "uucore",
+ "uucore 0.12.0",
 ]
 
 [[package]]
@@ -2669,7 +2784,7 @@ name = "uu_watch"
 version = "0.0.1"
 dependencies = [
  "clap",
- "uucore",
+ "uucore 0.12.0",
 ]
 
 [[package]]
@@ -2693,7 +2808,34 @@ dependencies = [
  "unic-langid",
  "unicode-width 0.2.2",
  "utmp-classic",
- "uucore_procs",
+ "uucore_procs 0.12.0",
+ "wild",
+ "windows-sys",
+]
+
+[[package]]
+name = "uucore"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "90cf14b33aa0368fd2842ef436d8890219dea9be20b2594836f0bba903533cca"
+dependencies = [
+ "cfg_aliases",
+ "clap",
+ "dns-lookup",
+ "fluent",
+ "fluent-syntax",
+ "icu_locale",
+ "jiff 0.2.46",
+ "libc",
+ "nix 0.31.3",
+ "os_display",
+ "rustc-hash",
+ "rustix",
+ "thiserror 2.0.21",
+ "time",
+ "unic-langid",
+ "unicode-width 0.2.2",
+ "uucore_procs 0.13.0",
  "wild",
  "windows-sys",
 ]
@@ -2703,6 +2845,16 @@ name = "uucore_procs"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "50aa1f3bba55168888ae6f1f2714ce58897d8020d742d21f474f01e86468fedd"
+dependencies = [
+ "proc-macro2",
+ "quote",
+]
+
+[[package]]
+name = "uucore_procs"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab3d681c07e9a1613fc69fa57756c485c379c535e1947a4382e865a3b5aa9edb"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2722,9 +2874,9 @@ dependencies = [
 
 [[package]]
 name = "uutests"
-version = "0.12.0"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c47cf53a889f65f0c96eb4fcaaf29cc3a61ae1cef00860e0ca94e0ed4952ef7"
+checksum = "ec9b08b2d8415d2c3d9b5825301e4686909aa6c154828999e95c67ff551e6286"
 dependencies = [
  "ctor",
  "libc",
@@ -2733,9 +2885,22 @@ dependencies = [
  "rand 0.10.4",
  "regex",
  "rlimit",
+ "rustix",
  "tempfile",
- "uucore",
+ "uucore 0.13.0",
+ "uutests_procs",
  "xattr",
+]
+
+[[package]]
+name = "uutests_procs"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e759af52ab8e56529202885503420686c9f54bdcfe19d40d3272b49cce98bd8"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.3",
 ]
 
 [[package]]
@@ -3061,6 +3226,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
 
 [[package]]
+name = "writeable"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ad82d2a33cdc9674dc7465672f271e096168fcdbe0f799d9e6db8c5892679dc"
+
+[[package]]
 name = "xattr"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3075,6 +3246,29 @@ name = "yansi"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cfe53a6657fd280eaa890a3bc59152892ffa3e30101319d168b781ed6529b049"
+
+[[package]]
+name = "yoke"
+version = "0.8.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "417ef3fcf6c300b7dbd25c85531a746931c02ad536f3cf4786ed1e88223340b3"
+dependencies = [
+ "stable_deref_trait",
+ "yoke-derive",
+ "zerofrom",
+]
+
+[[package]]
+name = "yoke-derive"
+version = "0.8.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec8ebde2db3681e8c9980cc27822030e68752690ddfa9473e739aeb4dbde6d71"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.3",
+ "synstructure",
+]
 
 [[package]]
 name = "zerocopy"
@@ -3102,6 +3296,31 @@ name = "zerofrom"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ec05a11813ea801ff6d75110ad09cd0824ddba17dfe17128ea0d5f68e6c5272"
+dependencies = [
+ "zerofrom-derive",
+]
+
+[[package]]
+name = "zerofrom-derive"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f75b4683f6c7f45248d4d64056a24298c6281e0993356d7d1b4a1a962ef10d4a"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.3",
+ "synstructure",
+]
+
+[[package]]
+name = "zerotrie"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f9152d31db0792fa83f70fb2f83148effb5c1f5b8c7686c3459e361d9bc20bf"
+dependencies = [
+ "displaydoc",
+ "zerovec",
+]
 
 [[package]]
 name = "zerovec"
@@ -3110,5 +3329,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90f911cbc359ab6af17377d242225f4d75119aec87ea711a880987b18cd7b239"
 dependencies = [
  "serde",
+ "yoke",
  "zerofrom",
+ "zerovec-derive",
+]
+
+[[package]]
+name = "zerovec-derive"
+version = "0.11.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3743ddbf47738d929cd1ae2e199d40d0162979dfe31aef8ae646d2bf00bf97a"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.3",
 ]
