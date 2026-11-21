@@ -11,6 +11,25 @@ fn test_invalid_arg() {
 }
 
 #[test]
+#[cfg(target_os = "linux")]
+fn test_missing_tty_device_does_not_fail() {
+    // Regression for #718: when utmp references a tty that no longer exists
+    // under /dev, w must still exit successfully instead of failing with
+    // "No such file or directory".
+    new_ucmd!()
+        .succeeds()
+        .stderr_does_not_contain("failed to fetch user info");
+    new_ucmd!()
+        .arg("--short")
+        .succeeds()
+        .stderr_does_not_contain("failed to fetch user info");
+    new_ucmd!()
+        .arg("--no-header")
+        .succeeds()
+        .stderr_does_not_contain("failed to fetch user info");
+}
+
+#[test]
 fn test_help() {
     new_ucmd!()
         .arg("--help")
