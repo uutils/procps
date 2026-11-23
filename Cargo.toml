@@ -135,7 +135,7 @@ uutests = { workspace = true }
 xattr = { workspace = true }
 
 [target.'cfg(any(target_os = "linux", target_os = "android"))'.dev-dependencies]
-rlimit = "0.11.0"
+rlimit = "0.12.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 rustix = { workspace = true }
