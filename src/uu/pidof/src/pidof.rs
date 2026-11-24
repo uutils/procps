@@ -51,16 +51,8 @@ fn match_process_name(
     with_workers: bool,
     match_scripts: bool,
 ) -> bool {
-    // `cmdline` has the arguments joined with spaces, so read them again to
-    // get argv[0] as it is.
-    let Ok(raw) = fs::read(format!("/proc/{}/cmdline", process.pid)) else {
-        return false;
-    };
-    let binding = raw
-        .split(|&b| b == 0)
-        .map(String::from_utf8_lossy)
-        .collect::<Vec<_>>();
-    let path = binding.first().map(|it| it.to_string()).unwrap_or_default();
+    let binding = process.cmdline_args.clone();
+    let path = binding.first().cloned().unwrap_or_default();
 
     if path.is_empty() {
         if !with_workers {
@@ -86,7 +78,7 @@ fn match_process_name(
 
     // A process that rewrites its title, like "sshd: /usr/sbin/sshd -D", is
     // matched by its process name too.
-    if path.contains(' ') && process.name().unwrap() == name_to_match {
+    if path.contains(' ') && process.name().is_ok_and(|n| n == name_to_match) {
         return true;
     }
 
@@ -94,7 +86,7 @@ fn match_process_name(
     // its cmdline will look like `/bin/sh ./script.sh` but its .name() will be `script.sh`.
     // As name() gets truncated to 15 characters, the original pidof seems to always do a prefix match.
     if match_scripts && binding.len() > 1 {
-        return PathBuf::from(binding[1].as_ref())
+        return PathBuf::from(&binding[1])
             .file_name()
             .map(|f| f.to_str().unwrap())
             .is_some_and(|f| f == name_to_match && f.starts_with(&process.name().unwrap()));

@@ -165,9 +165,10 @@ fn test_process_with_another_argv0() {
     use std::os::unix::process::CommandExt;
 
     // A copy of the shell under its own name, so the executable and the
-    // process name are known.
+    // process name are known. The name is longer than 15 bytes, so the
+    // kernel cuts the process name to "pidoftitletest-".
     let temp_dir = tempfile::tempdir().unwrap();
-    let program = temp_dir.path().join("pidoftitletest");
+    let program = temp_dir.path().join("pidoftitletest-long");
     std::fs::copy("/bin/sh", &program).unwrap();
 
     for argv0 in ["pidoftitletest: worker process", "another-argv0"] {
@@ -179,6 +180,7 @@ fn test_process_with_another_argv0() {
                 match std::process::Command::new(&program)
                     .arg0(argv0)
                     .args(["-c", "sleep 5; :"])
+                    .process_group(0)
                     .spawn()
                 {
                     Err(e) if e.kind() == std::io::ErrorKind::ExecutableFileBusy => {
@@ -191,13 +193,16 @@ fn test_process_with_another_argv0() {
             .unwrap();
         std::thread::sleep(std::time::Duration::from_millis(200));
 
-        new_ucmd!()
-            .arg("pidoftitletest")
-            .succeeds()
-            .stdout_contains(child.id().to_string());
+        for name in ["pidoftitletest-long", "pidoftitletest-"] {
+            new_ucmd!()
+                .arg(name)
+                .succeeds()
+                .stdout_contains(child.id().to_string());
+        }
         new_ucmd!().arg("pidoftitletest:").fails();
 
-        child.kill().unwrap();
+        // Kill the whole group, so the forked sleep goes too.
+        unsafe { uucore::libc::kill(-(child.id() as i32), uucore::libc::SIGKILL) };
         child.wait().unwrap();
     }
 }
