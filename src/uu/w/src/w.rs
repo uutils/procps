@@ -179,7 +179,7 @@ fn get_uptime_container() -> UResult<i64> {
     let start_time: i64 = start_time_str
         .parse()
         .map_err(|_| UptimeError::SystemUptime)?;
-    Ok(get_uptime(None)? + start_time / get_clock_tick())
+    Ok(get_uptime(None)?.as_secs() as i64 + start_time / get_clock_tick())
 }
 
 pub fn format_uptime_procps(up_secs: i64) -> UResult<String> {
@@ -231,7 +231,7 @@ pub fn get_formatted_loadavg() -> UResult<String> {
 
 #[inline]
 pub fn get_formatted_uptime_procps() -> UResult<String> {
-    let time_str = format_uptime_procps(get_uptime(None)?)?;
+    let time_str = format_uptime_procps(get_uptime(None)?.as_secs() as i64)?;
     Ok(format!("up {time_str}"))
 }
 

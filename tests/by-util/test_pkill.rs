@@ -52,7 +52,7 @@ fn test_inverse() {
         .arg("--inverse")
         .arg("NONEXISTENT")
         .fails()
-        .stderr_contains("Permission denied");
+        .stderr_contains("Operation not permitted");
 }
 
 #[cfg(unix)]
