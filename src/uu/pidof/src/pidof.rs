@@ -51,8 +51,9 @@ fn match_process_name(
     with_workers: bool,
     match_scripts: bool,
 ) -> bool {
-    let binding = process.cmdline_args.clone();
-    let path = binding.first().cloned().unwrap_or_default();
+    // name() needs &mut process, so keep owned copies of the two arguments used below.
+    let path = process.cmdline_args.first().cloned().unwrap_or_default();
+    let script = process.cmdline_args.get(1).cloned();
 
     if path.is_empty() {
         if !with_workers {
@@ -85,8 +86,8 @@ fn match_process_name(
     // When a script (ie. file starting with e.g. #!/bin/sh) is run like `./script.sh`, then
     // its cmdline will look like `/bin/sh ./script.sh` but its .name() will be `script.sh`.
     // As name() gets truncated to 15 characters, the original pidof seems to always do a prefix match.
-    if match_scripts && binding.len() > 1 {
-        return PathBuf::from(&binding[1])
+    if let Some(script) = script.filter(|_| match_scripts) {
+        return PathBuf::from(&script)
             .file_name()
             .map(|f| f.to_str().unwrap())
             .is_some_and(|f| f == name_to_match && f.starts_with(&process.name().unwrap()));
