@@ -5,7 +5,7 @@
 
 use clap::{crate_version, Arg, Command};
 use std::env;
-use sysinfo::{Pid, System};
+use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 use uucore::error::{set_exit_code, UResult, USimpleError};
 
 #[uucore::main]
@@ -13,7 +13,7 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
     let matches = uu_app().try_get_matches_from(args)?;
 
     let pids = matches.get_many::<String>("pid").unwrap();
-    let sys = System::new_all();
+    let mut sys = System::new();
 
     for pid_str in pids {
         // A pid can also be given as /proc/PID, like in procps-ng.
@@ -26,10 +26,16 @@ pub fn uumain(args: impl uucore::Args) -> UResult<()> {
                     format!("invalid process id: {pid_str}"),
                 ))
             }
-            Ok(pid) => pid,
+            Ok(pid) => Pid::from(pid),
         };
 
-        match sys.process(Pid::from(pid)) {
+        // Read only this process, and only its working directory.
+        sys.refresh_processes_specifics(
+            ProcessesToUpdate::Some(&[pid]),
+            true,
+            ProcessRefreshKind::nothing().with_cwd(UpdateKind::Always),
+        );
+        match sys.process(pid) {
             Some(process) => match process.cwd() {
                 Some(cwd) => println!("{pid_str}: {}", cwd.display()),
                 None => {
