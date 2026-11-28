@@ -1237,6 +1237,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "nix"
+version = "0.32.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77730ed34f01f4990cb2ea67fec715ecebc6fab9a6396cf83c5529b13f581bdc"
+dependencies = [
+ "bitflags 2.13.1",
+ "cfg-if",
+ "cfg_aliases",
+ "libc",
+]
+
+[[package]]
 name = "nom"
 version = "7.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2630,7 +2642,7 @@ name = "uu_skill"
 version = "0.0.1"
 dependencies = [
  "clap",
- "nix 0.31.3",
+ "nix 0.32.0",
  "uu_snice",
  "uucore 0.12.0",
 ]
@@ -2683,7 +2695,7 @@ dependencies = [
  "bytesize",
  "clap",
  "crossterm",
- "nix 0.31.3",
+ "nix 0.32.0",
  "pkg-config",
  "ratatui",
  "rustix",
