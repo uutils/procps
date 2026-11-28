@@ -424,6 +424,8 @@ impl Namespace {
 pub struct ProcessInformation {
     pub pid: usize,
     pub cmdline: String,
+    /// The arguments from `/proc/<pid>/cmdline`, as they are
+    pub cmdline_args: Vec<String>,
 
     inner_status: String,
     inner_stat: String,
@@ -469,14 +471,17 @@ impl ProcessInformation {
                 .parse::<usize>()
                 .map_err(|_| io::ErrorKind::InvalidData)?
         };
-        let cmdline = fs::read_to_string(dir_append(value.clone(), "cmdline".into()))?
-            .replace('\0', " ")
-            .trim_end()
-            .into();
+        let raw_cmdline = fs::read_to_string(dir_append(value.clone(), "cmdline".into()))?;
+        let cmdline = raw_cmdline.replace('\0', " ").trim_end().into();
+        let cmdline_args = raw_cmdline
+            .split_terminator('\0')
+            .map(String::from)
+            .collect();
 
         Ok(Self {
             pid,
             cmdline,
+            cmdline_args,
             inner_status: fs::read_to_string(dir_append(value.clone(), "status".into()))?,
             inner_stat: fs::read_to_string(dir_append(value, "stat".into()))?,
             ..Default::default()

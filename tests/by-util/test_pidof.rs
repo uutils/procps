@@ -184,3 +184,51 @@ fn test_script() {
     executed_via_sh_child.kill().unwrap();
     executed_via_sh_child.wait().unwrap();
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_process_with_another_argv0() {
+    use std::os::unix::process::CommandExt;
+
+    // A copy of the shell under its own name, so the executable and the
+    // process name are known. The name is longer than 15 bytes, so the
+    // kernel cuts the process name to "pidoftitletest-".
+    let temp_dir = tempfile::tempdir().unwrap();
+    let program = temp_dir.path().join("pidoftitletest-long");
+    std::fs::copy("/bin/sh", &program).unwrap();
+
+    for argv0 in ["pidoftitletest: worker process", "another-argv0"] {
+        // "; :" keeps the shell from replacing itself with sleep. Other tests
+        // forking while the copy was open for writing make exec fail with
+        // ETXTBSY for a moment, so retry that.
+        let mut child = (0..100)
+            .find_map(|_| {
+                match std::process::Command::new(&program)
+                    .arg0(argv0)
+                    .args(["-c", "sleep 5; :"])
+                    .process_group(0)
+                    .spawn()
+                {
+                    Err(e) if e.kind() == std::io::ErrorKind::ExecutableFileBusy => {
+                        std::thread::sleep(std::time::Duration::from_millis(10));
+                        None
+                    }
+                    result => Some(result.unwrap()),
+                }
+            })
+            .unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(200));
+
+        for name in ["pidoftitletest-long", "pidoftitletest-"] {
+            new_ucmd!()
+                .arg(name)
+                .succeeds()
+                .stdout_contains(child.id().to_string());
+        }
+        new_ucmd!().arg("pidoftitletest:").fails();
+
+        // Kill the whole group, so the forked sleep goes too.
+        unsafe { uucore::libc::kill(-(child.id() as i32), uucore::libc::SIGKILL) };
+        child.wait().unwrap();
+    }
+}

@@ -3,6 +3,7 @@
 // For the full copyright and license information, please view the LICENSE
 // file that was distributed with this source code.
 
+use std::fs;
 use std::path::PathBuf;
 
 use clap::{crate_version, Arg, ArgAction, ArgMatches, Command};
@@ -50,8 +51,9 @@ fn match_process_name(
     with_workers: bool,
     match_scripts: bool,
 ) -> bool {
-    let binding = process.cmdline.split(' ').collect::<Vec<_>>();
-    let path = binding.first().unwrap().to_string();
+    // name() needs &mut process, so keep owned copies of the two arguments used below.
+    let path = process.cmdline_args.first().cloned().unwrap_or_default();
+    let script = process.cmdline_args.get(1).cloned();
 
     if path.is_empty() {
         if !with_workers {
@@ -60,15 +62,32 @@ fn match_process_name(
         return process.name().unwrap() == name_to_match;
     };
 
-    if PathBuf::from(path).file_name().unwrap().to_str().unwrap() == name_to_match {
+    if PathBuf::from(&path).file_name().and_then(|f| f.to_str()) == Some(name_to_match) {
+        return true;
+    }
+
+    // Like procps-ng, also match the executable, so a process started with
+    // another argv[0] (`exec -a`) is still found, also by the 15-byte name
+    // the kernel cuts it to.
+    if let Ok(exe) = fs::read_link(format!("/proc/{}/exe", process.pid)) {
+        if let Some(exe) = exe.file_name().and_then(|f| f.to_str()) {
+            if exe == name_to_match || exe.as_bytes().get(..15) == Some(name_to_match.as_bytes()) {
+                return true;
+            }
+        }
+    }
+
+    // A process that rewrites its title, like "sshd: /usr/sbin/sshd -D", is
+    // matched by its process name too.
+    if path.contains(' ') && process.name().is_ok_and(|n| n == name_to_match) {
         return true;
     }
 
     // When a script (ie. file starting with e.g. #!/bin/sh) is run like `./script.sh`, then
     // its cmdline will look like `/bin/sh ./script.sh` but its .name() will be `script.sh`.
     // As name() gets truncated to 15 characters, the original pidof seems to always do a prefix match.
-    if match_scripts && binding.len() > 1 {
-        return PathBuf::from(binding[1])
+    if let Some(script) = script.filter(|_| match_scripts) {
+        return PathBuf::from(&script)
             .file_name()
             .map(|f| f.to_str().unwrap())
             .is_some_and(|f| f == name_to_match && f.starts_with(&process.name().unwrap()));
